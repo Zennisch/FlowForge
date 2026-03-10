@@ -426,7 +426,7 @@ docker compose down
 | Area                        | Status        | Notes                              |
 |-----------------------------|---------------|------------------------------------|
 | Project scaffold (NestJS)   | Done          | src/ structure + empty files created |
-| MongoDB / Mongoose setup    | Not started   |                                    |
+| MongoDB / Mongoose setup    | Done          | ConfigModule (global) + DatabaseModule with MongooseModule.forRootAsync; tsconfig, nest-cli, eslint, prettier configured |
 | Auth module (JWT)           | Not started   |                                    |
 | Users module                | Not started   |                                    |
 | Workflows module (CRUD)     | Not started   |                                    |
@@ -441,4 +441,4 @@ docker compose down
 
 ---
 
-*Last updated: 2026-03-10 — Sections 5 (Module Structure) and 6 (Data Models) filled in. src/ scaffold created (all files empty).*
+*Last updated: 2026-03-11 — MongoDB/Mongoose setup complete. ConfigModule (global), DatabaseModule (MongooseModule.forRootAsync), main.ts, app.module.ts, tsconfig.json, tsconfig.build.json, nest-cli.json, .eslintrc.js, .prettierrc, and package.json scripts all configured. Build verified.*
