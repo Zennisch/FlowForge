@@ -425,7 +425,7 @@ docker compose down
 
 | Area                        | Status        | Notes                              |
 |-----------------------------|---------------|------------------------------------|
-| Project scaffold (NestJS)   | Not started   |                                    |
+| Project scaffold (NestJS)   | Done          | src/ structure + empty files created |
 | MongoDB / Mongoose setup    | Not started   |                                    |
 | Auth module (JWT)           | Not started   |                                    |
 | Users module                | Not started   |                                    |
@@ -441,4 +441,4 @@ docker compose down
 
 ---
 
-*Last updated: 2026-03-10 — Sections 5 (Module Structure) and 6 (Data Models) filled in.*
+*Last updated: 2026-03-10 — Sections 5 (Module Structure) and 6 (Data Models) filled in. src/ scaffold created (all files empty).*
