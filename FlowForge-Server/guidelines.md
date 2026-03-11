@@ -427,8 +427,8 @@ docker compose down
 |-----------------------------|---------------|------------------------------------|
 | Project scaffold (NestJS)   | Done          | src/ structure + empty files created |
 | MongoDB / Mongoose setup    | Done          | ConfigModule (global) + DatabaseModule with MongooseModule.forRootAsync; tsconfig, nest-cli, eslint, prettier configured |
-| Auth module (JWT)           | Not started   |                                    |
-| Users module                | Not started   |                                    |
+| Auth module (JWT)           | Done          | RegisterDto, LoginDto, JwtStrategy, JwtAuthGuard, AuthService, AuthController, AuthModule. Unit tests: auth.service.spec.ts (4 tests) |
+| Users module                | Done          | User schema (Mongoose), UsersService (create/findByEmail/findById), UsersModule, CreateUserDto. Unit tests: users.service.spec.ts (6 tests) |
 | Workflows module (CRUD)     | Not started   |                                    |
 | Executions module           | Not started   |                                    |
 | Events module               | Not started   |                                    |
@@ -441,4 +441,4 @@ docker compose down
 
 ---
 
-*Last updated: 2026-03-11 — MongoDB/Mongoose setup complete. ConfigModule (global), DatabaseModule (MongooseModule.forRootAsync), main.ts, app.module.ts, tsconfig.json, tsconfig.build.json, nest-cli.json, .eslintrc.js, .prettierrc, and package.json scripts all configured. Build verified.*
+*Last updated: 2026-03-11 — Auth & Users modules implemented. JWT authentication (register/login), Mongoose User schema, bcrypt password hashing, JwtStrategy, JwtAuthGuard, global ValidationPipe. Unit tests: 10 tests across auth.service.spec.ts and users.service.spec.ts — all passing. Jest configured with ts-jest.*
