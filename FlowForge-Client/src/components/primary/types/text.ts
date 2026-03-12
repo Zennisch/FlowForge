@@ -1,0 +1,7 @@
+export type TextVariant = "heading" | "subheading" | "body" | "caption" | "label" | "overline"
+export type TextSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl"
+export type TextWeight = "light" | "regular" | "medium" | "semibold" | "bold" | "extrabold"
+export type TextColor = "default" | "primary" | "secondary" | "success" | "warning" | "error" | "muted"
+export type TextAlign = "left" | "center" | "right" | "justify"
+export type TextTransform = "none" | "uppercase" | "lowercase" | "capitalize"
+export type TextElement = "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "span" | "div" | "label"
