@@ -345,24 +345,24 @@ pnpm run format
 
 ## 12. Progress Tracker
 
-| Area                                | Status      | Notes                              |
-|-------------------------------------|-------------|------------------------------------|
-| Project scaffold (Next.js 14)       | Not started |                                    |
-| Tailwind CSS + global styles setup  | Not started |                                    |
-| Axios client + interceptors         | Not started |                                    |
-| Zustand auth store                  | Not started |                                    |
-| TanStack Query provider setup       | Not started |                                    |
-| Auth pages (login / register)       | Not started |                                    |
-| Dashboard layout (sidebar / header) | Not started |                                    |
-| Workflow list page                  | Not started |                                    |
-| Workflow create / edit form         | Not started |                                    |
-| Workflow delete modal               | Not started |                                    |
-| Execution history page              | Not started |                                    |
-| Execution detail + polling          | Not started |                                    |
-| Event log timeline                  | Not started |                                    |
-| E2E tests (Playwright)              | Not started |                                    |
-| CI/CD (GitHub Actions)              | Not started |                                    |
+| Area                                | Status      | Notes                                           |
+|-------------------------------------|-------------|-------------------------------------------------|
+| Project scaffold (Next.js 14)       | Done        | All files created (empty). Configs in place.    |
+| Tailwind CSS + global styles setup  | Done        | v4 via @tailwindcss/postcss + globals.css       |
+| Axios client + interceptors         | Not started |                                                 |
+| Zustand auth store                  | Not started |                                                 |
+| TanStack Query provider setup       | Not started |                                                 |
+| Auth pages (login / register)       | Not started |                                                 |
+| Dashboard layout (sidebar / header) | Not started |                                                 |
+| Workflow list page                  | Not started |                                                 |
+| Workflow create / edit form         | Not started |                                                 |
+| Workflow delete modal               | Not started |                                                 |
+| Execution history page              | Not started |                                                 |
+| Execution detail + polling          | Not started |                                                 |
+| Event log timeline                  | Not started |                                                 |
+| E2E tests (Playwright)              | Not started |                                                 |
+| CI/CD (GitHub Actions)              | Not started |                                                 |
 
 ---
 
-*Last updated: 2026-03-13 — Initial guidelines created. Project scaffold not yet started.*
+*Last updated: 2026-03-13 — Project scaffolded. All source files created (empty). Config files complete.*
