@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { PubSubModule } from '../../infra/pubsub/pubsub.provider';
+import { EventRouterService } from '../event/event-router.service';
 import { EventModule } from '../event/event.module';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { CompensateService } from './compensate.service';
@@ -17,9 +19,15 @@ import { StepStateService } from './step-state.service';
     ]),
     WorkflowModule,
     EventModule,
+    PubSubModule,
   ],
   controllers: [ExecutionController],
-  providers: [ExecutionService, StepStateService, CompensateService],
+  providers: [
+    ExecutionService,
+    StepStateService,
+    CompensateService,
+    EventRouterService,
+  ],
   exports: [ExecutionService, StepStateService, CompensateService],
 })
 export class ExecutionModule {}
