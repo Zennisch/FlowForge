@@ -403,6 +403,7 @@ docker compose down
 | `JWT_EXPIRES_IN`            | Token expiry, e.g. `7d`                          |
 | `GOOGLE_CLOUD_PROJECT`      | GCP project ID for Pub/Sub                       |
 | `PUBSUB_JOBS_TOPIC`         | Pub/Sub topic for step jobs                      |
+| `PUBSUB_JOBS_SUBSCRIPTION`  | Subscription name for orchestrator               |
 | `PUBSUB_EVENTS_TOPIC`       | Pub/Sub topic for step results                   |
 | `PUBSUB_EVENTS_SUBSCRIPTION`| Subscription name for orchestrator               |
 
@@ -432,13 +433,13 @@ docker compose down
 | Workflows module (CRUD)     | Done          | WorkflowSchema (steps/edges/trigger sub-schemas), CreateWorkflowDto, UpdateWorkflowDto, ValidateDagService (Kahn's cycle detection + duplicate/unknown-ref checks), WorkflowService (CRUD + ownership), WorkflowController (JWT-guarded REST). Unit tests: validate-dag.service.spec.ts (13 tests) + workflow.service.spec.ts (14 tests) |
 | Executions module           | Done          | ExecutionSchema, StepExecutionSchema, TriggerExecutionDto, ExecutionService (trigger/findAll/findOne/cancel/findEvents), StepStateService (markRunning/markCompleted/markFailed), CompensateService (Saga compensation), ExecutionController (5 REST endpoints), ExecutionModule. Unit tests: execution.service.spec.ts (17), step-state.service.spec.ts (9), compensate.service.spec.ts (5) — 32 new tests |
 | Events module               | Done          | ExecutionEventSchema (immutable audit log, 11 event types), EventService (append + findByExecutionId), EventModule. Used as a dependency by ExecutionModule. |
-| Pub/Sub integration         | Not started   |                                    |
-| Saga orchestrator           | Not started   |                                    |
-| Worker / step runner        | Not started   |                                    |
+| Pub/Sub integration         | Done          | PubSubModule (PubSubService wrapping @google-cloud/pubsub); StepJob + StepResult interfaces; backoff.util; ConsumerService (workflow-jobs subscriber); StepExecutorService + 4 handlers (http/transform/store/branch); EventRouterService (workflow-events subscriber, saga orchestration: retry with backoff, compensation trigger); ExecutionService.trigger() publishes entry-step jobs; WorkerModule added to AppModule. New env var: PUBSUB_JOBS_SUBSCRIPTION. |
+| Saga orchestrator           | Done          | Embedded in EventRouterService: step-completed → merge context → publish next steps → execution.completed; step-failed → retry with exponential/fixed backoff → StepStateService.markFailed → CompensateService.compensate |
+| Worker / step runner        | Done          | ConsumerService, StepExecutorService, HttpHandler (axios), TransformHandler (dot-path mapping), StoreHandler (literal data), BranchHandler (field-based case matching with _branch_next output). WorkerModule imports PubSubModule + ExecutionModule. |
 | Docker Compose setup        | Not started   |                                    |
 | CI/CD (GitHub Actions)      | Not started   |                                    |
 | Terraform IaC               | Not started   |                                    |
 
 ---
 
-*Last updated: 2026-03-12 — Executions + Events modules implemented. ExecutionSchema (6-state lifecycle: pending/running/completed/failed/cancelled/compensating), StepExecutionSchema (5-state: queued/running/completed/failed/skipped), ExecutionEvent schema (11 immutable event types). EventService (append-only + findByExecutionId). ExecutionService (trigger with idempotency-key dedup, findAll, findOne, cancel, findEvents). StepStateService (markRunning/markCompleted/markFailed with event appends). CompensateService (Saga rollback: compensating → failed, bulk step update). ExecutionController (5 JWT-guarded endpoints: POST /workflows/:id/trigger, GET|GET /executions[/:id], POST /executions/:id/cancel, GET /executions/:id/events). ExecutionModule + EventModule registered in AppModule. Unit tests: 32 new tests (17 ExecutionService, 9 StepStateService, 5 CompensateService). Full suite: 69 tests passing.*
+*Last updated: 2026-03-12 — Pub/Sub integration, saga orchestrator, and worker/step runner implemented. PubSubModule (PubSubService) wraps @google-cloud/pubsub with publishJob/publishResult/getJobsSubscription/getEventsSubscription. StepJob + StepResult shared interfaces + computeBackoffMs utility. ConsumerService subscribes to PUBSUB_JOBS_SUBSCRIPTION: marks step running → executes via StepExecutorService → publishes StepResult to workflow-events. Four handlers: HttpHandler (axios), TransformHandler (dot-path mapping), StoreHandler (literal merge), BranchHandler (_branch_next output). EventRouterService subscribes to PUBSUB_EVENTS_SUBSCRIPTION: on completed → markCompleted → merge context → publish next steps or execution.completed; on failed → retry with backoff (exponential/fixed) or compensate via CompensateService. ExecutionService.trigger() now publishes initial step jobs for entry points of the DAG. WorkerModule + ExecutionModule updated; AppModule registers WorkerModule. New env var: PUBSUB_JOBS_SUBSCRIPTION. Full suite: 69 tests passing.*

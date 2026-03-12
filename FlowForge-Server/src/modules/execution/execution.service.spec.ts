@@ -6,6 +6,7 @@ import {
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
+import { PubSubService } from '../../infra/pubsub/pubsub.provider';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
 import { TriggerExecutionDto } from './dto/trigger-execution.dto';
@@ -100,6 +101,10 @@ describe('ExecutionService', () => {
         {
           provide: EventService,
           useValue: { append: jest.fn().mockResolvedValue({}), findByExecutionId: jest.fn() },
+        },
+        {
+          provide: PubSubService,
+          useValue: { publishJob: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();

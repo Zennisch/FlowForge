@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { PubSubService } from '../../infra/pubsub/pubsub.provider';
+import { StepJob } from '../../shared/interfaces/step-job.interface';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
 import { TriggerExecutionDto } from './dto/trigger-execution.dto';
@@ -21,6 +23,7 @@ export class ExecutionService {
     private readonly stepExecutionModel: Model<StepExecutionDocument>,
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
+    private readonly pubSubService: PubSubService,
   ) {}
 
   async trigger(
@@ -53,8 +56,9 @@ export class ExecutionService {
       started_at: new Date(),
     }).save();
 
+    const stepExecutions: StepExecutionDocument[] = [];
     for (const step of workflow.steps) {
-      await new this.stepExecutionModel({
+      const stepExecution = await new this.stepExecutionModel({
         execution_id: execution._id,
         step_id: step.id,
         status: 'queued',
@@ -63,6 +67,7 @@ export class ExecutionService {
         output: null,
         error: null,
       }).save();
+      stepExecutions.push(stepExecution);
     }
 
     await this.eventService.append(
@@ -71,7 +76,34 @@ export class ExecutionService {
       { workflow_id: workflowId, trigger_type: 'manual' },
     );
 
-    // TODO: Publish first step job(s) to Pub/Sub when PubSubService is implemented
+    if (workflow.steps.length === 0) {
+      execution.status = 'completed';
+      execution.completed_at = new Date();
+      await execution.save();
+      await this.eventService.append(String(execution._id), 'execution.completed');
+      return execution;
+    }
+
+    // Find entry steps: steps with no incoming edges
+    const toStepIds = new Set(workflow.edges.map((e) => e.to));
+    const entrySteps = workflow.steps.filter((s) => !toStepIds.has(s.id));
+
+    for (const step of entrySteps) {
+      const stepExecution = stepExecutions.find((se) => se.step_id === step.id);
+      if (!stepExecution) continue;
+
+      await this.eventService.append(String(execution._id), 'step.queued', {}, step.id);
+
+      const job: StepJob = {
+        executionId: String(execution._id),
+        stepId: step.id,
+        stepExecutionId: String(stepExecution._id),
+        stepConfig: { type: step.type, ...(step.config as Record<string, unknown>) },
+        context: {},
+        attempt: 0,
+      };
+      await this.pubSubService.publishJob(job);
+    }
 
     return execution;
   }
