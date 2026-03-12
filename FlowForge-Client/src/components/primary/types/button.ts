@@ -1,0 +1,7 @@
+export type Variant = "primary" | "secondary" | "tertiary" | "ghost"
+export type Size = "xs" | "sm" | "md" | "lg" | "xl"
+export type Shape = "rounded" | "square" | "pill"
+export type Shadow = "none" | "sm" | "md" | "lg" | "xl"
+export type PressAnimationStyle = "none" | "scale" | "ripple"
+export type PressAnimationDuration = "short" | "medium" | "long"
+export type PressAnimationStrength = "light" | "medium" | "strong"
