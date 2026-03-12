@@ -429,7 +429,7 @@ docker compose down
 | MongoDB / Mongoose setup    | Done          | ConfigModule (global) + DatabaseModule with MongooseModule.forRootAsync; tsconfig, nest-cli, eslint, prettier configured |
 | Auth module (JWT)           | Done          | RegisterDto, LoginDto, JwtStrategy, JwtAuthGuard, AuthService, AuthController, AuthModule. Unit tests: auth.service.spec.ts (4 tests) |
 | Users module                | Done          | User schema (Mongoose), UsersService (create/findByEmail/findById), UsersModule, CreateUserDto. Unit tests: users.service.spec.ts (6 tests) |
-| Workflows module (CRUD)     | Not started   |                                    |
+| Workflows module (CRUD)     | Done          | WorkflowSchema (steps/edges/trigger sub-schemas), CreateWorkflowDto, UpdateWorkflowDto, ValidateDagService (Kahn's cycle detection + duplicate/unknown-ref checks), WorkflowService (CRUD + ownership), WorkflowController (JWT-guarded REST). Unit tests: validate-dag.service.spec.ts (13 tests) + workflow.service.spec.ts (14 tests) |
 | Executions module           | Not started   |                                    |
 | Events module               | Not started   |                                    |
 | Pub/Sub integration         | Not started   |                                    |
@@ -441,4 +441,4 @@ docker compose down
 
 ---
 
-*Last updated: 2026-03-11 — Auth & Users modules implemented. JWT authentication (register/login), Mongoose User schema, bcrypt password hashing, JwtStrategy, JwtAuthGuard, global ValidationPipe. Unit tests: 10 tests across auth.service.spec.ts and users.service.spec.ts — all passing. Jest configured with ts-jest.*
+*Last updated: 2026-03-11 — Workflows module implemented. WorkflowSchema with step/edge/trigger sub-schemas, CreateWorkflowDto & UpdateWorkflowDto (class-validator), ValidateDagService (Kahn's topological sort — detects cycles, duplicate step IDs, unknown edge references), WorkflowService (CRUD + tenant-scoped ownership checks), WorkflowController (JWT-guarded, all CRUD endpoints). WorkflowModule registered in AppModule. Unit tests: 27 new tests (13 for ValidateDagService, 14 for WorkflowService). Full suite: 37 tests passing.*
