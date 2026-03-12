@@ -349,9 +349,9 @@ pnpm run format
 |-------------------------------------|-------------|-------------------------------------------------|
 | Project scaffold (Next.js 14)       | Done        | All files created (empty). Configs in place.    |
 | Tailwind CSS + global styles setup  | Done        | v4 via @tailwindcss/postcss + globals.css       |
-| Axios client + interceptors         | Not started |                                                 |
-| Zustand auth store                  | Not started |                                                 |
-| TanStack Query provider setup       | Not started |                                                 |
+| Axios client + interceptors         | Done        | `lib/api/client.ts` — request (JWT) + response (401) interceptors |
+| Zustand auth store                  | Done        | `store/auth.store.ts` — token persisted to localStorage via `persist` middleware |
+| TanStack Query provider setup       | Done        | `app/providers.tsx` (client) wrapped in `app/layout.tsx` |
 | Auth pages (login / register)       | Not started |                                                 |
 | Dashboard layout (sidebar / header) | Not started |                                                 |
 | Workflow list page                  | Not started |                                                 |
@@ -365,4 +365,4 @@ pnpm run format
 
 ---
 
-*Last updated: 2026-03-13 — Project scaffolded. All source files created (empty). Config files complete.*
+*Last updated: 2026-03-13 — Axios client + interceptors, Zustand auth store, TanStack Query provider implemented. `.env.local` / `.env.example` created with `PORT` and `NEXT_PUBLIC_API_URL`.*
