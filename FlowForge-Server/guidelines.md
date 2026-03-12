@@ -430,8 +430,8 @@ docker compose down
 | Auth module (JWT)           | Done          | RegisterDto, LoginDto, JwtStrategy, JwtAuthGuard, AuthService, AuthController, AuthModule. Unit tests: auth.service.spec.ts (4 tests) |
 | Users module                | Done          | User schema (Mongoose), UsersService (create/findByEmail/findById), UsersModule, CreateUserDto. Unit tests: users.service.spec.ts (6 tests) |
 | Workflows module (CRUD)     | Done          | WorkflowSchema (steps/edges/trigger sub-schemas), CreateWorkflowDto, UpdateWorkflowDto, ValidateDagService (Kahn's cycle detection + duplicate/unknown-ref checks), WorkflowService (CRUD + ownership), WorkflowController (JWT-guarded REST). Unit tests: validate-dag.service.spec.ts (13 tests) + workflow.service.spec.ts (14 tests) |
-| Executions module           | Not started   |                                    |
-| Events module               | Not started   |                                    |
+| Executions module           | Done          | ExecutionSchema, StepExecutionSchema, TriggerExecutionDto, ExecutionService (trigger/findAll/findOne/cancel/findEvents), StepStateService (markRunning/markCompleted/markFailed), CompensateService (Saga compensation), ExecutionController (5 REST endpoints), ExecutionModule. Unit tests: execution.service.spec.ts (17), step-state.service.spec.ts (9), compensate.service.spec.ts (5) — 32 new tests |
+| Events module               | Done          | ExecutionEventSchema (immutable audit log, 11 event types), EventService (append + findByExecutionId), EventModule. Used as a dependency by ExecutionModule. |
 | Pub/Sub integration         | Not started   |                                    |
 | Saga orchestrator           | Not started   |                                    |
 | Worker / step runner        | Not started   |                                    |
@@ -441,4 +441,4 @@ docker compose down
 
 ---
 
-*Last updated: 2026-03-11 — Workflows module implemented. WorkflowSchema with step/edge/trigger sub-schemas, CreateWorkflowDto & UpdateWorkflowDto (class-validator), ValidateDagService (Kahn's topological sort — detects cycles, duplicate step IDs, unknown edge references), WorkflowService (CRUD + tenant-scoped ownership checks), WorkflowController (JWT-guarded, all CRUD endpoints). WorkflowModule registered in AppModule. Unit tests: 27 new tests (13 for ValidateDagService, 14 for WorkflowService). Full suite: 37 tests passing.*
+*Last updated: 2026-03-12 — Executions + Events modules implemented. ExecutionSchema (6-state lifecycle: pending/running/completed/failed/cancelled/compensating), StepExecutionSchema (5-state: queued/running/completed/failed/skipped), ExecutionEvent schema (11 immutable event types). EventService (append-only + findByExecutionId). ExecutionService (trigger with idempotency-key dedup, findAll, findOne, cancel, findEvents). StepStateService (markRunning/markCompleted/markFailed with event appends). CompensateService (Saga rollback: compensating → failed, bulk step update). ExecutionController (5 JWT-guarded endpoints: POST /workflows/:id/trigger, GET|GET /executions[/:id], POST /executions/:id/cancel, GET /executions/:id/events). ExecutionModule + EventModule registered in AppModule. Unit tests: 32 new tests (17 ExecutionService, 9 StepStateService, 5 CompensateService). Full suite: 69 tests passing.*
