@@ -24,8 +24,12 @@ export default function LoginPage() {
 	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 
-		await loginMutation.mutateAsync({ email, password });
-		router.replace('/workflows');
+		try {
+			await loginMutation.mutateAsync({ email, password });
+			router.replace('/workflows');
+		} catch {
+			// Error is already exposed through loginMutation.error.
+		}
 	};
 
 	return (
