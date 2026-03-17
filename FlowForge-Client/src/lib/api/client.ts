@@ -23,9 +23,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().clearToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+      const requestUrl = String(error.config?.url ?? '');
+      const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+      if (!isAuthEndpoint) {
+        useAuthStore.getState().clearToken();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
       }
     }
 

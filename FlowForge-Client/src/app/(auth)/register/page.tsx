@@ -24,8 +24,12 @@ export default function RegisterPage() {
 	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 
-		await registerMutation.mutateAsync({ email, password });
-		router.replace('/workflows');
+		try {
+			await registerMutation.mutateAsync({ email, password });
+			router.replace('/login');
+		} catch {
+			// Error is already exposed through registerMutation.error.
+		}
 	};
 
 	return (

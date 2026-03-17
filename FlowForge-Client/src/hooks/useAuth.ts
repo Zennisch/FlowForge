@@ -16,12 +16,7 @@ export function useLogin() {
 }
 
 export function useRegister() {
-	const setToken = useAuthStore((state) => state.setToken);
-
 	return useMutation({
 		mutationFn: (payload: RegisterRequest) => authApi.register(payload),
-		onSuccess: (data) => {
-			setToken(data.accessToken);
-		},
 	});
 }
