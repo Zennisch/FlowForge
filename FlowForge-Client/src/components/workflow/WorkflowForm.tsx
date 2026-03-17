@@ -10,12 +10,32 @@ import type { CreateWorkflowRequest, Workflow } from '@/types/workflow.types';
 
 import { StepList } from './StepList';
 
+function parseConfigJson(value: string): Record<string, unknown> | null {
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return {};
+	}
+
+	try {
+		const parsed = JSON.parse(trimmed) as unknown;
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			return parsed as Record<string, unknown>;
+		}
+		return null;
+	} catch {
+		return null;
+	}
+}
+
 const workflowFormSchema = z
 	.object({
 		name: z.string().trim().min(1, 'Workflow name is required'),
 		description: z.string().optional(),
 		status: z.enum(['active', 'inactive']),
 		triggerType: z.enum(['manual', 'webhook', 'schedule']),
+		triggerConfigJson: z.string().refine((value) => parseConfigJson(value) !== null, {
+			message: 'Trigger config must be a valid JSON object',
+		}),
 		steps: z
 			.array(
 				z.object({
@@ -23,6 +43,9 @@ const workflowFormSchema = z
 					type: z.enum(['http', 'transform', 'store', 'branch']),
 					maxAttempts: z.number().min(1, 'Min is 1').max(10, 'Max is 10').optional(),
 					backoff: z.enum(['exponential', 'fixed']).optional(),
+					configJson: z.string().refine((value) => parseConfigJson(value) !== null, {
+						message: 'Config must be a valid JSON object',
+					}),
 				}),
 			)
 			.min(1, 'At least one step is required')
@@ -89,13 +112,15 @@ function toDefaultValues(workflow?: Workflow): WorkflowFormValues {
 		description: workflow?.description ?? '',
 		status: workflow?.status ?? 'active',
 		triggerType: workflow?.trigger?.type ?? 'manual',
+		triggerConfigJson: JSON.stringify(workflow?.trigger?.config ?? {}, null, 2),
 		steps:
 			workflow?.steps?.map((step) => ({
 				id: step.id,
 				type: step.type,
 				maxAttempts: step.retry?.maxAttempts,
 				backoff: step.retry?.backoff ?? 'exponential',
-			})) ?? [{ id: '', type: 'http', maxAttempts: 3, backoff: 'exponential' }],
+				configJson: JSON.stringify(step.config ?? {}, null, 2),
+			})) ?? [{ id: '', type: 'http', maxAttempts: 3, backoff: 'exponential', configJson: '{}' }],
 		edges:
 			workflow?.edges?.map((edge) => ({
 				from: edge.from,
@@ -141,11 +166,12 @@ export function WorkflowForm({
 			status: values.status,
 			trigger: {
 				type: values.triggerType,
-				config: {},
+				config: parseConfigJson(values.triggerConfigJson) ?? {},
 			},
 			steps: values.steps.map((step) => ({
 				id: step.id.trim(),
 				type: step.type,
+				config: parseConfigJson(step.configJson) ?? {},
 				retry:
 					step.maxAttempts || step.backoff
 						? {
@@ -213,6 +239,20 @@ export function WorkflowForm({
 							<option value="webhook">webhook</option>
 							<option value="schedule">schedule</option>
 						</select>
+					</label>
+
+					<label className="block md:col-span-2">
+						<span className="mb-1 block text-sm text-(--color-text-secondary)">Trigger config (JSON object)</span>
+						<textarea
+							{...register('triggerConfigJson')}
+							disabled={isPending}
+							rows={5}
+							placeholder={
+								'{\n  "cron": "0 */5 * * * *",\n  "timezone": "Asia/Ho_Chi_Minh"\n}'
+							}
+							className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 font-mono text-xs outline-none transition-colors focus:border-(--color-primary)"
+						/>
+						<p className="mt-1 text-xs text-(--color-error)">{errors.triggerConfigJson?.message}</p>
 					</label>
 				</div>
 			</section>

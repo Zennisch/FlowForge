@@ -44,7 +44,15 @@ export function StepList({
 					<h3 className="text-sm font-semibold text-(--color-text-primary)">Steps</h3>
 					<button
 						type="button"
-						onClick={() => appendStep({ id: '', type: 'http', maxAttempts: 3, backoff: 'exponential' })}
+						onClick={() =>
+							appendStep({
+								id: '',
+								type: 'http',
+								maxAttempts: 3,
+								backoff: 'exponential',
+								configJson: '{}',
+							})
+						}
 						disabled={isPending}
 						className="rounded-lg border border-(--color-primary) px-3 py-1.5 text-xs font-medium text-(--color-primary) transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
 					>
@@ -121,6 +129,20 @@ export function StepList({
 									</select>
 								</label>
 							</div>
+
+							<label className="mt-3 block text-sm">
+								<span className="mb-1 block text-xs text-(--color-text-secondary)">
+									Step config (JSON object)
+								</span>
+								<textarea
+									{...register(`steps.${index}.configJson`)}
+									disabled={isPending}
+									rows={5}
+									placeholder={'{\n  "url": "https://api.example.com/orders",\n  "method": "GET"\n}'}
+									className="w-full rounded-lg border border-(--color-border) px-3 py-2 font-mono text-xs outline-none transition-colors focus:border-(--color-primary)"
+								/>
+								<ErrorText message={errors.steps?.[index]?.configJson?.message} />
+							</label>
 
 							<div className="mt-3 flex justify-end">
 								<button
