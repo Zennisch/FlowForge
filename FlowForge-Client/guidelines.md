@@ -362,7 +362,7 @@ pnpm run format
 | Auth pages (login / register)       | Done        | Implemented simple forms, inline API error, register→login redirect, login→workflows redirect |
 | Dashboard layout (sidebar / header) | Done        | Responsive shell completed with shared `Sidebar` + `Header` in dashboard route group |
 | Workflow list page                  | Done        | Implemented list query + loading/error/empty states + responsive cards |
-| Workflow create / edit form         | Not started |                                                 |
+| Workflow create / edit form         | Done        | Implemented reusable RHF+Zod form with dynamic steps/edges and create/update integration |
 | Workflow delete modal               | Done        | Added confirmation modal and wired delete mutation with query invalidation |
 | Execution history page              | Not started |                                                 |
 | Execution detail + polling          | Not started |                                                 |
@@ -372,4 +372,4 @@ pnpm run format
 
 ---
 
-*Last updated: 2026-03-17 — Workflow list page completed with API + TanStack Query integration, status cards, empty/error handling, and delete confirmation modal.*
+*Last updated: 2026-03-18 — Workflow create/edit form completed with React Hook Form + Zod validation, step/edge editor, and integrated create/update pages.*
