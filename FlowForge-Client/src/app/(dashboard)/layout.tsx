@@ -1,9 +1,5 @@
-import { AuthGuard } from '@/components/layout/AuthGuard';
+import { DashboardShell } from '../../components/layout/DashboardShell';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-	return (
-		<AuthGuard>
-			<div className="min-h-screen bg-(--zui-surface)">{children}</div>
-		</AuthGuard>
-	);
+	return <DashboardShell>{children}</DashboardShell>;
 }
