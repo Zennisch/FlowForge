@@ -33,8 +33,8 @@ export default function RegisterPage() {
 	};
 
 	return (
-		<main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_bottom,#ffe4e6,transparent_35%),var(--zui-surface)] px-4">
-			<section className="w-full max-w-md rounded-2xl border border-(--color-border) bg-(--zui-surface) p-6 shadow-[0_18px_50px_-20px_rgba(190,24,93,0.35)]">
+		<main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_bottom,#dbeafe,transparent_38%),var(--zui-surface)] px-4">
+			<section className="w-full max-w-md rounded-2xl border border-(--color-border) bg-(--zui-surface) p-6 shadow-[0_18px_50px_-20px_rgba(29,78,216,0.28)]">
 				<h1 className="text-2xl font-semibold text-(--color-text-primary)">Register</h1>
 				<p className="mt-1 text-sm text-(--color-text-secondary)">
 					Create your FlowForge account.
