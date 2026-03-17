@@ -360,7 +360,7 @@ pnpm run format
 | Zustand auth store                  | Done        | `store/auth.store.ts` — token persisted to localStorage via `persist` middleware |
 | TanStack Query provider setup       | Done        | `app/providers.tsx` (client) wrapped in `app/layout.tsx` |
 | Auth pages (login / register)       | Done        | Implemented simple forms, inline API error, register→login redirect, login→workflows redirect |
-| Dashboard layout (sidebar / header) | In progress | Protected route wrapper implemented via `AuthGuard`; full sidebar/header shell pending |
+| Dashboard layout (sidebar / header) | Done        | Responsive shell completed with shared `Sidebar` + `Header` in dashboard route group |
 | Workflow list page                  | In progress | Minimal placeholder page exists for authenticated landing route |
 | Workflow create / edit form         | Not started |                                                 |
 | Workflow delete modal               | Not started |                                                 |
@@ -372,4 +372,4 @@ pnpm run format
 
 ---
 
-*Last updated: 2026-03-17 — Auth flow completed (register/login pages, root redirect, protected route guard), auth token contract mapped (`access_token` → `accessToken`), and global theme tokens switched to FlowForge blue/slate palette.*
+*Last updated: 2026-03-17 — Dashboard layout completed with responsive sidebar/header shell, alongside the existing auth flow and FlowForge blue/slate design tokens.*
