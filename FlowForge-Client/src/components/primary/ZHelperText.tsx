@@ -34,7 +34,7 @@ interface ZHelperTextProps {
   defaultErrorMessage?: string
 }
 
-const HelperTextContent = ({ isError, message, id, size }) => {
+const HelperTextContent = ({ isError, message, id, size }: { isError: boolean; message?: string; id?: string; size: TextSize }) => {
   const themeCls = isError ? THEME.error : THEME.default
   const sizeCls = SIZES[size]
 
