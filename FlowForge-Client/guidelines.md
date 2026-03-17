@@ -135,11 +135,10 @@ src/
 │   └── globals.css                    # Tailwind base + global styles
 │
 ├── components/                        # Reusable UI components
-│   ├── ui/                            # Generic primitives
-│   │   ├── Button.tsx
-│   │   ├── Input.tsx
+│   ├── primary/                       # Generic primitives
+│   │
+│   ├── ui/                            # Extra primitives
 │   │   ├── Badge.tsx
-│   │   ├── Modal.tsx
 │   │   ├── Spinner.tsx
 │   │   └── Table.tsx
 │   │
