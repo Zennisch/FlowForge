@@ -74,8 +74,11 @@ Browser
 - Register and login with email + password
 - JWT stored in `localStorage` (access token)
 - Axios request interceptor attaches `Authorization: Bearer <token>` on every request
-- Axios response interceptor catches 401 → clears token → redirects to `/login`
+- Axios response interceptor catches 401 on protected endpoints → clears token → redirects to `/login`
+- 401 from `/auth/login` and `/auth/register` is surfaced as inline form error (no forced redirect/reload)
 - Route guard: protected routes redirect unauthenticated users to `/login`
+- Root route (`/`) resolves auth state after Zustand hydration, then redirects to `/workflows` or `/login`
+- Register success redirects to `/login`; login success redirects to `/workflows`
 
 ### 4.2 Workflow List & Management
 - Dashboard lists all workflows owned by the current user
@@ -189,6 +192,9 @@ src/
 - **`hooks/useExecutions.ts`**: `refetchInterval` is set dynamically — active while status is `pending | running | compensating`, `false` otherwise. This avoids unnecessary polling in terminal states.
 - **`store/auth.store.ts`**: Zustand is used only for the auth token and user profile. All server state (workflows, executions) lives exclusively in TanStack Query cache — no duplication.
 - **`components/ui/`**: headless primitives styled with Tailwind. No third-party component library dependency, keeping the bundle lean and style control complete.
+- **`components/layout/AuthGuard.tsx`**: dashboard route group is guarded client-side after persisted auth state hydration to prevent unauthorized flashes.
+- **`lib/api/auth.api.ts`**: server returns `access_token` (snake_case); API layer normalizes to `{ accessToken }` for frontend hooks/store.
+- **`app/globals.css`**: design tokens were updated from pink palette to FlowForge blue/slate palette while preserving variable names for compatibility.
 
 ---
 
@@ -200,8 +206,10 @@ src/
 ### Auth
 | Method | Path           | Request Body                      | Response                      |
 |--------|----------------|-----------------------------------|-------------------------------|
-| POST   | /auth/register | `{ email, password }`             | `{ accessToken }`             |
-| POST   | /auth/login    | `{ email, password }`             | `{ accessToken }`             |
+| POST   | /auth/register | `{ email, password }`             | `{ access_token }`            |
+| POST   | /auth/login    | `{ email, password }`             | `{ access_token }`            |
+
+> Frontend API adapter (`lib/api/auth.api.ts`) maps `access_token` → `accessToken` before returning to hooks/components.
 
 ### Workflows
 | Method | Path                   | Auth | Description                 |
@@ -347,13 +355,13 @@ pnpm run format
 | Area                                | Status      | Notes                                           |
 |-------------------------------------|-------------|-------------------------------------------------|
 | Project scaffold (Next.js 14)       | Done        | All files created (empty). Configs in place.    |
-| Tailwind CSS + global styles setup  | Done        | v4 via @tailwindcss/postcss + globals.css       |
-| Axios client + interceptors         | Done        | `lib/api/client.ts` — request (JWT) + response (401) interceptors |
+| Tailwind CSS + global styles setup  | Done        | v4 via @tailwindcss/postcss + FlowForge blue/slate tokens in `globals.css` |
+| Axios client + interceptors         | Done        | `lib/api/client.ts` — request (JWT) + protected-route 401 redirect, auth-endpoint inline error handling |
 | Zustand auth store                  | Done        | `store/auth.store.ts` — token persisted to localStorage via `persist` middleware |
 | TanStack Query provider setup       | Done        | `app/providers.tsx` (client) wrapped in `app/layout.tsx` |
-| Auth pages (login / register)       | Not started |                                                 |
-| Dashboard layout (sidebar / header) | Not started |                                                 |
-| Workflow list page                  | Not started |                                                 |
+| Auth pages (login / register)       | Done        | Implemented simple forms, inline API error, register→login redirect, login→workflows redirect |
+| Dashboard layout (sidebar / header) | In progress | Protected route wrapper implemented via `AuthGuard`; full sidebar/header shell pending |
+| Workflow list page                  | In progress | Minimal placeholder page exists for authenticated landing route |
 | Workflow create / edit form         | Not started |                                                 |
 | Workflow delete modal               | Not started |                                                 |
 | Execution history page              | Not started |                                                 |
@@ -364,4 +372,4 @@ pnpm run format
 
 ---
 
-*Last updated: 2026-03-13 — Axios client + interceptors, Zustand auth store, TanStack Query provider implemented. `.env.local` / `.env.example` created with `PORT` and `NEXT_PUBLIC_API_URL`.*
+*Last updated: 2026-03-17 — Auth flow completed (register/login pages, root redirect, protected route guard), auth token contract mapped (`access_token` → `accessToken`), and global theme tokens switched to FlowForge blue/slate palette.*
