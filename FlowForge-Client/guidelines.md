@@ -361,9 +361,9 @@ pnpm run format
 | TanStack Query provider setup       | Done        | `app/providers.tsx` (client) wrapped in `app/layout.tsx` |
 | Auth pages (login / register)       | Done        | Implemented simple forms, inline API error, register→login redirect, login→workflows redirect |
 | Dashboard layout (sidebar / header) | Done        | Responsive shell completed with shared `Sidebar` + `Header` in dashboard route group |
-| Workflow list page                  | In progress | Minimal placeholder page exists for authenticated landing route |
+| Workflow list page                  | Done        | Implemented list query + loading/error/empty states + responsive cards |
 | Workflow create / edit form         | Not started |                                                 |
-| Workflow delete modal               | Not started |                                                 |
+| Workflow delete modal               | Done        | Added confirmation modal and wired delete mutation with query invalidation |
 | Execution history page              | Not started |                                                 |
 | Execution detail + polling          | Not started |                                                 |
 | Event log timeline                  | Not started |                                                 |
@@ -372,4 +372,4 @@ pnpm run format
 
 ---
 
-*Last updated: 2026-03-17 — Dashboard layout completed with responsive sidebar/header shell, alongside the existing auth flow and FlowForge blue/slate design tokens.*
+*Last updated: 2026-03-17 — Workflow list page completed with API + TanStack Query integration, status cards, empty/error handling, and delete confirmation modal.*
