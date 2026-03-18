@@ -10,6 +10,59 @@ import type { CreateWorkflowRequest, Workflow } from '@/types/workflow.types';
 
 import { StepList } from './StepList';
 
+const webhookMethodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+
+const webhookReservedKeys = new Set([
+	'path',
+	'endpoint',
+	'url',
+	'method',
+	'secret',
+	'signingSecret',
+	'token',
+	'requireSignature',
+	'verifySignature',
+]);
+
+const scheduleReservedKeys = new Set(['cron', 'expression', 'timezone', 'tz']);
+
+function getStringFromConfig(
+	config: Record<string, unknown>,
+	keys: string[],
+): string | undefined {
+	for (const key of keys) {
+		const value = config[key];
+		if (typeof value === 'string') {
+			return value;
+		}
+	}
+
+	return undefined;
+}
+
+function getBooleanFromConfig(
+	config: Record<string, unknown>,
+	keys: string[],
+): boolean | undefined {
+	for (const key of keys) {
+		const value = config[key];
+		if (typeof value === 'boolean') {
+			return value;
+		}
+	}
+
+	return undefined;
+}
+
+function omitKeys(
+	config: Record<string, unknown>,
+	reservedKeys: Set<string>,
+): Record<string, unknown> {
+	return Object.fromEntries(
+		Object.entries(config).filter(([key]) => !reservedKeys.has(key)),
+	);
+}
+
 function parseConfigJson(value: string): Record<string, unknown> | null {
 	const trimmed = value.trim();
 	if (!trimmed) {
@@ -33,8 +86,14 @@ const workflowFormSchema = z
 		description: z.string().optional(),
 		status: z.enum(['active', 'inactive']),
 		triggerType: z.enum(['manual', 'webhook', 'schedule']),
-		triggerConfigJson: z.string().refine((value) => parseConfigJson(value) !== null, {
-			message: 'Trigger config must be a valid JSON object',
+		webhookPath: z.string().optional(),
+		webhookMethod: webhookMethodSchema.optional(),
+		webhookSecret: z.string().optional(),
+		webhookRequireSignature: z.boolean().optional(),
+		scheduleCron: z.string().optional(),
+		scheduleTimezone: z.string().optional(),
+		additionalTriggerConfigJson: z.string().refine((value) => parseConfigJson(value) !== null, {
+			message: 'Additional trigger config must be a valid JSON object',
 		}),
 		steps: z
 			.array(
@@ -76,6 +135,22 @@ const workflowFormSchema = z
 	.superRefine((values, ctx) => {
 		const stepIds = new Set(values.steps.map((step) => step.id.trim()));
 
+		if (values.triggerType === 'webhook' && !values.webhookPath?.trim()) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Webhook path is required',
+				path: ['webhookPath'],
+			});
+		}
+
+		if (values.triggerType === 'schedule' && !values.scheduleCron?.trim()) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Cron expression is required',
+				path: ['scheduleCron'],
+			});
+		}
+
 		values.edges.forEach((edge, index) => {
 			if (!stepIds.has(edge.from.trim())) {
 				ctx.addIssue({
@@ -107,12 +182,33 @@ interface WorkflowFormProps {
 }
 
 function toDefaultValues(workflow?: Workflow): WorkflowFormValues {
+	const triggerType = workflow?.trigger?.type ?? 'manual';
+	const triggerConfig = workflow?.trigger?.config ?? {};
+	const webhookMethodValue = getStringFromConfig(triggerConfig, ['method'])?.toUpperCase();
+	const webhookMethod = webhookMethodSchema.safeParse(webhookMethodValue).success
+		? (webhookMethodValue as z.infer<typeof webhookMethodSchema>)
+		: 'POST';
+
+	const additionalTriggerConfig =
+		triggerType === 'webhook'
+			? omitKeys(triggerConfig, webhookReservedKeys)
+			: triggerType === 'schedule'
+				? omitKeys(triggerConfig, scheduleReservedKeys)
+				: triggerConfig;
+
 	return {
 		name: workflow?.name ?? '',
 		description: workflow?.description ?? '',
 		status: workflow?.status ?? 'active',
-		triggerType: workflow?.trigger?.type ?? 'manual',
-		triggerConfigJson: JSON.stringify(workflow?.trigger?.config ?? {}, null, 2),
+		triggerType,
+		webhookPath: getStringFromConfig(triggerConfig, ['path', 'endpoint', 'url']) ?? '',
+		webhookMethod,
+		webhookSecret: getStringFromConfig(triggerConfig, ['secret', 'signingSecret', 'token']) ?? '',
+		webhookRequireSignature:
+			getBooleanFromConfig(triggerConfig, ['requireSignature', 'verifySignature']) ?? false,
+		scheduleCron: getStringFromConfig(triggerConfig, ['cron', 'expression']) ?? '',
+		scheduleTimezone: getStringFromConfig(triggerConfig, ['timezone', 'tz']) ?? '',
+		additionalTriggerConfigJson: JSON.stringify(additionalTriggerConfig, null, 2),
 		steps:
 			workflow?.steps?.map((step) => ({
 				id: step.id,
@@ -153,6 +249,7 @@ export function WorkflowForm({
 
 	const stepFieldArray = useFieldArray({ control, name: 'steps', keyName: 'formId' });
 	const edgeFieldArray = useFieldArray({ control, name: 'edges', keyName: 'formId' });
+	const triggerType = useWatch({ control, name: 'triggerType' });
 
 	const watchedSteps = useWatch({ control, name: 'steps' }) ?? [];
 	const stepIdOptions = watchedSteps
@@ -160,13 +257,36 @@ export function WorkflowForm({
 		.filter((stepId, index, arr) => stepId.length > 0 && arr.indexOf(stepId) === index);
 
 	const internalSubmit = async (values: WorkflowFormValues) => {
+		const additionalTriggerConfig = parseConfigJson(values.additionalTriggerConfigJson) ?? {};
+
+		const triggerConfig: Record<string, unknown> =
+			values.triggerType === 'manual'
+				? { ...additionalTriggerConfig }
+				: values.triggerType === 'webhook'
+					? {
+						...additionalTriggerConfig,
+						path: values.webhookPath?.trim() ?? '',
+						method: values.webhookMethod ?? 'POST',
+						...(values.webhookSecret?.trim()
+							? { secret: values.webhookSecret.trim() }
+							: {}),
+						...(values.webhookRequireSignature ? { requireSignature: true } : {}),
+					}
+					: {
+						...additionalTriggerConfig,
+						cron: values.scheduleCron?.trim() ?? '',
+						...(values.scheduleTimezone?.trim()
+							? { timezone: values.scheduleTimezone.trim() }
+							: {}),
+					};
+
 		const payload: CreateWorkflowRequest = {
 			name: values.name.trim(),
 			description: values.description?.trim() || undefined,
 			status: values.status,
 			trigger: {
 				type: values.triggerType,
-				config: parseConfigJson(values.triggerConfigJson) ?? {},
+				config: triggerConfig,
 			},
 			steps: values.steps.map((step) => ({
 				id: step.id.trim(),
@@ -241,18 +361,97 @@ export function WorkflowForm({
 						</select>
 					</label>
 
+					{triggerType === 'manual' ? (
+						<div className="rounded-lg border border-dashed border-(--color-border) bg-white/70 p-3 text-xs text-(--color-text-secondary) md:col-span-2">
+							Manual trigger has no required config. You can still provide optional keys in the additional config below.
+						</div>
+					) : null}
+
+					{triggerType === 'webhook' ? (
+						<>
+							<label className="block">
+								<span className="mb-1 block text-sm text-(--color-text-secondary)">Webhook path</span>
+								<input
+									{...register('webhookPath')}
+									disabled={isPending}
+									placeholder="/hooks/workflow-order-sync"
+									className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-(--color-primary)"
+								/>
+								<p className="mt-1 text-xs text-(--color-error)">{errors.webhookPath?.message}</p>
+							</label>
+
+							<label className="block">
+								<span className="mb-1 block text-sm text-(--color-text-secondary)">Webhook method</span>
+								<select
+									{...register('webhookMethod')}
+									disabled={isPending}
+									className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-(--color-primary)"
+								>
+									<option value="GET">GET</option>
+									<option value="POST">POST</option>
+									<option value="PUT">PUT</option>
+									<option value="PATCH">PATCH</option>
+									<option value="DELETE">DELETE</option>
+								</select>
+							</label>
+
+							<label className="block md:col-span-2">
+								<span className="mb-1 block text-sm text-(--color-text-secondary)">Webhook secret (optional)</span>
+								<input
+									{...register('webhookSecret')}
+									disabled={isPending}
+									placeholder="whsec_xxx"
+									className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-(--color-primary)"
+								/>
+							</label>
+
+							<label className="inline-flex items-center gap-2 md:col-span-2">
+								<input
+									type="checkbox"
+									{...register('webhookRequireSignature')}
+									disabled={isPending}
+									className="h-4 w-4 rounded border border-(--color-border)"
+								/>
+								<span className="text-sm text-(--color-text-secondary)">Require webhook signature validation</span>
+							</label>
+						</>
+					) : null}
+
+					{triggerType === 'schedule' ? (
+						<>
+							<label className="block">
+								<span className="mb-1 block text-sm text-(--color-text-secondary)">Cron expression</span>
+								<input
+									{...register('scheduleCron')}
+									disabled={isPending}
+									placeholder="0 */5 * * * *"
+									className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 font-mono text-sm outline-none transition-colors focus:border-(--color-primary)"
+								/>
+								<p className="mt-1 text-xs text-(--color-error)">{errors.scheduleCron?.message}</p>
+							</label>
+
+							<label className="block">
+								<span className="mb-1 block text-sm text-(--color-text-secondary)">Timezone (optional)</span>
+								<input
+									{...register('scheduleTimezone')}
+									disabled={isPending}
+									placeholder="Asia/Ho_Chi_Minh"
+									className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-(--color-primary)"
+								/>
+							</label>
+						</>
+					) : null}
+
 					<label className="block md:col-span-2">
-						<span className="mb-1 block text-sm text-(--color-text-secondary)">Trigger config (JSON object)</span>
+						<span className="mb-1 block text-sm text-(--color-text-secondary)">Additional trigger config (JSON object)</span>
 						<textarea
-							{...register('triggerConfigJson')}
+							{...register('additionalTriggerConfigJson')}
 							disabled={isPending}
 							rows={5}
-							placeholder={
-								'{\n  "cron": "0 */5 * * * *",\n  "timezone": "Asia/Ho_Chi_Minh"\n}'
-							}
+							placeholder={'{\n  "source": "partner-system"\n}'}
 							className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 font-mono text-xs outline-none transition-colors focus:border-(--color-primary)"
 						/>
-						<p className="mt-1 text-xs text-(--color-error)">{errors.triggerConfigJson?.message}</p>
+						<p className="mt-1 text-xs text-(--color-error)">{errors.additionalTriggerConfigJson?.message}</p>
 					</label>
 				</div>
 			</section>
