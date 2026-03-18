@@ -365,11 +365,11 @@ pnpm run format
 | Workflow create / edit form         | Done        | Implemented reusable RHF+Zod form with dynamic steps/edges and create/update integration |
 | Workflow delete modal               | Done        | Added confirmation modal and wired delete mutation with query invalidation |
 | Execution history page              | Done        | Added workflow-scoped history and global `/executions` list with status filter, refresh, and cancel actions. |
-| Execution detail + polling          | Not started |                                                 |
-| Event log timeline                  | Not started |                                                 |
+| Execution detail + polling          | Done        | Built `/executions/[id]` monitor with conditional 3s polling, summary, and cancel action. |
+| Event log timeline                  | Done        | Added immutable event timeline rendering with live refresh while execution is active. |
 | E2E tests (Playwright)              | Not started |                                                 |
 | CI/CD (GitHub Actions)              | Not started |                                                 |
 
 ---
 
-*Last updated: 2026-03-18 — Execution history completed for both workflow-scoped and global list views, including status filter and cancel actions.*
+*Last updated: 2026-03-18 — Execution detail monitor completed with active polling, step status table, and event timeline.*

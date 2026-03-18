@@ -1,4 +1,4 @@
-import type { Execution, ExecutionEvent } from '@/types/execution.types';
+import type { Execution, ExecutionEvent, StepExecution } from '@/types/execution.types';
 
 import { apiClient } from './client';
 
@@ -25,6 +25,30 @@ interface RawExecution {
 	createdAt?: string;
 	updated_at?: string;
 	updatedAt?: string;
+	step_executions?: RawStepExecution[];
+	stepExecutions?: RawStepExecution[];
+}
+
+interface RawStepExecution {
+	id?: string;
+	_id?: string;
+	execution_id?: string;
+	executionId?: string;
+	step_id?: string;
+	stepId?: string;
+	status?: StepExecution['status'];
+	attempt?: number;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown> | null;
+	error?: string | null;
+	started_at?: string;
+	startedAt?: string;
+	completed_at?: string;
+	completedAt?: string;
+	created_at?: string;
+	createdAt?: string;
+	updated_at?: string;
+	updatedAt?: string;
 }
 
 interface RawExecutionEvent {
@@ -41,6 +65,8 @@ interface RawExecutionEvent {
 }
 
 function normalizeExecution(raw: RawExecution): Execution {
+	const rawStepExecutions = raw.stepExecutions ?? raw.step_executions ?? [];
+
 	return {
 		id: raw.id ?? raw._id ?? '',
 		workflowId: raw.workflowId ?? raw.workflow_id ?? '',
@@ -50,6 +76,26 @@ function normalizeExecution(raw: RawExecution): Execution {
 		triggerPayload: raw.triggerPayload ?? raw.trigger_payload ?? {},
 		context: raw.context ?? {},
 		idempotencyKey: raw.idempotencyKey ?? raw.idempotency_key,
+		startedAt: raw.startedAt ?? raw.started_at,
+		completedAt: raw.completedAt ?? raw.completed_at,
+		createdAt: raw.createdAt ?? raw.created_at,
+		updatedAt: raw.updatedAt ?? raw.updated_at,
+		stepExecutions: rawStepExecutions.map((stepExecution) =>
+			normalizeStepExecution(stepExecution, raw.id ?? raw._id ?? ''),
+		),
+	};
+}
+
+function normalizeStepExecution(raw: RawStepExecution, fallbackExecutionId: string): StepExecution {
+	return {
+		id: raw.id ?? raw._id ?? '',
+		executionId: raw.executionId ?? raw.execution_id ?? fallbackExecutionId,
+		stepId: raw.stepId ?? raw.step_id ?? '',
+		status: raw.status ?? 'queued',
+		attempt: raw.attempt ?? 0,
+		input: raw.input ?? {},
+		output: raw.output ?? null,
+		error: raw.error ?? null,
 		startedAt: raw.startedAt ?? raw.started_at,
 		completedAt: raw.completedAt ?? raw.completed_at,
 		createdAt: raw.createdAt ?? raw.created_at,
