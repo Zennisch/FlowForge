@@ -1,5 +1,6 @@
 import type {
 	CreateWorkflowRequest,
+	TriggerExecutionRequest,
 	UpdateWorkflowRequest,
 	Workflow,
 	WorkflowEdge,
@@ -25,6 +26,12 @@ interface RawWorkflow {
 	createdAt?: string;
 	updated_at?: string;
 	updatedAt?: string;
+}
+
+interface RawTriggerResponse {
+	executionId?: string;
+	id?: string;
+	_id?: string;
 }
 
 function normalizeWorkflow(raw: RawWorkflow): Workflow {
@@ -67,9 +74,22 @@ export const workflowsApi = {
 		await apiClient.delete(`/workflows/${id}`);
 	},
 
-	async trigger(id: string): Promise<{ executionId?: string; id?: string }> {
-		const { data } = await apiClient.post<{ executionId?: string; id?: string }>(`/workflows/${id}/trigger`);
-		return data;
+	async trigger(id: string, request?: TriggerExecutionRequest): Promise<{ executionId?: string }> {
+		const body: { payload?: Record<string, unknown>; idempotency_key?: string } = {};
+
+		if (request?.payload) {
+			body.payload = request.payload;
+		}
+
+		if (request?.idempotencyKey) {
+			body.idempotency_key = request.idempotencyKey;
+		}
+
+		const { data } = await apiClient.post<RawTriggerResponse>(`/workflows/${id}/trigger`, body);
+
+		return {
+			executionId: data.executionId ?? data.id ?? data._id,
+		};
 	},
 };
 

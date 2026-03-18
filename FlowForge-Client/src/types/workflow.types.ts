@@ -50,3 +50,8 @@ export interface CreateWorkflowRequest {
 
 export interface UpdateWorkflowRequest extends Partial<CreateWorkflowRequest> {}
 
+export interface TriggerExecutionRequest {
+	payload?: Record<string, unknown>;
+	idempotencyKey?: string;
+}
+
