@@ -63,6 +63,22 @@ function omitKeys(
 	);
 }
 
+function hasReservedKey(
+	config: Record<string, unknown>,
+	reservedKeys: Set<string>,
+): boolean {
+	return Object.keys(config).some((key) => reservedKeys.has(key));
+}
+
+function isValidTimezone(value: string): boolean {
+	try {
+		Intl.DateTimeFormat(undefined, { timeZone: value });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function parseConfigJson(value: string): Record<string, unknown> | null {
 	const trimmed = value.trim();
 	if (!trimmed) {
@@ -134,6 +150,7 @@ const workflowFormSchema = z
 	})
 	.superRefine((values, ctx) => {
 		const stepIds = new Set(values.steps.map((step) => step.id.trim()));
+		const additionalConfig = parseConfigJson(values.additionalTriggerConfigJson) ?? {};
 
 		if (values.triggerType === 'webhook' && !values.webhookPath?.trim()) {
 			ctx.addIssue({
@@ -143,11 +160,47 @@ const workflowFormSchema = z
 			});
 		}
 
+		if (
+			values.triggerType === 'webhook' &&
+			hasReservedKey(additionalConfig, webhookReservedKeys)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'Additional config cannot contain webhook reserved keys (path, method, secret, requireSignature, ...)',
+				path: ['additionalTriggerConfigJson'],
+			});
+		}
+
 		if (values.triggerType === 'schedule' && !values.scheduleCron?.trim()) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Cron expression is required',
 				path: ['scheduleCron'],
+			});
+		}
+
+		if (
+			values.triggerType === 'schedule' &&
+			values.scheduleTimezone?.trim() &&
+			!isValidTimezone(values.scheduleTimezone.trim())
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Timezone must be a valid IANA timezone (for example: Asia/Ho_Chi_Minh)',
+				path: ['scheduleTimezone'],
+			});
+		}
+
+		if (
+			values.triggerType === 'schedule' &&
+			hasReservedKey(additionalConfig, scheduleReservedKeys)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'Additional config cannot contain schedule reserved keys (cron, timezone, expression, tz)',
+				path: ['additionalTriggerConfigJson'],
 			});
 		}
 
@@ -420,7 +473,7 @@ export function WorkflowForm({
 					{triggerType === 'schedule' ? (
 						<>
 							<label className="block">
-								<span className="mb-1 block text-sm text-(--color-text-secondary)">Cron expression</span>
+								<span className="mb-1 block text-sm text-(--color-text-secondary)">Cron expression (trigger.config.cron)</span>
 								<input
 									{...register('scheduleCron')}
 									disabled={isPending}
@@ -431,13 +484,14 @@ export function WorkflowForm({
 							</label>
 
 							<label className="block">
-								<span className="mb-1 block text-sm text-(--color-text-secondary)">Timezone (optional)</span>
+								<span className="mb-1 block text-sm text-(--color-text-secondary)">Timezone (optional, trigger.config.timezone)</span>
 								<input
 									{...register('scheduleTimezone')}
 									disabled={isPending}
 									placeholder="Asia/Ho_Chi_Minh"
 									className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-(--color-primary)"
 								/>
+								<p className="mt-1 text-xs text-(--color-error)">{errors.scheduleTimezone?.message}</p>
 							</label>
 						</>
 					) : null}
