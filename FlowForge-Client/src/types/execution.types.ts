@@ -49,6 +49,7 @@ export interface Execution {
 	completedAt?: string;
 	createdAt?: string;
 	updatedAt?: string;
+	stepExecutions?: StepExecution[];
 }
 
 export interface ExecutionEvent {
