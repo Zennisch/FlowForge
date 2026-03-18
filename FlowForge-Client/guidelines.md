@@ -364,7 +364,7 @@ pnpm run format
 | Workflow list page                  | Done        | Implemented list query + loading/error/empty states + responsive cards |
 | Workflow create / edit form         | Done        | Implemented reusable RHF+Zod form with dynamic steps/edges and create/update integration |
 | Workflow delete modal               | Done        | Added confirmation modal and wired delete mutation with query invalidation |
-| Execution history page              | Not started |                                                 |
+| Execution history page              | Done        | Added workflow-scoped history and global `/executions` list with status filter, refresh, and cancel actions. |
 | Execution detail + polling          | Not started |                                                 |
 | Event log timeline                  | Not started |                                                 |
 | E2E tests (Playwright)              | Not started |                                                 |
@@ -372,4 +372,4 @@ pnpm run format
 
 ---
 
-*Last updated: 2026-03-18 — Workflow create/edit form completed with React Hook Form + Zod validation, step/edge editor, and integrated create/update pages.*
+*Last updated: 2026-03-18 — Execution history completed for both workflow-scoped and global list views, including status filter and cancel actions.*
