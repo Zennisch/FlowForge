@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { workflowsApi } from '@/lib/api/workflows.api';
-import type { CreateWorkflowRequest, UpdateWorkflowRequest } from '@/types/workflow.types';
+import type {
+	CreateWorkflowRequest,
+	TriggerExecutionRequest,
+	UpdateWorkflowRequest,
+} from '@/types/workflow.types';
 
 export const workflowQueryKeys = {
 	all: ['workflows'] as const,
@@ -59,8 +63,14 @@ export function useDeleteWorkflow() {
 }
 
 export function useTriggerWorkflow() {
+	const queryClient = useQueryClient();
+
 	return useMutation({
-		mutationFn: (id: string) => workflowsApi.trigger(id),
+		mutationFn: ({ id, request }: { id: string; request?: TriggerExecutionRequest }) =>
+			workflowsApi.trigger(id, request),
+		onSuccess: () => {
+			void queryClient.invalidateQueries({ queryKey: ['executions'] });
+		},
 	});
 }
 
