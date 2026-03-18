@@ -190,6 +190,22 @@ describe('ExecutionService', () => {
       expect(mockExecutionModel.findOne).not.toHaveBeenCalled();
     });
 
+    it('handles undefined dto when request body is omitted', async () => {
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(makeWorkflowDoc() as never);
+      mockExecutionSave.mockResolvedValue(makeExecutionDoc());
+
+      await expect(
+        service.trigger(
+          workflowId,
+          ownerId,
+          undefined as unknown as TriggerExecutionDto,
+        ),
+      ).resolves.toBeDefined();
+      expect(mockExecutionModel.findOne).not.toHaveBeenCalled();
+    });
+
     it('propagates NotFoundException from WorkflowService', async () => {
       jest
         .spyOn(workflowService, 'findOne')

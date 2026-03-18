@@ -29,7 +29,7 @@ export class ExecutionService {
   async trigger(
     workflowId: string,
     ownerId: string,
-    dto: TriggerExecutionDto,
+    dto: TriggerExecutionDto = {},
   ): Promise<ExecutionDocument> {
     const workflow = await this.workflowService.findOne(workflowId, ownerId);
 
