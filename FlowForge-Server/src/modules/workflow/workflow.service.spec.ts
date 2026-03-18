@@ -166,6 +166,62 @@ describe('WorkflowService', () => {
 
       expect(mockSave).not.toHaveBeenCalled();
     });
+
+    it('should throw BadRequestException when schedule trigger cron is missing', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Scheduled Workflow',
+          trigger: { type: 'schedule', config: {} },
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when schedule trigger cron is invalid', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Scheduled Workflow',
+          trigger: {
+            type: 'schedule',
+            config: { cron: 'not-a-cron' },
+          },
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when schedule trigger timezone is invalid', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Scheduled Workflow',
+          trigger: {
+            type: 'schedule',
+            config: { cron: '*/5 * * * *', timezone: 'Not/A_Timezone' },
+          },
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should create workflow when schedule trigger cron and timezone are valid', async () => {
+      const savedDoc = makeWorkflowDoc({ name: 'Scheduled Workflow' });
+      mockSave.mockResolvedValue(savedDoc);
+
+      await expect(
+        service.create(ownerId, {
+          name: 'Scheduled Workflow',
+          trigger: {
+            type: 'schedule',
+            config: { cron: '*/5 * * * *', timezone: 'Asia/Ho_Chi_Minh' },
+          },
+        }),
+      ).resolves.toEqual(savedDoc);
+
+      expect(mockSave).toHaveBeenCalled();
+    });
   });
 
   // ── update ──────────────────────────────────────────────────────────────────
@@ -213,6 +269,35 @@ describe('WorkflowService', () => {
       await expect(
         service.update(workflowId, ownerId, { name: 'X' }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException on update when schedule trigger cron is invalid', async () => {
+      const existingDoc = makeWorkflowDoc();
+      mockFindByIdExec.mockResolvedValue(existingDoc);
+
+      await expect(
+        service.update(workflowId, ownerId, {
+          trigger: {
+            type: 'schedule',
+            config: { cron: 'invalid cron' },
+          },
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException on update when existing schedule trigger is invalid', async () => {
+      const existingDoc = makeWorkflowDoc({
+        trigger: { type: 'schedule', config: { cron: 'invalid cron' } },
+      });
+      mockFindByIdExec.mockResolvedValue(existingDoc);
+
+      await expect(service.update(workflowId, ownerId, { name: 'Updated' })).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(mockSave).not.toHaveBeenCalled();
     });
   });
 

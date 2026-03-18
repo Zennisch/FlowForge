@@ -1,9 +1,11 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { validateCronExpression } from 'cron';
 import { Model, Types } from 'mongoose';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
@@ -39,6 +41,8 @@ export class WorkflowService {
     ownerId: string,
     dto: CreateWorkflowDto,
   ): Promise<WorkflowDocument> {
+    this.validateScheduleTrigger(dto.trigger);
+
     const steps = dto.steps ?? [];
     const edges = dto.edges ?? [];
     this.validateDagService.validate(steps, edges);
@@ -56,6 +60,7 @@ export class WorkflowService {
     dto: UpdateWorkflowDto,
   ): Promise<WorkflowDocument> {
     const workflow = await this.findOne(id, ownerId);
+    this.validateScheduleTrigger(dto.trigger ?? workflow.trigger);
 
     const steps = dto.steps ?? workflow.steps;
     const edges = dto.edges ?? workflow.edges;
@@ -68,6 +73,45 @@ export class WorkflowService {
   async remove(id: string, ownerId: string): Promise<void> {
     await this.findOne(id, ownerId);
     await this.workflowModel.findByIdAndDelete(id).exec();
+  }
+
+  private validateScheduleTrigger(
+    trigger?: { type?: string; config?: Record<string, unknown> },
+  ): void {
+    if (trigger?.type !== 'schedule') {
+      return;
+    }
+
+    const cronExpression =
+      typeof trigger.config?.cron === 'string'
+        ? trigger.config.cron.trim()
+        : '';
+
+    if (!cronExpression) {
+      throw new BadRequestException(
+        'Scheduled trigger requires trigger.config.cron',
+      );
+    }
+
+    const cronValidation = validateCronExpression(cronExpression);
+    if (!cronValidation.valid) {
+      throw new BadRequestException('Invalid trigger.config.cron expression');
+    }
+
+    const timezone = trigger.config?.timezone;
+    if (timezone === undefined || timezone === null || timezone === '') {
+      return;
+    }
+
+    if (typeof timezone !== 'string') {
+      throw new BadRequestException('trigger.config.timezone must be a string');
+    }
+
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    } catch {
+      throw new BadRequestException('Invalid trigger.config.timezone');
+    }
   }
 }
 

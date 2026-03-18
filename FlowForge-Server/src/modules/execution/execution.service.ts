@@ -14,6 +14,14 @@ import { TriggerExecutionDto } from './dto/trigger-execution.dto';
 import { Execution, ExecutionDocument } from './execution.schema';
 import { StepExecution, StepExecutionDocument } from './step-execution.schema';
 
+type TriggerType = 'manual' | 'webhook' | 'schedule';
+
+export interface TriggerExecutionOptions {
+  triggerType?: TriggerType;
+  payload?: Record<string, unknown>;
+  idempotencyKey?: string;
+}
+
 @Injectable()
 export class ExecutionService {
   constructor(
@@ -30,12 +38,17 @@ export class ExecutionService {
     workflowId: string,
     ownerId: string,
     dto: TriggerExecutionDto = {},
+    options: TriggerExecutionOptions = {},
   ): Promise<ExecutionDocument> {
     const workflow = await this.workflowService.findOne(workflowId, ownerId);
 
-    if (dto.idempotency_key) {
+    const triggerType = options.triggerType ?? 'manual';
+    const triggerPayload = options.payload ?? dto.payload ?? {};
+    const incomingIdempotencyKey = options.idempotencyKey ?? dto.idempotency_key;
+
+    if (incomingIdempotencyKey) {
       const existing = await this.executionModel
-        .findOne({ idempotency_key: dto.idempotency_key })
+        .findOne({ idempotency_key: incomingIdempotencyKey })
         .exec();
       if (existing) {
         throw new ConflictException('Duplicate idempotency key');
@@ -43,14 +56,14 @@ export class ExecutionService {
     }
 
     const idempotencyKey =
-      dto.idempotency_key ?? new Types.ObjectId().toHexString();
+      incomingIdempotencyKey ?? new Types.ObjectId().toHexString();
 
     const execution = await new this.executionModel({
       workflow_id: new Types.ObjectId(workflowId),
       owner_id: new Types.ObjectId(ownerId),
       status: 'running',
-      trigger_type: 'manual',
-      trigger_payload: dto.payload ?? {},
+      trigger_type: triggerType,
+      trigger_payload: triggerPayload,
       context: {},
       idempotency_key: idempotencyKey,
       started_at: new Date(),
@@ -73,7 +86,7 @@ export class ExecutionService {
     await this.eventService.append(
       String(execution._id),
       'execution.started',
-      { workflow_id: workflowId, trigger_type: 'manual' },
+      { workflow_id: workflowId, trigger_type: triggerType },
     );
 
     if (workflow.steps.length === 0) {

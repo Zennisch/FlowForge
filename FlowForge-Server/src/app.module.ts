@@ -4,6 +4,7 @@ import { DatabaseModule } from './infra/database/mongoose.provider';
 import { AuthModule } from './modules/auth/auth.module';
 import { EventModule } from './modules/event/event.module';
 import { ExecutionModule } from './modules/execution/execution.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { UsersModule } from './modules/users/users.module';
 import { WorkerModule } from './modules/worker/worker.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
@@ -17,6 +18,7 @@ import { WorkflowModule } from './modules/workflow/workflow.module';
     WorkflowModule,
     EventModule,
     ExecutionModule,
+    SchedulerModule,
     WorkerModule,
   ],
 })

@@ -225,6 +225,41 @@ describe('ExecutionService', () => {
         service.trigger(workflowId, ownerId, {}),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    it('creates execution with schedule trigger type when called by scheduler', async () => {
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(makeWorkflowDoc([]) as never);
+      mockExecutionSave.mockResolvedValue(makeExecutionDoc());
+
+      await service.trigger(
+        workflowId,
+        ownerId,
+        {},
+        {
+          triggerType: 'schedule',
+          payload: {
+            cron: '*/5 * * * *',
+            timezone: 'Asia/Ho_Chi_Minh',
+          },
+        },
+      );
+
+      expect(mockExecutionModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trigger_type: 'schedule',
+          trigger_payload: {
+            cron: '*/5 * * * *',
+            timezone: 'Asia/Ho_Chi_Minh',
+          },
+        }),
+      );
+      expect(eventService.append).toHaveBeenCalledWith(
+        expect.any(String),
+        'execution.started',
+        expect.objectContaining({ trigger_type: 'schedule' }),
+      );
+    });
   });
 
   // ── findAll ──────────────────────────────────────────────────────────────────
