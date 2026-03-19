@@ -3,7 +3,9 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PubSubService } from '../../infra/pubsub/pubsub.provider';
@@ -125,16 +127,58 @@ export class ExecutionService {
     userId: string,
     path: string,
     payload: Record<string, unknown> = {},
+    providedSecret?: string,
   ): Promise<ExecutionDocument> {
     const workflow = await this.workflowService.findActiveWebhookWorkflow(
       userId,
       path,
     );
 
+    const expectedSecret = this.getConfiguredWebhookSecret(
+      workflow.trigger?.config,
+    );
+
+    if (expectedSecret) {
+      if (!providedSecret) {
+        throw new UnauthorizedException('Missing webhook secret');
+      }
+
+      if (!this.secretsMatch(expectedSecret, providedSecret)) {
+        throw new UnauthorizedException('Invalid webhook secret');
+      }
+    }
+
     return this.trigger(String(workflow._id), userId, {}, {
       triggerType: 'webhook',
       payload,
     });
+  }
+
+  private getConfiguredWebhookSecret(
+    config?: Record<string, unknown>,
+  ): string | undefined {
+    if (!config) {
+      return undefined;
+    }
+
+    const secret = config.secret;
+    if (typeof secret !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = secret.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  private secretsMatch(expected: string, provided: string): boolean {
+    const expectedBuffer = Buffer.from(expected);
+    const providedBuffer = Buffer.from(provided);
+
+    if (expectedBuffer.length !== providedBuffer.length) {
+      return false;
+    }
+
+    return timingSafeEqual(expectedBuffer, providedBuffer);
   }
 
   findAll(ownerId: string): Promise<ExecutionDocument[]> {

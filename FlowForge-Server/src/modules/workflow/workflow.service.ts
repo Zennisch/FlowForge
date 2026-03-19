@@ -160,8 +160,9 @@ export class WorkflowService {
   private validateWebhookTrigger(
     trigger: { config?: Record<string, unknown> },
   ): void {
+    const config = trigger.config ?? {};
     const pathRaw =
-      typeof trigger.config?.path === 'string' ? trigger.config.path : '';
+      typeof config.path === 'string' ? config.path : '';
     const path = this.normalizeWebhookPath(pathRaw);
 
     if (!path) {
@@ -176,7 +177,22 @@ export class WorkflowService {
       );
     }
 
-    trigger.config = { ...(trigger.config ?? {}), path };
+    const normalizedConfig: Record<string, unknown> = { ...config, path };
+
+    if (config.secret !== undefined && config.secret !== null) {
+      if (typeof config.secret !== 'string') {
+        throw new BadRequestException('trigger.config.secret must be a string');
+      }
+
+      const secret = config.secret.trim();
+      if (!secret) {
+        throw new BadRequestException('trigger.config.secret cannot be empty');
+      }
+
+      normalizedConfig.secret = secret;
+    }
+
+    trigger.config = normalizedConfig;
   }
 
   private normalizeWebhookPath(path: string): string {

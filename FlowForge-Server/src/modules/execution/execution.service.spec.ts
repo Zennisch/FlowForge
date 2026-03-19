@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -429,6 +430,66 @@ describe('ExecutionService', () => {
         {
           triggerType: 'webhook',
           payload,
+        },
+      );
+    });
+
+    it('throws UnauthorizedException when webhook secret is configured but missing', async () => {
+      jest
+        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .mockResolvedValue({
+          _id: workflowId,
+          trigger: { config: { secret: 'top-secret' } },
+        } as never);
+
+      await expect(
+        service.triggerByWebhook(ownerId, 'orders-created', { body: {} }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws UnauthorizedException when webhook secret is invalid', async () => {
+      jest
+        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .mockResolvedValue({
+          _id: workflowId,
+          trigger: { config: { secret: 'top-secret' } },
+        } as never);
+
+      await expect(
+        service.triggerByWebhook(
+          ownerId,
+          'orders-created',
+          { body: {} },
+          'wrong-secret',
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('triggers execution when webhook secret matches', async () => {
+      jest
+        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .mockResolvedValue({
+          _id: workflowId,
+          trigger: { config: { secret: 'top-secret' } },
+        } as never);
+      const triggerSpy = jest
+        .spyOn(service, 'trigger')
+        .mockResolvedValue(makeExecutionDoc() as never);
+
+      await service.triggerByWebhook(
+        ownerId,
+        'orders-created',
+        { body: { ok: true } },
+        'top-secret',
+      );
+
+      expect(triggerSpy).toHaveBeenCalledWith(
+        workflowId,
+        ownerId,
+        {},
+        {
+          triggerType: 'webhook',
+          payload: { body: { ok: true } },
         },
       );
     });
