@@ -96,7 +96,7 @@ describe('ExecutionService', () => {
         },
         {
           provide: WorkflowService,
-          useValue: { findOne: jest.fn() },
+          useValue: { findOne: jest.fn(), findActiveWebhookWorkflow: jest.fn() },
         },
         {
           provide: EventService,
@@ -400,6 +400,37 @@ describe('ExecutionService', () => {
       await expect(
         service.findEvents(executionId, otherOwnerId),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  // ── triggerByWebhook ───────────────────────────────────────────────────────
+
+  describe('triggerByWebhook', () => {
+    it('finds webhook workflow and delegates to trigger with webhook options', async () => {
+      const webhookWorkflow = { _id: workflowId };
+      const payload = { body: { foo: 'bar' } };
+
+      jest
+        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .mockResolvedValue(webhookWorkflow as never);
+      const triggerSpy = jest
+        .spyOn(service, 'trigger')
+        .mockResolvedValue(makeExecutionDoc() as never);
+
+      await service.triggerByWebhook(ownerId, 'orders-created', payload);
+
+      expect(
+        (workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }).findActiveWebhookWorkflow,
+      ).toHaveBeenCalledWith(ownerId, 'orders-created');
+      expect(triggerSpy).toHaveBeenCalledWith(
+        workflowId,
+        ownerId,
+        {},
+        {
+          triggerType: 'webhook',
+          payload,
+        },
+      );
     });
   });
 });

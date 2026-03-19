@@ -10,6 +10,7 @@ import { ExecutionService } from './execution.service';
 import { Execution, ExecutionSchema } from './execution.schema';
 import { StepExecution, StepExecutionSchema } from './step-execution.schema';
 import { StepStateService } from './step-state.service';
+import { WebhookController } from './webhook.controller';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { StepStateService } from './step-state.service';
     EventModule,
     PubSubModule,
   ],
-  controllers: [ExecutionController],
+  controllers: [ExecutionController, WebhookController],
   providers: [
     ExecutionService,
     StepStateService,

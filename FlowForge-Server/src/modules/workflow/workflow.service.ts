@@ -41,7 +41,7 @@ export class WorkflowService {
     ownerId: string,
     dto: CreateWorkflowDto,
   ): Promise<WorkflowDocument> {
-    this.validateScheduleTrigger(dto.trigger);
+    this.validateTriggerConfig(dto.trigger);
 
     const steps = dto.steps ?? [];
     const edges = dto.edges ?? [];
@@ -60,7 +60,7 @@ export class WorkflowService {
     dto: UpdateWorkflowDto,
   ): Promise<WorkflowDocument> {
     const workflow = await this.findOne(id, ownerId);
-    this.validateScheduleTrigger(dto.trigger ?? workflow.trigger);
+    this.validateTriggerConfig(dto.trigger ?? workflow.trigger);
 
     const steps = dto.steps ?? workflow.steps;
     const edges = dto.edges ?? workflow.edges;
@@ -75,12 +75,55 @@ export class WorkflowService {
     await this.workflowModel.findByIdAndDelete(id).exec();
   }
 
-  private validateScheduleTrigger(
+  async findActiveWebhookWorkflow(
+    ownerId: string,
+    path: string,
+  ): Promise<WorkflowDocument> {
+    if (!Types.ObjectId.isValid(ownerId)) {
+      throw new NotFoundException('Webhook target not found');
+    }
+
+    const normalizedPath = this.normalizeWebhookPath(path);
+    if (!normalizedPath) {
+      throw new NotFoundException('Webhook target not found');
+    }
+
+    const workflow = await this.workflowModel
+      .findOne({
+        owner_id: new Types.ObjectId(ownerId),
+        status: 'active',
+        'trigger.type': 'webhook',
+        'trigger.config.path': { $in: [normalizedPath, `/${normalizedPath}`] },
+      })
+      .exec();
+
+    if (!workflow) {
+      throw new NotFoundException('Webhook target not found');
+    }
+
+    return workflow;
+  }
+
+  private validateTriggerConfig(
     trigger?: { type?: string; config?: Record<string, unknown> },
   ): void {
-    if (trigger?.type !== 'schedule') {
+    if (!trigger?.type) {
       return;
     }
+
+    if (trigger.type === 'schedule') {
+      this.validateScheduleTrigger(trigger);
+      return;
+    }
+
+    if (trigger.type === 'webhook') {
+      this.validateWebhookTrigger(trigger);
+    }
+  }
+
+  private validateScheduleTrigger(
+    trigger: { config?: Record<string, unknown> },
+  ): void {
 
     const cronExpression =
       typeof trigger.config?.cron === 'string'
@@ -112,6 +155,32 @@ export class WorkflowService {
     } catch {
       throw new BadRequestException('Invalid trigger.config.timezone');
     }
+  }
+
+  private validateWebhookTrigger(
+    trigger: { config?: Record<string, unknown> },
+  ): void {
+    const pathRaw =
+      typeof trigger.config?.path === 'string' ? trigger.config.path : '';
+    const path = this.normalizeWebhookPath(pathRaw);
+
+    if (!path) {
+      throw new BadRequestException(
+        'Webhook trigger requires trigger.config.path',
+      );
+    }
+
+    if (!/^[A-Za-z0-9_-]+$/.test(path)) {
+      throw new BadRequestException(
+        'trigger.config.path may only contain letters, numbers, underscore, and hyphen',
+      );
+    }
+
+    trigger.config = { ...(trigger.config ?? {}), path };
+  }
+
+  private normalizeWebhookPath(path: string): string {
+    return path.trim().replace(/^\/+|\/+$/g, '');
   }
 }
 

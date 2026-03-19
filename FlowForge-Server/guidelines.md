@@ -106,7 +106,7 @@ Browser / Client
 ### 4.5 Trigger Support
 - Manual trigger via REST (`POST /workflows/:id/trigger`)
 - Scheduled trigger via cron + timezone (`trigger.type = schedule`, `trigger.config.cron`, optional `trigger.config.timezone`)
-- (Planned) Webhook trigger
+- Webhook trigger via public endpoint (`POST /webhook/:userId/:path`, path from `trigger.config.path`)
 
 ---
 
@@ -438,6 +438,7 @@ docker compose down
 | Executions module           | Done          | ExecutionSchema, StepExecutionSchema, TriggerExecutionDto, ExecutionService (trigger/findAll/findOne/cancel/findEvents), StepStateService (markRunning/markCompleted/markFailed), CompensateService (Saga compensation), ExecutionController (5 REST endpoints), ExecutionModule. Unit tests: execution.service.spec.ts (17), step-state.service.spec.ts (9), compensate.service.spec.ts (5) — 32 new tests |
 | Events module               | Done          | ExecutionEventSchema (immutable audit log, 11 event types), EventService (append + findByExecutionId), EventModule. Used as a dependency by ExecutionModule. |
 | Scheduled trigger module    | Done          | SchedulerModule + WorkflowSchedulerService using `@nestjs/schedule` and `cron`: scans active workflows with `trigger.type = schedule`, validates `trigger.config.cron` + optional `trigger.config.timezone`, registers per-workflow cron jobs, and triggers `ExecutionService` with `trigger_type = schedule`. |
+| Webhook trigger             | Done          | Public `POST /webhook/:userId/:path` endpoint (WebhookController). Resolves active workflow by `owner_id + trigger.type=webhook + trigger.config.path`, validates/normalizes webhook path in WorkflowService, and triggers ExecutionService with `trigger_type = webhook` and webhook payload metadata. |
 | Pub/Sub integration         | Done          | PubSubModule (PubSubService wrapping @google-cloud/pubsub); StepJob + StepResult interfaces; backoff.util; ConsumerService (workflow-jobs subscriber); StepExecutorService + 4 handlers (http/transform/store/branch); EventRouterService (workflow-events subscriber, saga orchestration: retry with backoff, compensation trigger); ExecutionService.trigger() publishes entry-step jobs; WorkerModule added to AppModule. New env var: PUBSUB_JOBS_SUBSCRIPTION. |
 | Saga orchestrator           | Done          | Embedded in EventRouterService: step-completed → merge context → publish next steps → execution.completed; step-failed → retry with exponential/fixed backoff → StepStateService.markFailed → CompensateService.compensate |
 | Worker / step runner        | Done          | ConsumerService, StepExecutorService, HttpHandler (axios), TransformHandler (dot-path mapping), StoreHandler (literal data), BranchHandler (field-based case matching with _branch_next output). WorkerModule imports PubSubModule + ExecutionModule. |
@@ -447,4 +448,4 @@ docker compose down
 
 ---
 
-*Last updated: 2026-03-18 — Scheduled trigger (cron + timezone) implemented. WorkflowService now validates `trigger.config.cron` (required for `schedule`) and optional `trigger.config.timezone` on create/update. Added SchedulerModule with WorkflowSchedulerService to register dynamic per-workflow cron jobs for active scheduled workflows, refresh mappings periodically, and trigger executions via ExecutionService with `trigger_type = schedule`. ExecutionService trigger path now supports internal trigger options so scheduled executions persist proper `trigger_type` and payload. Added dependencies `@nestjs/schedule` + `cron`. Updated unit tests: workflow.service.spec.ts and execution.service.spec.ts; targeted suites pass and workspace reports no TypeScript errors.*
+*Last updated: 2026-03-19 — Webhook trigger implemented. Added public endpoint `POST /webhook/:userId/:path` via WebhookController in ExecutionModule. WorkflowService now validates/normalizes `trigger.config.path` for `trigger.type = webhook` and can resolve active webhook workflows by owner + path. ExecutionService adds `triggerByWebhook` and records executions with `trigger_type = webhook` plus request payload metadata (body/query/headers/webhook context). Unit tests updated in workflow.service.spec.ts and execution.service.spec.ts. Targeted test suites pass and build is successful.*
