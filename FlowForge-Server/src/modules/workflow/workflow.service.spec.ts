@@ -263,6 +263,40 @@ describe('WorkflowService', () => {
         }),
       );
     });
+
+    it('should throw BadRequestException when webhook secret is empty', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Webhook Workflow',
+          trigger: {
+            type: 'webhook',
+            config: { path: 'orders-created', secret: '   ' },
+          },
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should trim webhook secret when valid', async () => {
+      const savedDoc = makeWorkflowDoc({ name: 'Webhook Workflow' });
+      mockSave.mockResolvedValue(savedDoc);
+
+      await service.create(ownerId, {
+        name: 'Webhook Workflow',
+        trigger: {
+          type: 'webhook',
+          config: { path: 'orders-created', secret: '  top-secret  ' },
+        },
+      });
+
+      expect(mockWorkflowModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trigger: {
+            type: 'webhook',
+            config: { path: 'orders-created', secret: 'top-secret' },
+          },
+        }),
+      );
+    });
   });
 
   // ── update ──────────────────────────────────────────────────────────────────

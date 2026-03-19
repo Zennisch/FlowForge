@@ -22,8 +22,12 @@ export class WebhookController {
     @Body() body: unknown,
     @Req() req: Request,
   ) {
+    const normalizedBody = this.normalizeBody(body);
+    const providedSecret = this.extractProvidedSecret(req, normalizedBody);
+    const sanitizedBody = this.removeSecretFromBody(normalizedBody);
+
     return this.executionService.triggerByWebhook(userId, path, {
-      body: this.normalizeBody(body),
+      body: sanitizedBody,
       query: req.query as Record<string, unknown>,
       headers: req.headers as Record<string, unknown>,
       webhook: {
@@ -31,7 +35,7 @@ export class WebhookController {
         path,
         received_at: new Date().toISOString(),
       },
-    });
+    }, providedSecret);
   }
 
   private normalizeBody(body: unknown): Record<string, unknown> {
@@ -44,5 +48,33 @@ export class WebhookController {
     }
 
     return { value: body };
+  }
+
+  private extractProvidedSecret(
+    req: Request,
+    body: Record<string, unknown>,
+  ): string | undefined {
+    const headerSecret = req.headers['x-webhook-secret'];
+    if (typeof headerSecret === 'string' && headerSecret.trim().length > 0) {
+      return headerSecret;
+    }
+
+    const bodySecret = body.secret;
+    if (typeof bodySecret === 'string' && bodySecret.trim().length > 0) {
+      return bodySecret;
+    }
+
+    return undefined;
+  }
+
+  private removeSecretFromBody(
+    body: Record<string, unknown>,
+  ): Record<string, unknown> {
+    if (!Object.prototype.hasOwnProperty.call(body, 'secret')) {
+      return body;
+    }
+
+    const { secret: _removedSecret, ...rest } = body;
+    return rest;
   }
 }
