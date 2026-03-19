@@ -11,6 +11,7 @@ import { WorkflowService } from './workflow.service';
 const mockSave = jest.fn();
 const mockFindExec = jest.fn();
 const mockFindByIdExec = jest.fn();
+const mockFindOneExec = jest.fn();
 const mockFindByIdAndDeleteExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,6 +28,9 @@ mockWorkflowModel.find = jest
 mockWorkflowModel.findById = jest
   .fn()
   .mockReturnValue({ exec: mockFindByIdExec });
+mockWorkflowModel.findOne = jest
+  .fn()
+  .mockReturnValue({ exec: mockFindOneExec });
 mockWorkflowModel.findByIdAndDelete = jest
   .fn()
   .mockReturnValue({ exec: mockFindByIdAndDeleteExec });
@@ -222,6 +226,43 @@ describe('WorkflowService', () => {
 
       expect(mockSave).toHaveBeenCalled();
     });
+
+    it('should throw BadRequestException when webhook path is missing', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Webhook Workflow',
+          trigger: { type: 'webhook', config: {} },
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when webhook path has invalid characters', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Webhook Workflow',
+          trigger: { type: 'webhook', config: { path: 'order/new' } },
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should normalize webhook path and create workflow', async () => {
+      const savedDoc = makeWorkflowDoc({ name: 'Webhook Workflow' });
+      mockSave.mockResolvedValue(savedDoc);
+
+      await service.create(ownerId, {
+        name: 'Webhook Workflow',
+        trigger: { type: 'webhook', config: { path: '/orders-created/' } },
+      });
+
+      expect(mockWorkflowModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trigger: {
+            type: 'webhook',
+            config: { path: 'orders-created' },
+          },
+        }),
+      );
+    });
   });
 
   // ── update ──────────────────────────────────────────────────────────────────
@@ -298,6 +339,74 @@ describe('WorkflowService', () => {
       );
 
       expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException on update when webhook path is invalid', async () => {
+      const existingDoc = makeWorkflowDoc();
+      mockFindByIdExec.mockResolvedValue(existingDoc);
+
+      await expect(
+        service.update(workflowId, ownerId, {
+          trigger: { type: 'webhook', config: { path: 'hooks/new' } },
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should normalize webhook path on update', async () => {
+      const existingDoc = makeWorkflowDoc();
+      mockFindByIdExec.mockResolvedValue(existingDoc);
+      mockSave.mockResolvedValue(existingDoc);
+
+      await service.update(workflowId, ownerId, {
+        trigger: { type: 'webhook', config: { path: '/hooks-new/' } },
+      });
+
+      expect(mockSave).toHaveBeenCalled();
+      expect(existingDoc.trigger).toEqual({
+        type: 'webhook',
+        config: { path: 'hooks-new' },
+      });
+    });
+  });
+
+  // ── findActiveWebhookWorkflow ───────────────────────────────────────────────
+
+  describe('findActiveWebhookWorkflow', () => {
+    it('should return active webhook workflow matching user and path', async () => {
+      const workflow = makeWorkflowDoc({
+        trigger: { type: 'webhook', config: { path: 'orders-created' } },
+      });
+      mockFindOneExec.mockResolvedValue(workflow);
+
+      const result = await service.findActiveWebhookWorkflow(
+        ownerId,
+        'orders-created',
+      );
+
+      expect(mockWorkflowModel.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'active',
+          'trigger.type': 'webhook',
+          'trigger.config.path': { $in: ['orders-created', '/orders-created'] },
+        }),
+      );
+      expect(result).toEqual(workflow);
+    });
+
+    it('should throw NotFoundException for invalid user id', async () => {
+      await expect(
+        service.findActiveWebhookWorkflow('invalid-user-id', 'orders-created'),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockWorkflowModel.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when webhook workflow does not exist', async () => {
+      mockFindOneExec.mockResolvedValue(null);
+
+      await expect(
+        service.findActiveWebhookWorkflow(ownerId, 'orders-created'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

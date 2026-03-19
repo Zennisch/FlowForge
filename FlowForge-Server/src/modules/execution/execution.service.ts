@@ -121,6 +121,22 @@ export class ExecutionService {
     return execution;
   }
 
+  async triggerByWebhook(
+    userId: string,
+    path: string,
+    payload: Record<string, unknown> = {},
+  ): Promise<ExecutionDocument> {
+    const workflow = await this.workflowService.findActiveWebhookWorkflow(
+      userId,
+      path,
+    );
+
+    return this.trigger(String(workflow._id), userId, {}, {
+      triggerType: 'webhook',
+      payload,
+    });
+  }
+
   findAll(ownerId: string): Promise<ExecutionDocument[]> {
     return this.executionModel
       .find({ owner_id: new Types.ObjectId(ownerId) })
