@@ -2,10 +2,11 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
+import { useAuthStore } from '@/store/auth.store';
 import type { CreateWorkflowRequest, Workflow } from '@/types/workflow.types';
 
 import { StepList } from './StepList';
@@ -76,6 +77,38 @@ function isValidTimezone(value: string): boolean {
 		return true;
 	} catch {
 		return false;
+	}
+}
+
+function normalizeWebhookPath(value: string): string {
+	return value.trim().replace(/^\/+|\/+$/g, '');
+}
+
+function extractUserIdFromToken(token: string | null): string {
+	if (!token) {
+		return '';
+	}
+
+	const tokenParts = token.split('.');
+	if (tokenParts.length < 2) {
+		return '';
+	}
+
+	const payloadPart = tokenParts[1];
+	if (!payloadPart) {
+		return '';
+	}
+
+	const normalizedPayload = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+	const paddingLength = (4 - (normalizedPayload.length % 4)) % 4;
+	const paddedPayload = normalizedPayload.padEnd(normalizedPayload.length + paddingLength, '=');
+
+	try {
+		const decoded = JSON.parse(atob(paddedPayload)) as Record<string, unknown>;
+		const rawUserId = decoded.id ?? decoded.sub ?? decoded.userId ?? decoded.uid;
+		return typeof rawUserId === 'string' ? rawUserId : '';
+	} catch {
+		return '';
 	}
 }
 
@@ -158,6 +191,18 @@ const workflowFormSchema = z
 				message: 'Webhook path is required',
 				path: ['webhookPath'],
 			});
+		}
+
+		if (values.triggerType === 'webhook' && values.webhookPath?.trim()) {
+			const normalizedWebhookPath = normalizeWebhookPath(values.webhookPath);
+			if (!/^[A-Za-z0-9_-]+$/.test(normalizedWebhookPath)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						'Webhook path may only contain letters, numbers, underscore, and hyphen',
+					path: ['webhookPath'],
+				});
+			}
 		}
 
 		if (
@@ -287,6 +332,10 @@ export function WorkflowForm({
 	submitLabel,
 	onSubmit,
 }: WorkflowFormProps) {
+	const token = useAuthStore((state) => state.token);
+	const currentUserId = useMemo(() => extractUserIdFromToken(token), [token]);
+	const [copiedWebhookUrl, setCopiedWebhookUrl] = useState(false);
+
 	const defaultValues = useMemo(() => toDefaultValues(initialWorkflow), [initialWorkflow]);
 
 	const {
@@ -303,11 +352,49 @@ export function WorkflowForm({
 	const stepFieldArray = useFieldArray({ control, name: 'steps', keyName: 'formId' });
 	const edgeFieldArray = useFieldArray({ control, name: 'edges', keyName: 'formId' });
 	const triggerType = useWatch({ control, name: 'triggerType' });
+	const webhookPath = useWatch({ control, name: 'webhookPath' });
 
 	const watchedSteps = useWatch({ control, name: 'steps' }) ?? [];
 	const stepIdOptions = watchedSteps
 		.map((step) => step.id.trim())
 		.filter((stepId, index, arr) => stepId.length > 0 && arr.indexOf(stepId) === index);
+
+	const webhookPrefixPath = useMemo(
+		() => `/webhook/${currentUserId || '(current user id)'}/`,
+		[currentUserId],
+	);
+
+	const fullWebhookPath = useMemo(() => {
+		const normalizedPath = normalizeWebhookPath(webhookPath ?? '');
+		if (!normalizedPath) {
+			return '';
+		}
+
+		const relativePath = `/webhook/${currentUserId || '(current user id)'}/${normalizedPath}`;
+		const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+		if (!apiBaseUrl) {
+			return relativePath;
+		}
+
+		return `${apiBaseUrl.replace(/\/$/, '')}${relativePath}`;
+	}, [currentUserId, webhookPath]);
+
+	const handleCopyWebhookPath = async () => {
+		if (!fullWebhookPath || typeof navigator === 'undefined' || !navigator.clipboard) {
+			return;
+		}
+
+		try {
+			await navigator.clipboard.writeText(fullWebhookPath);
+			setCopiedWebhookUrl(true);
+			window.setTimeout(() => {
+				setCopiedWebhookUrl(false);
+			}, 2000);
+		} catch {
+			setCopiedWebhookUrl(false);
+		}
+	};
 
 	const internalSubmit = async (values: WorkflowFormValues) => {
 		const additionalTriggerConfig = parseConfigJson(values.additionalTriggerConfigJson) ?? {};
@@ -318,7 +405,7 @@ export function WorkflowForm({
 				: values.triggerType === 'webhook'
 					? {
 						...additionalTriggerConfig,
-						path: values.webhookPath?.trim() ?? '',
+						path: normalizeWebhookPath(values.webhookPath ?? ''),
 						method: values.webhookMethod ?? 'POST',
 						...(values.webhookSecret?.trim()
 							? { secret: values.webhookSecret.trim() }
@@ -422,16 +509,34 @@ export function WorkflowForm({
 
 					{triggerType === 'webhook' ? (
 						<>
-							<label className="block">
+							<div className="block md:col-span-2">
 								<span className="mb-1 block text-sm text-(--color-text-secondary)">Webhook path</span>
-								<input
-									{...register('webhookPath')}
-									disabled={isPending}
-									placeholder="/hooks/workflow-order-sync"
-									className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-(--color-primary)"
-								/>
+								<div className="flex items-stretch gap-2">
+									<div className="min-w-0 shrink rounded-lg border border-(--color-border) bg-white/80 px-3 py-2 text-xs text-(--color-text-secondary)">
+										{webhookPrefixPath}
+									</div>
+									<input
+										{...register('webhookPath')}
+										disabled={isPending}
+										placeholder="workflow-order-sync"
+										className="min-w-0 flex-1 rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-(--color-primary)"
+									/>
+									<button
+										type="button"
+										onClick={() => {
+											void handleCopyWebhookPath();
+										}}
+										disabled={isPending || !fullWebhookPath}
+										className="rounded-lg border border-(--color-border) bg-white px-3 py-2 text-xs font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+									>
+										{copiedWebhookUrl ? 'Copied' : 'Copy'}
+									</button>
+								</div>
+								<p className="mt-1 text-xs text-(--color-text-secondary)">
+									Endpoint: {fullWebhookPath || `${webhookPrefixPath}<path>`}
+								</p>
 								<p className="mt-1 text-xs text-(--color-error)">{errors.webhookPath?.message}</p>
-							</label>
+							</div>
 
 							<label className="block">
 								<span className="mb-1 block text-sm text-(--color-text-secondary)">Webhook method</span>
