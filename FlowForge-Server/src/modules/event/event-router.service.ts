@@ -116,6 +116,13 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       const nextStep = workflow.steps.find((s) => s.id === edge.to);
       if (!nextStep) continue;
 
+      const canDispatch = await this.canDispatchFanInStep(
+        execution._id,
+        nextStep.id,
+        workflow.edges,
+      );
+      if (!canDispatch) continue;
+
       // Only dispatch if still queued (prevents double-publish in fan-in topologies)
       const stepExecution = await this.stepExecutionModel
         .findOne({ execution_id: execution._id, step_id: nextStep.id, status: 'queued' })
@@ -134,6 +141,30 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       };
       await this.pubSubService.publishJob(job);
     }
+  }
+
+  private async canDispatchFanInStep(
+    executionId: ExecutionDocument['_id'],
+    stepId: string,
+    edges: ReadonlyArray<{ from: string; to: string }>,
+  ): Promise<boolean> {
+    const parentStepIds = [
+      ...new Set(edges.filter((edge) => edge.to === stepId).map((edge) => edge.from)),
+    ];
+
+    if (parentStepIds.length <= 1) {
+      return true;
+    }
+
+    const completedParents = await this.stepExecutionModel
+      .countDocuments({
+        execution_id: executionId,
+        step_id: { $in: parentStepIds },
+        status: 'completed',
+      })
+      .exec();
+
+    return completedParents === parentStepIds.length;
   }
 
   private async onStepFailed(result: StepResult): Promise<void> {
