@@ -413,6 +413,8 @@ docker compose down
 | `PUBSUB_JOBS_SUBSCRIPTION`  | Subscription name for orchestrator               |
 | `PUBSUB_EVENTS_TOPIC`       | Pub/Sub topic for step results                   |
 | `PUBSUB_EVENTS_SUBSCRIPTION`| Subscription name for orchestrator               |
+| `HTTP_STEP_ALLOWED_HOSTS`   | Optional comma-separated host allowlist for outbound HTTP steps (`api.example.com,*.trusted.example`) |
+| `HTTP_STEP_ALLOW_PRIVATE_NETWORK_TARGETS` | Optional override (`true`/`false`, default `false`) to allow private/local outbound targets for HTTP steps |
 
 ---
 
@@ -445,11 +447,11 @@ docker compose down
 | Webhook security hardening  | Done          | Added anti-replay and abuse controls: required timestamp + nonce headers, durable nonce replay registry (`webhook_nonces`), HMAC-SHA256 signature validation (`x-webhook-signature`) for secret-enabled webhooks, and Mongo-backed fixed-window per-workflow/IP rate limiting (`webhook_rate_limits`). Unit tests in `execution.service.spec.ts` cover stale timestamp, replay, invalid signature, and 429 rate limiting. |
 | Pub/Sub integration         | Done          | PubSubModule (PubSubService wrapping @google-cloud/pubsub); StepJob + StepResult interfaces; backoff.util; ConsumerService (workflow-jobs subscriber); StepExecutorService + 4 handlers (http/transform/store/branch); EventRouterService (workflow-events subscriber, saga orchestration: retry with backoff, compensation trigger); ExecutionService.trigger() publishes entry-step jobs; WorkerModule added to AppModule. New env var: PUBSUB_JOBS_SUBSCRIPTION. |
 | Saga orchestrator           | Done          | Embedded in EventRouterService: step-completed → merge context → publish next steps → execution.completed; step-failed → retry with exponential/fixed backoff → StepStateService.markFailed → CompensateService.compensate |
-| Worker / step runner        | Done          | ConsumerService, StepExecutorService, HttpHandler (axios), TransformHandler (dot-path mapping), StoreHandler (literal data), BranchHandler (field-based case matching with _branch_next output). WorkerModule imports PubSubModule + ExecutionModule. |
+| Worker / step runner        | Done          | ConsumerService, StepExecutorService, HttpHandler (axios + outbound SSRF policy guardrails), TransformHandler (dot-path mapping), StoreHandler (literal data), BranchHandler (field-based case matching with _branch_next output). WorkerModule imports PubSubModule + ExecutionModule. |
 | Docker Compose setup        | Not started   |                                    |
 | CI/CD (GitHub Actions)      | Not started   |                                    |
 | Terraform IaC               | Not started   |                                    |
 
 ---
 
-*Last updated: 2026-03-21 — Completed webhook security hardening: added anti-replay (`timestamp` + `nonce` + durable replay registry), HMAC signature verification for secret-enabled webhooks, and Mongo-backed rate limiting. Regression tests in `execution.service.spec.ts` and project build pass.*
+*Last updated: 2026-03-21 — Completed HTTP step outbound hardening: added SSRF guardrails (protocol validation, host allowlist, localhost/private-IP/private-DNS blocking) in `HttpHandler` with regression tests in `http.handler.spec.ts`.*
