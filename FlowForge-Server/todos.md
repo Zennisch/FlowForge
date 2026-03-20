@@ -9,7 +9,7 @@
 | Issue | Status | Related Files | Details | Notes |
 |---|---|---|---|---|
 | DAG fan-in (join) correctness is not guaranteed | Resolved | src/modules/event/event-router.service.ts, src/modules/event/event-router.service.spec.ts | Added fan-in gating in EventRouter: downstream step is dispatched only when all direct parent steps for that node are completed in the same execution. | 2026-03-20: Added regression tests for join dispatch blocking/unblocking. |
-| Branch flow can leave execution stuck indefinitely | Open | src/modules/worker/handlers/branch.handler.ts, src/modules/event/event-router.service.ts | If no branch case matches and no valid default path is produced, no next step is queued and the execution may never move to a terminal state. | |
+| Branch flow can leave execution stuck indefinitely | Resolved | src/modules/worker/handlers/branch.handler.ts, src/modules/event/event-router.service.ts | Added fail-fast branch validation (no match + no default throws) and dead-end routing compensation in EventRouter when branch output does not map to any outgoing edge. | 2026-03-20: Added regression tests in branch.handler.spec.ts and event-router.service.spec.ts. |
 | Cancel does not fully stop in-flight processing | Open | src/modules/execution/execution.service.ts, src/modules/execution/step-state.service.ts, src/modules/event/event-router.service.ts | An execution can be marked cancelled, but worker/event processing may continue and update state afterward. State transitions need hard guards for cancelled/terminal executions. | |
 | Idempotency is not domain-safe under concurrency | Open | src/modules/execution/execution.service.ts, src/modules/execution/execution.schema.ts | Duplicate prevention is check-then-insert and vulnerable to races. Idempotency key scope is global, which may cause cross-tenant/workflow collisions and incorrect domain behavior. | |
 | Running executions are affected by workflow edits | Open | src/modules/event/event-router.service.ts, src/modules/workflow/workflow.service.ts, src/modules/execution/execution.schema.ts | Event routing reads the current workflow definition at runtime, so in-flight executions may run against updated definitions instead of a pinned snapshot/version. | |
@@ -37,5 +37,3 @@
 | Auth domain is still MVP-level | Open | src/modules/auth/auth.service.ts, src/modules/auth/jwt.strategy.ts | Missing refresh-token rotation, session revocation, and brute-force protections/lockout strategy for mature account security management. | |
 
 ---
-
-*Last updated: 2026-03-20 — .*
