@@ -4,12 +4,14 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, validateCronExpression } from 'cron';
 import { Model } from 'mongoose';
 import { ExecutionService } from '../execution/execution.service';
 import { Workflow, WorkflowDocument } from '../workflow/workflow.schema';
+import { SchedulerLock, SchedulerLockDocument } from './scheduler-lock.schema';
 
 type ScheduledWorkflow = {
   workflowId: string;
@@ -21,11 +23,17 @@ type ScheduledWorkflow = {
 @Injectable()
 export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WorkflowSchedulerService.name);
+  private readonly instanceId = randomUUID();
+  private readonly leaderLeaseDurationMs = 45_000;
+  private readonly leaderLockId = 'workflow-scheduler-leader';
   private readonly jobConfigs = new Map<string, { cron: string; timezone?: string }>();
+  private isLeader = false;
 
   constructor(
     @InjectModel(Workflow.name)
     private readonly workflowModel: Model<WorkflowDocument>,
+    @InjectModel(SchedulerLock.name)
+    private readonly schedulerLockModel: Model<SchedulerLockDocument>,
     private readonly executionService: ExecutionService,
     private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
@@ -39,19 +47,30 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
     await this.refreshSchedules();
   }
 
-  onModuleDestroy(): void {
-    const jobs = this.schedulerRegistry.getCronJobs();
-    for (const [name, job] of jobs) {
-      if (!name.startsWith('workflow:')) {
-        continue;
-      }
-      job.stop();
-      this.schedulerRegistry.deleteCronJob(name);
-      this.jobConfigs.delete(name.replace('workflow:', ''));
+  async onModuleDestroy(): Promise<void> {
+    this.clearManagedJobs();
+    if (this.isLeader) {
+      await this.releaseLeadership();
     }
   }
 
   async refreshSchedules(): Promise<void> {
+    const hasLeadership = await this.tryAcquireLeadership();
+
+    if (!hasLeadership) {
+      if (this.isLeader) {
+        this.logger.warn('Scheduler leadership lost; clearing local workflow cron jobs');
+      }
+      this.isLeader = false;
+      this.clearManagedJobs();
+      return;
+    }
+
+    if (!this.isLeader) {
+      this.logger.log(`Scheduler leadership acquired by instance ${this.instanceId}`);
+    }
+    this.isLeader = true;
+
     const workflows = await this.workflowModel
       .find({ status: 'active', 'trigger.type': 'schedule' })
       .exec();
@@ -92,6 +111,93 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.syncJobs(desired);
+  }
+
+  private clearManagedJobs(): void {
+    const jobs = this.schedulerRegistry.getCronJobs();
+    for (const [name, job] of jobs) {
+      if (!name.startsWith('workflow:')) {
+        continue;
+      }
+      job.stop();
+      this.schedulerRegistry.deleteCronJob(name);
+      this.jobConfigs.delete(name.replace('workflow:', ''));
+    }
+  }
+
+  private async tryAcquireLeadership(): Promise<boolean> {
+    const now = new Date();
+    const leaseUntil = new Date(now.getTime() + this.leaderLeaseDurationMs);
+
+    try {
+      const lock = await this.schedulerLockModel
+        .findOneAndUpdate(
+          {
+            _id: this.leaderLockId,
+            $or: [
+              { lease_until: { $lte: now } },
+              { owner: this.instanceId },
+            ],
+          },
+          {
+            $set: {
+              owner: this.instanceId,
+              lease_until: leaseUntil,
+            },
+            $setOnInsert: {
+              _id: this.leaderLockId,
+            },
+          },
+          {
+            new: true,
+            upsert: true,
+          },
+        )
+        .exec();
+
+      return lock?.owner === this.instanceId;
+    } catch (error: unknown) {
+      if (this.isDuplicateKeyError(error)) {
+        return false;
+      }
+      this.logger.error(
+        'Failed to acquire scheduler leadership lock',
+        error instanceof Error ? error.stack : String(error),
+      );
+      return false;
+    }
+  }
+
+  private async releaseLeadership(): Promise<void> {
+    try {
+      await this.schedulerLockModel
+        .findOneAndUpdate(
+          {
+            _id: this.leaderLockId,
+            owner: this.instanceId,
+          },
+          {
+            $set: {
+              lease_until: new Date(0),
+            },
+          },
+        )
+        .exec();
+    } catch (error: unknown) {
+      this.logger.error(
+        'Failed to release scheduler leadership lock',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const maybeMongoError = error as { code?: number };
+    return maybeMongoError.code === 11000;
   }
 
   private syncJobs(desired: Map<string, ScheduledWorkflow>): void {
