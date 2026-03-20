@@ -1,11 +1,14 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { timingSafeEqual } from 'crypto';
+import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PubSubService } from '../../infra/pubsub/pubsub.provider';
@@ -19,6 +22,14 @@ import {
   ExecutionWorkflowSnapshot,
 } from './execution.schema';
 import { StepExecution, StepExecutionDocument } from './step-execution.schema';
+import {
+  WebhookNonce,
+  WebhookNonceDocument,
+} from './webhook-nonce.schema';
+import {
+  WebhookRateLimit,
+  WebhookRateLimitDocument,
+} from './webhook-rate-limit.schema';
 
 type TriggerType = 'manual' | 'webhook' | 'schedule';
 
@@ -28,7 +39,21 @@ export interface TriggerExecutionOptions {
   idempotencyKey?: string;
 }
 
+export interface WebhookSecurityContext {
+  providedSecret?: string;
+  signature?: string;
+  timestamp?: string;
+  nonce?: string;
+  method?: string;
+  path?: string;
+  ip?: string;
+}
+
 const DEFAULT_EXECUTION_TIMEOUT_MS = 60 * 60 * 1000;
+const DEFAULT_WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
+const DEFAULT_WEBHOOK_NONCE_TTL_MS = 10 * 60 * 1000;
+const DEFAULT_WEBHOOK_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const DEFAULT_WEBHOOK_RATE_LIMIT_MAX_REQUESTS = 60;
 
 @Injectable()
 export class ExecutionService {
@@ -37,6 +62,10 @@ export class ExecutionService {
     private readonly executionModel: Model<ExecutionDocument>,
     @InjectModel(StepExecution.name)
     private readonly stepExecutionModel: Model<StepExecutionDocument>,
+    @InjectModel(WebhookNonce.name)
+    private readonly webhookNonceModel: Model<WebhookNonceDocument>,
+    @InjectModel(WebhookRateLimit.name)
+    private readonly webhookRateLimitModel: Model<WebhookRateLimitDocument>,
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
     private readonly pubSubService: PubSubService,
@@ -145,11 +174,40 @@ export class ExecutionService {
     userId: string,
     path: string,
     payload: Record<string, unknown> = {},
-    providedSecret?: string,
+    security: WebhookSecurityContext = {},
   ): Promise<ExecutionDocument> {
     const workflow = await this.workflowService.findActiveWebhookWorkflow(
       userId,
       path,
+    );
+
+    await this.enforceWebhookRateLimit(
+      workflow._id,
+      path,
+      workflow.trigger?.config,
+      security.ip,
+    );
+
+    const timestampMs = this.parseWebhookTimestampMs(security.timestamp);
+    if (timestampMs === undefined) {
+      throw new UnauthorizedException('Missing or invalid webhook timestamp');
+    }
+
+    const toleranceMs = this.getWebhookTimestampToleranceMs(workflow.trigger?.config);
+    if (Math.abs(Date.now() - timestampMs) > toleranceMs) {
+      throw new UnauthorizedException('Webhook timestamp is outside allowed tolerance');
+    }
+
+    const nonce = this.normalizeWebhookNonce(security.nonce);
+    if (!nonce) {
+      throw new UnauthorizedException('Missing webhook nonce');
+    }
+
+    await this.registerWebhookNonce(
+      workflow._id,
+      nonce,
+      workflow.trigger?.config,
+      timestampMs,
     );
 
     const expectedSecret = this.getConfiguredWebhookSecret(
@@ -157,13 +215,28 @@ export class ExecutionService {
     );
 
     if (expectedSecret) {
-      if (!providedSecret) {
-        throw new UnauthorizedException('Missing webhook secret');
+      const signature = this.normalizeWebhookSignature(security.signature);
+      if (!signature) {
+        throw new UnauthorizedException('Missing webhook signature');
       }
 
-      if (!this.secretsMatch(expectedSecret, providedSecret)) {
-        throw new UnauthorizedException('Invalid webhook secret');
+      const method = this.normalizeHttpMethod(security.method);
+      const requestPath = this.normalizeSignedWebhookPath(security.path ?? path);
+      const bodyHash = this.hashWebhookPayloadBody(payload.body);
+      const expectedSignature = this.computeWebhookSignature(
+        expectedSecret,
+        timestampMs,
+        nonce,
+        method,
+        requestPath,
+        bodyHash,
+      );
+
+      if (!this.secretsMatch(expectedSignature, signature)) {
+        throw new UnauthorizedException('Invalid webhook signature');
       }
+    } else if (security.providedSecret) {
+      throw new UnauthorizedException('Webhook secret is not configured for this workflow');
     }
 
     return this.trigger(String(workflow._id), userId, {}, {
@@ -308,6 +381,259 @@ export class ExecutionService {
 
     const maybeMongoError = error as { code?: number };
     return maybeMongoError.code === 11000;
+  }
+
+  private parseWebhookTimestampMs(value?: string): number | undefined {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const numeric = Number(trimmed);
+      if (!Number.isFinite(numeric) || numeric <= 0) {
+        return undefined;
+      }
+
+      // Accept both seconds and milliseconds unix timestamps.
+      return numeric > 1_000_000_000_000 ? numeric : numeric * 1000;
+    }
+
+    const parsed = Date.parse(trimmed);
+    if (!Number.isFinite(parsed)) {
+      return undefined;
+    }
+    return parsed;
+  }
+
+  private normalizeWebhookNonce(value?: string): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed.length === 0 || trimmed.length > 128) {
+      return undefined;
+    }
+
+    return trimmed;
+  }
+
+  private normalizeWebhookSignature(value?: string): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+
+    return trimmed.toLowerCase().startsWith('sha256=')
+      ? trimmed.slice('sha256='.length)
+      : trimmed;
+  }
+
+  private normalizeHttpMethod(method?: string): string {
+    if (!method) {
+      return 'POST';
+    }
+
+    const normalized = method.trim().toUpperCase();
+    return normalized.length > 0 ? normalized : 'POST';
+  }
+
+  private normalizeSignedWebhookPath(path: string): string {
+    return path.trim().replace(/^\/+|\/+$/g, '');
+  }
+
+  private hashWebhookPayloadBody(body: unknown): string {
+    const canonical = this.stableStringify(body ?? {});
+    return createHash('sha256').update(canonical).digest('hex');
+  }
+
+  private stableStringify(value: unknown): string {
+    if (value === null || value === undefined) {
+      return 'null';
+    }
+
+    if (typeof value !== 'object') {
+      return JSON.stringify(value);
+    }
+
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.stableStringify(item)).join(',')}]`;
+    }
+
+    const objectValue = value as Record<string, unknown>;
+    const keys = Object.keys(objectValue).sort();
+    const pairs = keys.map((key) => {
+      const serializedKey = JSON.stringify(key);
+      const serializedValue = this.stableStringify(objectValue[key]);
+      return `${serializedKey}:${serializedValue}`;
+    });
+    return `{${pairs.join(',')}}`;
+  }
+
+  private computeWebhookSignature(
+    secret: string,
+    timestampMs: number,
+    nonce: string,
+    method: string,
+    path: string,
+    bodyHash: string,
+  ): string {
+    const payload = [
+      String(Math.floor(timestampMs / 1000)),
+      nonce,
+      method,
+      path,
+      bodyHash,
+    ].join('.');
+
+    return createHmac('sha256', secret).update(payload).digest('hex');
+  }
+
+  private getWebhookTimestampToleranceMs(
+    config?: Record<string, unknown>,
+  ): number {
+    const seconds = this.parsePositiveNumber(
+      config?.webhookTimestampToleranceSeconds ??
+        (config?.security as Record<string, unknown> | undefined)
+          ?.timestampToleranceSeconds,
+    );
+    if (!seconds) {
+      return DEFAULT_WEBHOOK_TIMESTAMP_TOLERANCE_MS;
+    }
+    return Math.floor(seconds * 1000);
+  }
+
+  private getWebhookNonceTtlMs(
+    config?: Record<string, unknown>,
+  ): number {
+    const seconds = this.parsePositiveNumber(
+      config?.webhookNonceTtlSeconds ??
+        (config?.security as Record<string, unknown> | undefined)
+          ?.nonceTtlSeconds,
+    );
+
+    if (!seconds) {
+      return DEFAULT_WEBHOOK_NONCE_TTL_MS;
+    }
+
+    return Math.floor(seconds * 1000);
+  }
+
+  private getWebhookRateLimitWindowMs(config?: Record<string, unknown>): number {
+    const securityConfig = config?.security as Record<string, unknown> | undefined;
+    const seconds = this.parsePositiveNumber(
+      config?.webhookRateLimitWindowSeconds ??
+        securityConfig?.rateLimitWindowSeconds ??
+        (securityConfig?.rateLimit as Record<string, unknown> | undefined)
+          ?.windowSeconds,
+    );
+
+    if (!seconds) {
+      return DEFAULT_WEBHOOK_RATE_LIMIT_WINDOW_MS;
+    }
+
+    return Math.floor(seconds * 1000);
+  }
+
+  private getWebhookRateLimitMaxRequests(
+    config?: Record<string, unknown>,
+  ): number {
+    const securityConfig = config?.security as Record<string, unknown> | undefined;
+    const maxRequests = this.parsePositiveNumber(
+      config?.webhookRateLimitMaxRequests ??
+        securityConfig?.rateLimitMaxRequests ??
+        (securityConfig?.rateLimit as Record<string, unknown> | undefined)
+          ?.maxRequests,
+    );
+
+    if (!maxRequests) {
+      return DEFAULT_WEBHOOK_RATE_LIMIT_MAX_REQUESTS;
+    }
+
+    return Math.floor(maxRequests);
+  }
+
+  private parsePositiveNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value.trim());
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return undefined;
+  }
+
+  private async registerWebhookNonce(
+    workflowId: Types.ObjectId,
+    nonce: string,
+    config: Record<string, unknown> | undefined,
+    timestampMs: number,
+  ): Promise<void> {
+    const nonceTtlMs = this.getWebhookNonceTtlMs(config);
+    const expiresAt = new Date(Math.max(Date.now(), timestampMs + nonceTtlMs));
+
+    try {
+      await this.webhookNonceModel.create({
+        workflow_id: workflowId,
+        nonce,
+        expires_at: expiresAt,
+      });
+    } catch (error: unknown) {
+      if (this.isDuplicateKeyError(error)) {
+        throw new UnauthorizedException('Replay webhook request detected');
+      }
+      throw error;
+    }
+  }
+
+  private async enforceWebhookRateLimit(
+    workflowId: Types.ObjectId,
+    path: string,
+    config: Record<string, unknown> | undefined,
+    ip?: string,
+  ): Promise<void> {
+    const windowMs = this.getWebhookRateLimitWindowMs(config);
+    const maxRequests = this.getWebhookRateLimitMaxRequests(config);
+    const now = Date.now();
+    const windowStartMs = Math.floor(now / windowMs) * windowMs;
+    const bucketIp = (ip?.trim() || 'unknown').slice(0, 128);
+    const bucket = `${path}:${bucketIp}:${windowStartMs}`;
+
+    const bucketDoc = await this.webhookRateLimitModel.findOneAndUpdate(
+      {
+        workflow_id: workflowId,
+        bucket,
+      },
+      {
+        $setOnInsert: {
+          workflow_id: workflowId,
+          bucket,
+          window_started_at: new Date(windowStartMs),
+          expires_at: new Date(windowStartMs + windowMs * 2),
+        },
+        $inc: { count: 1 },
+      },
+      {
+        upsert: true,
+        returnDocument: 'after',
+      },
+    );
+
+    if (!bucketDoc) {
+      throw new BadRequestException('Unable to enforce webhook rate limit');
+    }
+
+    if (bucketDoc.count > maxRequests) {
+      throw new HttpException('Webhook rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+    }
   }
 
   findAll(ownerId: string): Promise<ExecutionDocument[]> {

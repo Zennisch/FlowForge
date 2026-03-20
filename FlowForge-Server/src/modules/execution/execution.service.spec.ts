@@ -1,6 +1,8 @@
 import {
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -14,6 +16,8 @@ import { TriggerExecutionDto } from './dto/trigger-execution.dto';
 import { ExecutionService } from './execution.service';
 import { Execution } from './execution.schema';
 import { StepExecution } from './step-execution.schema';
+import { WebhookNonce } from './webhook-nonce.schema';
+import { WebhookRateLimit } from './webhook-rate-limit.schema';
 
 // ─── Mongoose model mocks ─────────────────────────────────────────────────────
 
@@ -53,6 +57,18 @@ mockStepExecutionModel.updateMany = jest
   .fn()
   .mockReturnValue({ exec: mockStepUpdateManyExec });
 
+const mockWebhookNonceCreate = jest.fn();
+
+const mockWebhookNonceModel = {
+  create: mockWebhookNonceCreate,
+};
+
+const mockWebhookRateLimitFindOneAndUpdate = jest.fn();
+
+const mockWebhookRateLimitModel = {
+  findOneAndUpdate: mockWebhookRateLimitFindOneAndUpdate,
+};
+
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const ownerId = new Types.ObjectId().toHexString();
@@ -91,6 +107,8 @@ describe('ExecutionService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockWebhookNonceCreate.mockResolvedValue({});
+    mockWebhookRateLimitFindOneAndUpdate.mockResolvedValue({ count: 1 });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -99,6 +117,14 @@ describe('ExecutionService', () => {
         {
           provide: getModelToken(StepExecution.name),
           useValue: mockStepExecutionModel,
+        },
+        {
+          provide: getModelToken(WebhookNonce.name),
+          useValue: mockWebhookNonceModel,
+        },
+        {
+          provide: getModelToken(WebhookRateLimit.name),
+          useValue: mockWebhookRateLimitModel,
         },
         {
           provide: WorkflowService,
@@ -482,6 +508,15 @@ describe('ExecutionService', () => {
   // ── triggerByWebhook ───────────────────────────────────────────────────────
 
   describe('triggerByWebhook', () => {
+    const makeSecurityContext = (overrides: Record<string, unknown> = {}) => ({
+      timestamp: String(Math.floor(Date.now() / 1000)),
+      nonce: 'nonce-1',
+      method: 'POST',
+      path: 'orders-created',
+      ip: '203.0.113.1',
+      ...overrides,
+    });
+
     it('finds webhook workflow and delegates to trigger with webhook options', async () => {
       const webhookWorkflow = { _id: workflowId };
       const payload = { body: { foo: 'bar' } };
@@ -493,7 +528,12 @@ describe('ExecutionService', () => {
         .spyOn(service, 'trigger')
         .mockResolvedValue(makeExecutionDoc() as never);
 
-      await service.triggerByWebhook(ownerId, 'orders-created', payload);
+      await service.triggerByWebhook(
+        ownerId,
+        'orders-created',
+        payload,
+        makeSecurityContext(),
+      );
 
       expect(
         (workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }).findActiveWebhookWorkflow,
@@ -518,11 +558,16 @@ describe('ExecutionService', () => {
         } as never);
 
       await expect(
-        service.triggerByWebhook(ownerId, 'orders-created', { body: {} }),
+        service.triggerByWebhook(
+          ownerId,
+          'orders-created',
+          { body: {} },
+          makeSecurityContext(),
+        ),
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('throws UnauthorizedException when webhook secret is invalid', async () => {
+    it('throws UnauthorizedException when webhook signature is invalid', async () => {
       jest
         .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
         .mockResolvedValue({
@@ -535,12 +580,12 @@ describe('ExecutionService', () => {
           ownerId,
           'orders-created',
           { body: {} },
-          'wrong-secret',
+          makeSecurityContext({ signature: 'bad-signature' }),
         ),
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('triggers execution when webhook secret matches', async () => {
+    it('triggers execution when webhook signature matches', async () => {
       jest
         .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
         .mockResolvedValue({
@@ -550,12 +595,34 @@ describe('ExecutionService', () => {
       const triggerSpy = jest
         .spyOn(service, 'trigger')
         .mockResolvedValue(makeExecutionDoc() as never);
+      const payload = { body: { ok: true } };
+      const security = makeSecurityContext();
+      const bodyHash = (service as unknown as {
+        hashWebhookPayloadBody: (body: unknown) => string;
+      }).hashWebhookPayloadBody(payload.body);
+      const signature = (service as unknown as {
+        computeWebhookSignature: (
+          secret: string,
+          timestampMs: number,
+          nonce: string,
+          method: string,
+          path: string,
+          bodyHash: string,
+        ) => string;
+      }).computeWebhookSignature(
+        'top-secret',
+        Number(security.timestamp) * 1000,
+        String(security.nonce),
+        String(security.method),
+        String(security.path),
+        bodyHash,
+      );
 
       await service.triggerByWebhook(
         ownerId,
         'orders-created',
-        { body: { ok: true } },
-        'top-secret',
+        payload,
+        { ...security, signature: `sha256=${signature}` },
       );
 
       expect(triggerSpy).toHaveBeenCalledWith(
@@ -567,6 +634,59 @@ describe('ExecutionService', () => {
           payload: { body: { ok: true } },
         },
       );
+    });
+
+    it('throws UnauthorizedException when webhook timestamp is stale', async () => {
+      jest
+        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .mockResolvedValue({ _id: workflowId } as never);
+
+      await expect(
+        service.triggerByWebhook(
+          ownerId,
+          'orders-created',
+          { body: {} },
+          makeSecurityContext({ timestamp: String(Math.floor(Date.now() / 1000) - 3600) }),
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws UnauthorizedException when webhook nonce is replayed', async () => {
+      jest
+        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .mockResolvedValue({ _id: workflowId } as never);
+      mockWebhookNonceCreate.mockRejectedValueOnce({ code: 11000 });
+
+      await expect(
+        service.triggerByWebhook(
+          ownerId,
+          'orders-created',
+          { body: {} },
+          makeSecurityContext(),
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws HttpException 429 when webhook rate limit is exceeded', async () => {
+      jest
+        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .mockResolvedValue({ _id: workflowId } as never);
+      mockWebhookRateLimitFindOneAndUpdate.mockResolvedValueOnce({ count: 999 });
+
+      try {
+        await service.triggerByWebhook(
+          ownerId,
+          'orders-created',
+          { body: {} },
+          makeSecurityContext(),
+        );
+        fail('Expected triggerByWebhook to throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        expect((error as HttpException).getStatus()).toBe(
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
     });
   });
 });
