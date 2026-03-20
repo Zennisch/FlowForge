@@ -44,7 +44,7 @@ export class StepStateService {
             timeout_at: timeoutAt,
           },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!updated) {
@@ -70,7 +70,7 @@ export class StepStateService {
       .findOneAndUpdate(
         { _id: stepExecutionId, status: 'running' },
         { $set: { status: 'completed', output, completed_at: completedAt } },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!stepExecution) {
@@ -98,7 +98,7 @@ export class StepStateService {
       .findOneAndUpdate(
         { _id: stepExecutionId, status: 'running' },
         { $set: { status: 'failed', error, completed_at: completedAt } },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!stepExecution) {
