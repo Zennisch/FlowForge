@@ -12,7 +12,11 @@ import { StepJob } from '../../shared/interfaces/step-job.interface';
 import { StepResult } from '../../shared/interfaces/step-result.interface';
 import { computeBackoffMs } from '../../shared/utils/backoff.util';
 import { CompensateService } from '../execution/compensate.service';
-import { Execution, ExecutionDocument } from '../execution/execution.schema';
+import {
+  Execution,
+  ExecutionDocument,
+  ExecutionWorkflowSnapshot,
+} from '../execution/execution.schema';
 import {
   StepExecution,
   StepExecutionDocument,
@@ -96,10 +100,7 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
     execution.context = newContext;
     await execution.save();
 
-    const workflow = await this.workflowService.findOne(
-      execution.workflow_id.toString(),
-      execution.owner_id.toString(),
-    );
+    const workflow = await this.getWorkflowDefinition(execution);
 
     const outEdges = workflow.edges.filter((e) => e.from === result.stepId);
 
@@ -196,10 +197,7 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const workflow = await this.workflowService.findOne(
-      execution.workflow_id.toString(),
-      execution.owner_id.toString(),
-    );
+    const workflow = await this.getWorkflowDefinition(execution);
 
     const step = workflow.steps.find((s) => s.id === result.stepId);
     if (!step) return;
@@ -262,6 +260,45 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       );
       await this.compensateService.compensate(result.executionId);
     }
+  }
+
+  private async getWorkflowDefinition(
+    execution: ExecutionDocument,
+  ): Promise<ExecutionWorkflowSnapshot> {
+    if (execution.workflow_snapshot) {
+      return execution.workflow_snapshot;
+    }
+
+    // Backward-compatible fallback for executions created before snapshot rollout.
+    const workflow = await this.workflowService.findOne(
+      execution.workflow_id.toString(),
+      execution.owner_id.toString(),
+    );
+
+    return {
+      steps: workflow.steps.map((step) => ({
+        id: step.id,
+        type: step.type,
+        config: step.config as Record<string, unknown>,
+        ...(step.retry
+          ? {
+              retry: {
+                ...(step.retry.maxAttempts !== undefined
+                  ? { maxAttempts: step.retry.maxAttempts }
+                  : {}),
+                ...(step.retry.backoff !== undefined
+                  ? { backoff: step.retry.backoff }
+                  : {}),
+              },
+            }
+          : {}),
+      })),
+      edges: workflow.edges.map((edge) => ({
+        from: edge.from,
+        to: edge.to,
+        ...(edge.condition !== undefined ? { condition: edge.condition } : {}),
+      })),
+    };
   }
 }
 

@@ -10,6 +10,29 @@ export type ExecutionStatus =
   | 'cancelled'
   | 'compensating';
 
+export interface ExecutionWorkflowSnapshotRetryPolicy {
+  maxAttempts?: number;
+  backoff?: 'exponential' | 'fixed';
+}
+
+export interface ExecutionWorkflowSnapshotStep {
+  id: string;
+  type: 'http' | 'transform' | 'store' | 'branch';
+  config: Record<string, unknown>;
+  retry?: ExecutionWorkflowSnapshotRetryPolicy;
+}
+
+export interface ExecutionWorkflowSnapshotEdge {
+  from: string;
+  to: string;
+  condition?: string;
+}
+
+export interface ExecutionWorkflowSnapshot {
+  steps: ExecutionWorkflowSnapshotStep[];
+  edges: ExecutionWorkflowSnapshotEdge[];
+}
+
 @Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } })
 export class Execution {
   @Prop({ type: Types.ObjectId, ref: 'Workflow', required: true })
@@ -32,6 +55,9 @@ export class Execution {
 
   @Prop({ type: Object, default: {} })
   context: Record<string, unknown>;
+
+  @Prop({ type: Object, required: true })
+  workflow_snapshot: ExecutionWorkflowSnapshot;
 
   @Prop()
   idempotency_key?: string;

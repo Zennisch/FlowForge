@@ -13,7 +13,11 @@ import { StepJob } from '../../shared/interfaces/step-job.interface';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
 import { TriggerExecutionDto } from './dto/trigger-execution.dto';
-import { Execution, ExecutionDocument } from './execution.schema';
+import {
+  Execution,
+  ExecutionDocument,
+  ExecutionWorkflowSnapshot,
+} from './execution.schema';
 import { StepExecution, StepExecutionDocument } from './step-execution.schema';
 
 type TriggerType = 'manual' | 'webhook' | 'schedule';
@@ -43,6 +47,7 @@ export class ExecutionService {
     options: TriggerExecutionOptions = {},
   ): Promise<ExecutionDocument> {
     const workflow = await this.workflowService.findOne(workflowId, ownerId);
+    const workflowSnapshot = this.buildWorkflowSnapshot(workflow);
 
     const triggerType = options.triggerType ?? 'manual';
     const triggerPayload = options.payload ?? dto.payload ?? {};
@@ -59,6 +64,7 @@ export class ExecutionService {
         trigger_type: triggerType,
         trigger_payload: triggerPayload,
         context: {},
+        workflow_snapshot: workflowSnapshot,
         ...(normalizedIdempotencyKey
           ? { idempotency_key: normalizedIdempotencyKey }
           : {}),
@@ -190,6 +196,43 @@ export class ExecutionService {
 
     const trimmed = key.trim();
     return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  private buildWorkflowSnapshot(
+    workflow: {
+      steps: Array<{
+        id: string;
+        type: 'http' | 'transform' | 'store' | 'branch';
+        config?: Record<string, unknown>;
+        retry?: { maxAttempts?: number; backoff?: 'exponential' | 'fixed' };
+      }>;
+      edges: Array<{ from: string; to: string; condition?: string }>;
+    },
+  ): ExecutionWorkflowSnapshot {
+    return {
+      steps: workflow.steps.map((step) => ({
+        id: step.id,
+        type: step.type,
+        config: { ...(step.config ?? {}) },
+        ...(step.retry
+          ? {
+              retry: {
+                ...(step.retry.maxAttempts !== undefined
+                  ? { maxAttempts: step.retry.maxAttempts }
+                  : {}),
+                ...(step.retry.backoff !== undefined
+                  ? { backoff: step.retry.backoff }
+                  : {}),
+              },
+            }
+          : {}),
+      })),
+      edges: workflow.edges.map((edge) => ({
+        from: edge.from,
+        to: edge.to,
+        ...(edge.condition !== undefined ? { condition: edge.condition } : {}),
+      })),
+    };
   }
 
   private isDuplicateKeyError(error: unknown): boolean {
