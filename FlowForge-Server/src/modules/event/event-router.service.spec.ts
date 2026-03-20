@@ -70,6 +70,7 @@ describe('EventRouterService', () => {
     owner_id: ownerId,
     context: {},
     status: 'running',
+    workflow_snapshot: workflow,
     save: jest.fn().mockResolvedValue(undefined),
   });
 
@@ -161,6 +162,40 @@ describe('EventRouterService', () => {
         }),
       );
     });
+
+    it('uses execution snapshot even if workflow is edited after execution starts', async () => {
+      const executionDoc = makeExecutionDoc();
+      const queuedStepExecution = { _id: new Types.ObjectId() };
+      const editedWorkflow = {
+        _id: workflowId,
+        owner_id: ownerId,
+        steps: [
+          { id: 'a', type: 'store', config: {} },
+          { id: 'b', type: 'store', config: {} },
+        ],
+        edges: [{ from: 'a', to: 'b' }],
+      };
+
+      mockExecutionModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(executionDoc) });
+      jest.spyOn(workflowService, 'findOne').mockResolvedValue(editedWorkflow as never);
+      jest.spyOn(stepStateService, 'markCompleted').mockResolvedValue({} as never);
+      mockStepExecutionCountDocumentsExec.mockResolvedValue(2);
+      mockStepExecutionFindOneExec.mockResolvedValue(queuedStepExecution);
+
+      await (service as unknown as { onStepCompleted: (r: typeof baseResult) => Promise<void> }).onStepCompleted(
+        baseResult,
+      );
+
+      expect(mockStepExecutionModel.findOne).toHaveBeenCalledWith({
+        execution_id: executionId,
+        step_id: 'join',
+        status: 'queued',
+      });
+      expect(pubSubService.publishJob).toHaveBeenCalledWith(
+        expect.objectContaining({ stepId: 'join' }),
+      );
+      expect(workflowService.findOne).not.toHaveBeenCalled();
+    });
   });
 
   describe('branch dead-end routing', () => {
@@ -230,7 +265,6 @@ describe('EventRouterService', () => {
       mockExecutionModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue(cancelledExecution),
       });
-      jest.spyOn(workflowService, 'findOne').mockResolvedValue(workflow as never);
 
       await (
         service as unknown as {

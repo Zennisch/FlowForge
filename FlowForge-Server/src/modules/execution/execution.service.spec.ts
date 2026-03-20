@@ -60,7 +60,9 @@ const otherOwnerId = new Types.ObjectId().toHexString();
 const workflowId = new Types.ObjectId().toHexString();
 const executionId = new Types.ObjectId().toHexString();
 
-const makeWorkflowDoc = (steps: { id: string }[] = []) => ({
+const makeWorkflowDoc = (
+  steps: { id: string; type: 'http' | 'transform' | 'store' | 'branch' }[] = [],
+) => ({
   _id: workflowId,
   owner_id: { toString: () => ownerId },
   name: 'Test Workflow',
@@ -120,7 +122,10 @@ describe('ExecutionService', () => {
 
   describe('trigger', () => {
     it('creates an execution and step executions for each workflow step', async () => {
-      const steps = [{ id: 'step-1' }, { id: 'step-2' }];
+      const steps = [
+        { id: 'step-1', type: 'store' as const },
+        { id: 'step-2', type: 'transform' as const },
+      ];
       jest
         .spyOn(workflowService, 'findOne')
         .mockResolvedValue(makeWorkflowDoc(steps) as never);
@@ -138,6 +143,21 @@ describe('ExecutionService', () => {
           owner_id: expect.any(Types.ObjectId),
           status: 'running',
           trigger_payload: { foo: 'bar' },
+          workflow_snapshot: {
+            steps: [
+              {
+                id: 'step-1',
+                type: 'store',
+                config: {},
+              },
+              {
+                id: 'step-2',
+                type: 'transform',
+                config: {},
+              },
+            ],
+            edges: [],
+          },
         }),
       );
       expect(mockStepExecutionModel).toHaveBeenCalledTimes(2);
