@@ -8,7 +8,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { ExecutionService } from './execution.service';
+import { ExecutionService, WebhookSecurityContext } from './execution.service';
 
 @Controller('webhook')
 export class WebhookController {
@@ -25,6 +25,7 @@ export class WebhookController {
     const normalizedBody = this.normalizeBody(body);
     const providedSecret = this.extractProvidedSecret(req, normalizedBody);
     const sanitizedBody = this.removeSecretFromBody(normalizedBody);
+    const security = this.buildSecurityContext(req, path, providedSecret);
 
     return this.executionService.triggerByWebhook(userId, path, {
       body: sanitizedBody,
@@ -35,7 +36,7 @@ export class WebhookController {
         path,
         received_at: new Date().toISOString(),
       },
-    }, providedSecret);
+    }, security);
   }
 
   private normalizeBody(body: unknown): Record<string, unknown> {
@@ -76,5 +77,44 @@ export class WebhookController {
 
     const { secret: _removedSecret, ...rest } = body;
     return rest;
+  }
+
+  private buildSecurityContext(
+    req: Request,
+    path: string,
+    providedSecret?: string,
+  ): WebhookSecurityContext {
+    return {
+      providedSecret,
+      signature: this.readHeader(req, 'x-webhook-signature'),
+      timestamp: this.readHeader(req, 'x-webhook-timestamp'),
+      nonce: this.readHeader(req, 'x-webhook-nonce'),
+      method: req.method,
+      path,
+      ip: this.extractRequestIp(req),
+    };
+  }
+
+  private readHeader(req: Request, headerName: string): string | undefined {
+    const value = req.headers[headerName];
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (Array.isArray(value) && value.length > 0) {
+      return value[0];
+    }
+    return undefined;
+  }
+
+  private extractRequestIp(req: Request): string | undefined {
+    const forwardedFor = this.readHeader(req, 'x-forwarded-for');
+    if (forwardedFor) {
+      const firstHop = forwardedFor.split(',')[0]?.trim();
+      if (firstHop) {
+        return firstHop;
+      }
+    }
+
+    return req.ip;
   }
 }

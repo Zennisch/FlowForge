@@ -12,6 +12,11 @@ import { Execution, ExecutionSchema } from './execution.schema';
 import { ExecutionWatchdogService } from './execution-watchdog.service';
 import { StepExecution, StepExecutionSchema } from './step-execution.schema';
 import { StepStateService } from './step-state.service';
+import { WebhookNonce, WebhookNonceSchema } from './webhook-nonce.schema';
+import {
+  WebhookRateLimit,
+  WebhookRateLimitSchema,
+} from './webhook-rate-limit.schema';
 import { WebhookController } from './webhook.controller';
 
 @Module({
@@ -19,6 +24,8 @@ import { WebhookController } from './webhook.controller';
     MongooseModule.forFeature([
       { name: Execution.name, schema: ExecutionSchema },
       { name: StepExecution.name, schema: StepExecutionSchema },
+      { name: WebhookNonce.name, schema: WebhookNonceSchema },
+      { name: WebhookRateLimit.name, schema: WebhookRateLimitSchema },
     ]),
     WorkflowModule,
     EventModule,
