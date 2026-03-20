@@ -94,7 +94,16 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    await this.stepStateService.markCompleted(result.stepExecutionId, result.output);
+    const markedCompleted = await this.stepStateService.markCompleted(
+      result.stepExecutionId,
+      result.output,
+    );
+    if (!markedCompleted) {
+      this.logger.log(
+        `Ignoring duplicate/stale completed result for step "${result.stepId}" in execution ${result.executionId}`,
+      );
+      return;
+    }
 
     const newContext = { ...execution.context, ...result.output };
     execution.context = newContext;
@@ -197,6 +206,23 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    const stepExecution = await this.stepExecutionModel
+      .findById(result.stepExecutionId)
+      .exec();
+    if (!stepExecution) {
+      this.logger.warn(
+        `StepExecution ${result.stepExecutionId} not found for failed result of execution ${result.executionId}`,
+      );
+      return;
+    }
+
+    if (stepExecution.attempt !== result.attempt || stepExecution.status !== 'running') {
+      this.logger.log(
+        `Ignoring stale/duplicate failed result for step "${result.stepId}" in execution ${result.executionId}`,
+      );
+      return;
+    }
+
     const workflow = await this.getWorkflowDefinition(execution);
 
     const step = workflow.steps.find((s) => s.id === result.stepId);
@@ -230,15 +256,10 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      const stepExecution = await this.stepExecutionModel
-        .findById(result.stepExecutionId)
-        .exec();
-      if (stepExecution) {
-        stepExecution.attempt = result.attempt + 1;
-        stepExecution.status = 'queued';
-        stepExecution.error = null;
-        await stepExecution.save();
-      }
+      stepExecution.attempt = result.attempt + 1;
+      stepExecution.status = 'queued';
+      stepExecution.error = null;
+      await stepExecution.save();
 
       const job: StepJob = {
         executionId: result.executionId,
@@ -254,10 +275,16 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(
         `Step "${result.stepId}" exhausted ${maxAttempts} attempts; compensating execution ${result.executionId}`,
       );
-      await this.stepStateService.markFailed(
+      const markedFailed = await this.stepStateService.markFailed(
         result.stepExecutionId,
         result.error ?? 'Unknown error',
       );
+      if (!markedFailed) {
+        this.logger.log(
+          `Ignoring terminal failure for step "${result.stepId}" because state already moved in execution ${result.executionId}`,
+        );
+        return;
+      }
       await this.compensateService.compensate(result.executionId);
     }
   }

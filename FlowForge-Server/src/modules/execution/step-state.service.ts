@@ -16,14 +16,8 @@ export class StepStateService {
   ) {}
 
   async markRunning(stepExecutionId: string): Promise<StepExecutionDocument | null> {
-    const stepExecution = await this.stepExecutionModel
-      .findById(stepExecutionId)
-      .exec();
+    const stepExecution = await this.stepExecutionModel.findById(stepExecutionId).exec();
     if (!stepExecution) throw new NotFoundException('StepExecution not found');
-
-    if (stepExecution.status !== 'queued') {
-      return null;
-    }
 
     const execution = await this.executionModel
       .findById(stepExecution.execution_id)
@@ -34,33 +28,45 @@ export class StepStateService {
       return null;
     }
 
-    stepExecution.status = 'running';
-    stepExecution.started_at = new Date();
-    await stepExecution.save();
+    const startedAt = new Date();
+    const updated = await this.stepExecutionModel
+      .findOneAndUpdate(
+        { _id: stepExecutionId, status: 'queued' },
+        { $set: { status: 'running', started_at: startedAt } },
+        { new: true },
+      )
+      .exec();
+    if (!updated) {
+      return null;
+    }
 
     await this.eventService.append(
-      stepExecution.execution_id.toHexString(),
+      updated.execution_id.toHexString(),
       'step.started',
-      { attempt: stepExecution.attempt },
-      stepExecution.step_id,
+      { attempt: updated.attempt },
+      updated.step_id,
     );
 
-    return stepExecution;
+    return updated;
   }
 
   async markCompleted(
     stepExecutionId: string,
     output: Record<string, unknown>,
-  ): Promise<StepExecutionDocument> {
+  ): Promise<StepExecutionDocument | null> {
+    const completedAt = new Date();
     const stepExecution = await this.stepExecutionModel
-      .findById(stepExecutionId)
+      .findOneAndUpdate(
+        { _id: stepExecutionId, status: 'running' },
+        { $set: { status: 'completed', output, completed_at: completedAt } },
+        { new: true },
+      )
       .exec();
-    if (!stepExecution) throw new NotFoundException('StepExecution not found');
-
-    stepExecution.status = 'completed';
-    stepExecution.output = output;
-    stepExecution.completed_at = new Date();
-    await stepExecution.save();
+    if (!stepExecution) {
+      const existing = await this.stepExecutionModel.findById(stepExecutionId).exec();
+      if (!existing) throw new NotFoundException('StepExecution not found');
+      return null;
+    }
 
     await this.eventService.append(
       stepExecution.execution_id.toHexString(),
@@ -75,16 +81,20 @@ export class StepStateService {
   async markFailed(
     stepExecutionId: string,
     error: string,
-  ): Promise<StepExecutionDocument> {
+  ): Promise<StepExecutionDocument | null> {
+    const completedAt = new Date();
     const stepExecution = await this.stepExecutionModel
-      .findById(stepExecutionId)
+      .findOneAndUpdate(
+        { _id: stepExecutionId, status: 'running' },
+        { $set: { status: 'failed', error, completed_at: completedAt } },
+        { new: true },
+      )
       .exec();
-    if (!stepExecution) throw new NotFoundException('StepExecution not found');
-
-    stepExecution.status = 'failed';
-    stepExecution.error = error;
-    stepExecution.completed_at = new Date();
-    await stepExecution.save();
+    if (!stepExecution) {
+      const existing = await this.stepExecutionModel.findById(stepExecutionId).exec();
+      if (!existing) throw new NotFoundException('StepExecution not found');
+      return null;
+    }
 
     await this.eventService.append(
       stepExecution.execution_id.toHexString(),

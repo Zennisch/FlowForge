@@ -11,6 +11,7 @@ import { StepStateService } from './step-state.service';
 
 const mockStepSave = jest.fn();
 const mockStepFindByIdExec = jest.fn();
+const mockStepFindOneAndUpdateExec = jest.fn();
 const mockExecutionFindByIdExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,6 +19,9 @@ const mockStepExecutionModel: any = {};
 mockStepExecutionModel.findById = jest
   .fn()
   .mockReturnValue({ exec: mockStepFindByIdExec });
+mockStepExecutionModel.findOneAndUpdate = jest
+  .fn()
+  .mockReturnValue({ exec: mockStepFindOneAndUpdateExec });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockExecutionModel: any = {};
@@ -78,23 +82,27 @@ describe('StepStateService', () => {
 
   describe('markRunning', () => {
     it('sets status to running and sets started_at', async () => {
-      const doc = makeStepDoc();
-      mockStepFindByIdExec.mockResolvedValue(doc);
+      const doc = makeStepDoc({ status: 'running', started_at: new Date() });
+      mockStepFindByIdExec.mockResolvedValue(makeStepDoc());
       mockExecutionFindByIdExec.mockResolvedValue({ status: 'running' });
-      mockStepSave.mockResolvedValue(doc);
+      mockStepFindOneAndUpdateExec.mockResolvedValue(doc);
 
       const result = await service.markRunning(stepExecutionId);
 
       expect(result.status).toBe('running');
       expect(result.started_at).toBeInstanceOf(Date);
-      expect(mockStepSave).toHaveBeenCalled();
+      expect(mockStepExecutionModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: stepExecutionId, status: 'queued' },
+        { $set: { status: 'running', started_at: expect.any(Date) } },
+        { new: true },
+      );
     });
 
     it('appends a step.started event', async () => {
-      const doc = makeStepDoc();
-      mockStepFindByIdExec.mockResolvedValue(doc);
+      const doc = makeStepDoc({ status: 'running', started_at: new Date() });
+      mockStepFindByIdExec.mockResolvedValue(makeStepDoc());
       mockExecutionFindByIdExec.mockResolvedValue({ status: 'running' });
-      mockStepSave.mockResolvedValue(doc);
+      mockStepFindOneAndUpdateExec.mockResolvedValue(doc);
 
       await service.markRunning(stepExecutionId);
 
@@ -114,14 +122,14 @@ describe('StepStateService', () => {
       );
     });
 
-    it('returns null when step is not queued', async () => {
-      const doc = makeStepDoc({ status: 'skipped' });
-      mockStepFindByIdExec.mockResolvedValue(doc);
+    it('returns null when step cannot transition from queued to running', async () => {
+      mockStepFindByIdExec.mockResolvedValue(makeStepDoc());
+      mockExecutionFindByIdExec.mockResolvedValue({ status: 'running' });
+      mockStepFindOneAndUpdateExec.mockResolvedValue(null);
 
       const result = await service.markRunning(stepExecutionId);
 
       expect(result).toBeNull();
-      expect(mockStepSave).not.toHaveBeenCalled();
       expect(eventService.append).not.toHaveBeenCalled();
     });
 
@@ -133,7 +141,7 @@ describe('StepStateService', () => {
       const result = await service.markRunning(stepExecutionId);
 
       expect(result).toBeNull();
-      expect(mockStepSave).not.toHaveBeenCalled();
+      expect(mockStepExecutionModel.findOneAndUpdate).not.toHaveBeenCalled();
       expect(eventService.append).not.toHaveBeenCalled();
     });
   });
@@ -142,11 +150,14 @@ describe('StepStateService', () => {
 
   describe('markCompleted', () => {
     it('sets status to completed, stores output and sets completed_at', async () => {
-      const doc = makeStepDoc({ status: 'running' });
-      mockStepFindByIdExec.mockResolvedValue(doc);
-      mockStepSave.mockResolvedValue(doc);
-
       const output = { result: 42 };
+      const doc = makeStepDoc({
+        status: 'completed',
+        output,
+        completed_at: new Date(),
+      });
+      mockStepFindOneAndUpdateExec.mockResolvedValue(doc);
+
       const result = await service.markCompleted(stepExecutionId, output);
 
       expect(result.status).toBe('completed');
@@ -156,8 +167,7 @@ describe('StepStateService', () => {
 
     it('appends a step.completed event', async () => {
       const doc = makeStepDoc({ status: 'running' });
-      mockStepFindByIdExec.mockResolvedValue(doc);
-      mockStepSave.mockResolvedValue(doc);
+      mockStepFindOneAndUpdateExec.mockResolvedValue(doc);
 
       const output = { result: 'ok' };
       await service.markCompleted(stepExecutionId, output);
@@ -171,11 +181,22 @@ describe('StepStateService', () => {
     });
 
     it('throws NotFoundException when step execution does not exist', async () => {
+      mockStepFindOneAndUpdateExec.mockResolvedValue(null);
       mockStepFindByIdExec.mockResolvedValue(null);
 
       await expect(
         service.markCompleted(stepExecutionId, {}),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns null when step is already terminal (duplicate completion)', async () => {
+      mockStepFindOneAndUpdateExec.mockResolvedValue(null);
+      mockStepFindByIdExec.mockResolvedValue(makeStepDoc({ status: 'completed' }));
+
+      const result = await service.markCompleted(stepExecutionId, { result: 'dup' });
+
+      expect(result).toBeNull();
+      expect(eventService.append).not.toHaveBeenCalled();
     });
   });
 
@@ -183,9 +204,12 @@ describe('StepStateService', () => {
 
   describe('markFailed', () => {
     it('sets status to failed, stores error and sets completed_at', async () => {
-      const doc = makeStepDoc({ status: 'running' });
-      mockStepFindByIdExec.mockResolvedValue(doc);
-      mockStepSave.mockResolvedValue(doc);
+      const doc = makeStepDoc({
+        status: 'failed',
+        error: 'timeout',
+        completed_at: new Date(),
+      });
+      mockStepFindOneAndUpdateExec.mockResolvedValue(doc);
 
       const result = await service.markFailed(stepExecutionId, 'timeout');
 
@@ -196,8 +220,7 @@ describe('StepStateService', () => {
 
     it('appends a step.failed event with error and attempt', async () => {
       const doc = makeStepDoc({ status: 'running', attempt: 2 });
-      mockStepFindByIdExec.mockResolvedValue(doc);
-      mockStepSave.mockResolvedValue(doc);
+      mockStepFindOneAndUpdateExec.mockResolvedValue(doc);
 
       await service.markFailed(stepExecutionId, 'connection refused');
 
@@ -210,11 +233,22 @@ describe('StepStateService', () => {
     });
 
     it('throws NotFoundException when step execution does not exist', async () => {
+      mockStepFindOneAndUpdateExec.mockResolvedValue(null);
       mockStepFindByIdExec.mockResolvedValue(null);
 
       await expect(
         service.markFailed(stepExecutionId, 'some error'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns null when step is already terminal (duplicate failure)', async () => {
+      mockStepFindOneAndUpdateExec.mockResolvedValue(null);
+      mockStepFindByIdExec.mockResolvedValue(makeStepDoc({ status: 'failed' }));
+
+      const result = await service.markFailed(stepExecutionId, 'duplicate');
+
+      expect(result).toBeNull();
+      expect(eventService.append).not.toHaveBeenCalled();
     });
   });
 });

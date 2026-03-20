@@ -334,5 +334,66 @@ describe('EventRouterService', () => {
       expect(Number.isFinite(Date.parse(publishArg.notBefore))).toBe(true);
       expect(compensateService.compensate).not.toHaveBeenCalled();
     });
+
+    it('ignores stale failed result when step execution attempt has already advanced', async () => {
+      const executionDoc = makeExecutionDoc();
+      const stepExecutionDoc = {
+        _id: new Types.ObjectId(),
+        attempt: 1,
+        status: 'queued',
+        error: null,
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(executionDoc),
+      });
+      mockStepExecutionFindByIdExec.mockResolvedValue(stepExecutionDoc);
+
+      await (
+        service as unknown as {
+          onStepFailed: (r: StepResult) => Promise<void>;
+        }
+      ).onStepFailed({
+        ...baseResult,
+        status: 'failed',
+        error: 'old failure',
+        attempt: 0,
+      });
+
+      expect(eventService.append).not.toHaveBeenCalledWith(
+        baseResult.executionId,
+        'step.retrying',
+        expect.anything(),
+        'a',
+      );
+      expect(pubSubService.publishJob).not.toHaveBeenCalled();
+      expect(compensateService.compensate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('duplicate delivery guards', () => {
+    it('ignores duplicate completed result when step was already completed', async () => {
+      const executionDoc = makeExecutionDoc();
+
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(executionDoc),
+      });
+      jest.spyOn(stepStateService, 'markCompleted').mockResolvedValue(null);
+
+      await (
+        service as unknown as {
+          onStepCompleted: (r: typeof baseResult) => Promise<void>;
+        }
+      ).onStepCompleted(baseResult);
+
+      expect(pubSubService.publishJob).not.toHaveBeenCalled();
+      expect(eventService.append).not.toHaveBeenCalledWith(
+        baseResult.executionId,
+        'step.queued',
+        {},
+        expect.any(String),
+      );
+    });
   });
 });
