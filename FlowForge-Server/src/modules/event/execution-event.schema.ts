@@ -13,7 +13,10 @@ export type EventType =
   | 'step.completed'
   | 'step.failed'
   | 'step.skipped'
-  | 'step.retrying';
+  | 'step.retrying'
+  | 'step.compensation.started'
+  | 'step.compensation.completed'
+  | 'step.compensation.failed';
 
 const EVENT_TYPES: EventType[] = [
   'execution.started',
@@ -27,6 +30,9 @@ const EVENT_TYPES: EventType[] = [
   'step.failed',
   'step.skipped',
   'step.retrying',
+  'step.compensation.started',
+  'step.compensation.completed',
+  'step.compensation.failed',
 ];
 
 @Schema()

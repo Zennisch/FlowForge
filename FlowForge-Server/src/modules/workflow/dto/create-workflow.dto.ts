@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsObject,
@@ -24,6 +25,25 @@ export class RetryPolicyDto {
   backoff?: 'exponential' | 'fixed';
 }
 
+export class CompensationPolicyDto {
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @IsOptional()
+  @IsEnum(['noop', 'http'])
+  type?: 'noop' | 'http';
+
+  @IsOptional()
+  @IsObject()
+  config?: Record<string, unknown>;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RetryPolicyDto)
+  retry?: RetryPolicyDto;
+}
+
 export class WorkflowStepDto {
   @IsString()
   @MinLength(1)
@@ -40,6 +60,11 @@ export class WorkflowStepDto {
   @ValidateNested()
   @Type(() => RetryPolicyDto)
   retry?: RetryPolicyDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CompensationPolicyDto)
+  compensation?: CompensationPolicyDto;
 }
 
 export class WorkflowEdgeDto {

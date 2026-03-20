@@ -4,6 +4,7 @@ import { PubSubModule } from '../../infra/pubsub/pubsub.provider';
 import { EventRouterService } from '../event/event-router.service';
 import { EventModule } from '../event/event.module';
 import { WorkflowModule } from '../workflow/workflow.module';
+import { CompensationExecutorService } from './compensation-executor.service';
 import { CompensateService } from './compensate.service';
 import { ExecutionController } from './execution.controller';
 import { ExecutionService } from './execution.service';
@@ -27,6 +28,7 @@ import { WebhookController } from './webhook.controller';
   providers: [
     ExecutionService,
     StepStateService,
+    CompensationExecutorService,
     CompensateService,
     EventRouterService,
     ExecutionWatchdogService,

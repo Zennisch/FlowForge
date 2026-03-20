@@ -319,6 +319,35 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
               },
             }
           : {}),
+        ...(step.compensation
+          ? {
+              compensation: {
+                ...(step.compensation.enabled !== undefined
+                  ? { enabled: step.compensation.enabled }
+                  : {}),
+                ...(step.compensation.type !== undefined
+                  ? { type: step.compensation.type }
+                  : {}),
+                ...(step.compensation.config !== undefined
+                  ? {
+                      config: step.compensation.config as Record<string, unknown>,
+                    }
+                  : {}),
+                ...(step.compensation.retry
+                  ? {
+                      retry: {
+                        ...(step.compensation.retry.maxAttempts !== undefined
+                          ? { maxAttempts: step.compensation.retry.maxAttempts }
+                          : {}),
+                        ...(step.compensation.retry.backoff !== undefined
+                          ? { backoff: step.compensation.retry.backoff }
+                          : {}),
+                      },
+                    }
+                  : {}),
+              },
+            }
+          : {}),
       })),
       edges: workflow.edges.map((edge) => ({
         from: edge.from,
