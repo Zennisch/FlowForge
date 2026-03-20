@@ -281,4 +281,58 @@ describe('EventRouterService', () => {
       expect(pubSubService.publishJob).not.toHaveBeenCalled();
     });
   });
+
+  describe('retry scheduling', () => {
+    it('publishes retry job with notBefore instead of waiting in-memory', async () => {
+      const executionDoc = makeExecutionDoc();
+      const stepExecutionDoc = {
+        _id: new Types.ObjectId(),
+        attempt: 0,
+        status: 'running',
+        error: 'boom',
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(executionDoc),
+      });
+      mockStepExecutionFindByIdExec.mockResolvedValue(stepExecutionDoc);
+
+      await (
+        service as unknown as {
+          onStepFailed: (r: StepResult) => Promise<void>;
+        }
+      ).onStepFailed({
+        ...baseResult,
+        status: 'failed',
+        error: 'boom',
+      });
+
+      expect(stepExecutionDoc.attempt).toBe(1);
+      expect(stepExecutionDoc.status).toBe('queued');
+      expect(stepExecutionDoc.error).toBeNull();
+      expect(stepExecutionDoc.save).toHaveBeenCalled();
+      expect(eventService.append).toHaveBeenCalledWith(
+        baseResult.executionId,
+        'step.retrying',
+        expect.objectContaining({ attempt: 1, delayMs: expect.any(Number) }),
+        'a',
+      );
+      expect(pubSubService.publishJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          executionId: baseResult.executionId,
+          stepId: 'a',
+          stepExecutionId: baseResult.stepExecutionId,
+          attempt: 1,
+          notBefore: expect.any(String),
+        }),
+      );
+
+      const publishArg = (pubSubService.publishJob as jest.Mock).mock.calls[0][0] as {
+        notBefore: string;
+      };
+      expect(Number.isFinite(Date.parse(publishArg.notBefore))).toBe(true);
+      expect(compensateService.compensate).not.toHaveBeenCalled();
+    });
+  });
 });
