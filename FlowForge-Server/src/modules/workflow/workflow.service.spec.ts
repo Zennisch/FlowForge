@@ -297,6 +297,47 @@ describe('WorkflowService', () => {
         }),
       );
     });
+
+    it('should throw BadRequestException when compensation http is enabled without url', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Compensable Workflow',
+          steps: [
+            {
+              id: 'step-1',
+              type: 'http',
+              compensation: {
+                enabled: true,
+                type: 'http',
+                config: {},
+              },
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should allow compensation http config when url is provided', async () => {
+      const savedDoc = makeWorkflowDoc({ name: 'Compensable Workflow' });
+      mockSave.mockResolvedValue(savedDoc);
+
+      await expect(
+        service.create(ownerId, {
+          name: 'Compensable Workflow',
+          steps: [
+            {
+              id: 'step-1',
+              type: 'http',
+              compensation: {
+                enabled: true,
+                type: 'http',
+                config: { url: 'https://example.test/undo' },
+              },
+            },
+          ],
+        }),
+      ).resolves.toEqual(savedDoc);
+    });
   });
 
   // ── update ──────────────────────────────────────────────────────────────────

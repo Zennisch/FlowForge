@@ -96,6 +96,9 @@ export class ExecutionService {
         input: {},
         output: null,
         error: null,
+        compensation_status: step.compensation?.enabled ? 'pending' : 'disabled',
+        compensation_attempt: 0,
+        compensation_error: null,
       }).save();
       stepExecutions.push(stepExecution);
     }

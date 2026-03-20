@@ -3,6 +3,12 @@ import { HydratedDocument, Types } from 'mongoose';
 
 export type StepExecutionDocument = HydratedDocument<StepExecution>;
 export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skipped';
+export type CompensationStatus =
+  | 'disabled'
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed';
 
 @Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } })
 export class StepExecution {
@@ -29,6 +35,21 @@ export class StepExecution {
 
   @Prop({ default: null })
   error: string | null;
+
+  @Prop({ enum: ['disabled', 'pending', 'running', 'completed', 'failed'], default: 'disabled' })
+  compensation_status: CompensationStatus;
+
+  @Prop({ default: 0 })
+  compensation_attempt: number;
+
+  @Prop({ default: null })
+  compensation_error?: string | null;
+
+  @Prop()
+  compensation_started_at?: Date;
+
+  @Prop()
+  compensation_completed_at?: Date;
 
   @Prop()
   started_at?: Date;

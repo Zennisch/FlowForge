@@ -21,6 +21,7 @@ mockExecutionModel.findById = jest
 
 const mockUpdateManyExec = jest.fn();
 const mockStepFindExec = jest.fn();
+const mockFindByIdAndUpdateExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockStepExecutionModel: any = {};
@@ -30,6 +31,9 @@ mockStepExecutionModel.updateMany = jest
 mockStepExecutionModel.find = jest.fn().mockReturnValue({
   sort: jest.fn().mockReturnValue({ exec: mockStepFindExec }),
 });
+mockStepExecutionModel.findByIdAndUpdate = jest
+  .fn()
+  .mockReturnValue({ exec: mockFindByIdAndUpdateExec });
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -101,6 +105,7 @@ describe('CompensateService', () => {
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockStepFindExec.mockResolvedValue([]);
       mockUpdateManyExec.mockResolvedValue({ modifiedCount: 1 });
+      mockFindByIdAndUpdateExec.mockResolvedValue({});
       mockExecutionSave.mockResolvedValue(doc);
 
       const result = await service.compensate(executionId);
@@ -114,6 +119,7 @@ describe('CompensateService', () => {
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockStepFindExec.mockResolvedValue([]);
       mockUpdateManyExec.mockResolvedValue({ modifiedCount: 3 });
+      mockFindByIdAndUpdateExec.mockResolvedValue({});
       mockExecutionSave.mockResolvedValue(doc);
 
       await service.compensate(executionId);
@@ -137,6 +143,7 @@ describe('CompensateService', () => {
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockStepFindExec.mockResolvedValue([]);
       mockUpdateManyExec.mockResolvedValue({});
+      mockFindByIdAndUpdateExec.mockResolvedValue({});
       mockExecutionSave.mockResolvedValue(doc);
 
       await service.compensate(executionId);
@@ -157,6 +164,7 @@ describe('CompensateService', () => {
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockStepFindExec.mockResolvedValue([]);
       mockUpdateManyExec.mockResolvedValue({});
+      mockFindByIdAndUpdateExec.mockResolvedValue({});
       mockExecutionSave.mockResolvedValue(doc);
 
       await service.compensate(executionId);
@@ -177,6 +185,7 @@ describe('CompensateService', () => {
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockStepFindExec.mockResolvedValue([]);
       mockUpdateManyExec.mockResolvedValue({ modifiedCount: 1 });
+      mockFindByIdAndUpdateExec.mockResolvedValue({});
       mockExecutionSave.mockResolvedValue(doc);
 
       await service.compensate(executionId, 'timeout');
@@ -220,6 +229,7 @@ describe('CompensateService', () => {
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockStepFindExec.mockResolvedValue([stepExecution]);
       mockUpdateManyExec.mockResolvedValue({ modifiedCount: 1 });
+      mockFindByIdAndUpdateExec.mockResolvedValue({});
       mockExecutionSave.mockResolvedValue(doc);
 
       await service.compensate(executionId);
@@ -228,12 +238,13 @@ describe('CompensateService', () => {
         expect.objectContaining({
           executionId,
           stepId: 'reserve-inventory',
+          idempotencyKey: expect.any(String),
         }),
       );
       expect(eventService.append).toHaveBeenCalledWith(
         executionId,
         'step.compensation.started',
-        { type: 'http' },
+        expect.objectContaining({ type: 'http' }),
         'reserve-inventory',
       );
       expect(eventService.append).toHaveBeenCalledWith(
@@ -263,6 +274,7 @@ describe('CompensateService', () => {
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockStepFindExec.mockResolvedValue([stepExecution]);
       mockUpdateManyExec.mockResolvedValue({ modifiedCount: 1 });
+      mockFindByIdAndUpdateExec.mockResolvedValue({});
       mockExecutionSave.mockResolvedValue(doc);
 
       await service.compensate(executionId);
@@ -273,6 +285,53 @@ describe('CompensateService', () => {
         'step.compensation.started',
         expect.anything(),
         'transform-a',
+      );
+    });
+
+    it('retries compensation when first attempt fails and then succeeds', async () => {
+      const stepExecution = makeCompletedStepExecution();
+      const doc = makeExecutionDoc({
+        workflow_snapshot: {
+          steps: [
+            {
+              id: 'reserve-inventory',
+              type: 'http',
+              config: {},
+              compensation: {
+                enabled: true,
+                type: 'http',
+                config: { url: 'https://example.test/undo' },
+                retry: { maxAttempts: 2, backoff: 'fixed' },
+              },
+            },
+          ],
+          edges: [],
+        },
+      });
+
+      mockExecutionFindByIdExec.mockResolvedValue(doc);
+      mockStepFindExec.mockResolvedValue([stepExecution]);
+      mockUpdateManyExec.mockResolvedValue({ modifiedCount: 1 });
+      mockFindByIdAndUpdateExec.mockResolvedValue({});
+      mockExecutionSave.mockResolvedValue(doc);
+      (compensationExecutor.execute as jest.Mock)
+        .mockRejectedValueOnce(new Error('temporary failure'))
+        .mockResolvedValueOnce({ applied: true });
+
+      await service.compensate(executionId);
+
+      expect(compensationExecutor.execute).toHaveBeenCalledTimes(2);
+      expect(eventService.append).toHaveBeenCalledWith(
+        executionId,
+        'step.compensation.failed',
+        expect.objectContaining({ willRetry: true }),
+        'reserve-inventory',
+      );
+      expect(eventService.append).toHaveBeenCalledWith(
+        executionId,
+        'step.compensation.completed',
+        expect.objectContaining({ attempt: 2 }),
+        'reserve-inventory',
       );
     });
   });

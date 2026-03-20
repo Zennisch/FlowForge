@@ -6,6 +6,7 @@ interface ExecuteCompensationParams {
   executionId: string;
   stepExecutionId: string;
   stepId: string;
+  idempotencyKey: string;
   compensation: ExecutionWorkflowSnapshotCompensationPolicy;
   input: Record<string, unknown>;
   output: Record<string, unknown> | null;
@@ -41,7 +42,7 @@ export class CompensationExecutorService {
 
     const method = this.resolveHttpMethod(config.method);
     const timeoutMs = this.resolveTimeout(config.timeoutMs, 10_000);
-    const headers = this.resolveHeaders(config.headers);
+    const headers = this.resolveHeaders(config.headers, params.idempotencyKey);
     const body = this.resolveBody(config.body, params);
 
     const response = await axios.request({
@@ -86,9 +87,16 @@ export class CompensationExecutorService {
     return fallback;
   }
 
-  private resolveHeaders(value: unknown): Record<string, string> | undefined {
+  private resolveHeaders(
+    value: unknown,
+    idempotencyKey: string,
+  ): Record<string, string> {
+    const baseHeaders: Record<string, string> = {
+      'x-compensation-idempotency-key': idempotencyKey,
+    };
+
     if (!value || typeof value !== 'object') {
-      return undefined;
+      return baseHeaders;
     }
 
     const entries = Object.entries(value as Record<string, unknown>)
@@ -96,10 +104,10 @@ export class CompensationExecutorService {
       .map(([headerName, headerValue]) => [headerName, headerValue as string]);
 
     if (entries.length === 0) {
-      return undefined;
+      return baseHeaders;
     }
 
-    return Object.fromEntries(entries);
+    return { ...baseHeaders, ...Object.fromEntries(entries) };
   }
 
   private resolveBody(
