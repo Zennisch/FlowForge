@@ -46,30 +46,30 @@ export class ExecutionService {
 
     const triggerType = options.triggerType ?? 'manual';
     const triggerPayload = options.payload ?? dto.payload ?? {};
-    const incomingIdempotencyKey = options.idempotencyKey ?? dto.idempotency_key;
+    const normalizedIdempotencyKey = this.normalizeIdempotencyKey(
+      options.idempotencyKey ?? dto.idempotency_key,
+    );
 
-    if (incomingIdempotencyKey) {
-      const existing = await this.executionModel
-        .findOne({ idempotency_key: incomingIdempotencyKey })
-        .exec();
-      if (existing) {
-        throw new ConflictException('Duplicate idempotency key');
+    let execution: ExecutionDocument;
+    try {
+      execution = await new this.executionModel({
+        workflow_id: new Types.ObjectId(workflowId),
+        owner_id: new Types.ObjectId(ownerId),
+        status: 'running',
+        trigger_type: triggerType,
+        trigger_payload: triggerPayload,
+        context: {},
+        ...(normalizedIdempotencyKey
+          ? { idempotency_key: normalizedIdempotencyKey }
+          : {}),
+        started_at: new Date(),
+      }).save();
+    } catch (error: unknown) {
+      if (this.isDuplicateKeyError(error)) {
+        throw new ConflictException('Duplicate idempotency key in this workflow scope');
       }
+      throw error;
     }
-
-    const idempotencyKey =
-      incomingIdempotencyKey ?? new Types.ObjectId().toHexString();
-
-    const execution = await new this.executionModel({
-      workflow_id: new Types.ObjectId(workflowId),
-      owner_id: new Types.ObjectId(ownerId),
-      status: 'running',
-      trigger_type: triggerType,
-      trigger_payload: triggerPayload,
-      context: {},
-      idempotency_key: idempotencyKey,
-      started_at: new Date(),
-    }).save();
 
     const stepExecutions: StepExecutionDocument[] = [];
     for (const step of workflow.steps) {
@@ -179,6 +179,26 @@ export class ExecutionService {
     }
 
     return timingSafeEqual(expectedBuffer, providedBuffer);
+  }
+
+  private normalizeIdempotencyKey(
+    key?: string,
+  ): string | undefined {
+    if (typeof key !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = key.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const maybeMongoError = error as { code?: number };
+    return maybeMongoError.code === 11000;
   }
 
   findAll(ownerId: string): Promise<ExecutionDocument[]> {

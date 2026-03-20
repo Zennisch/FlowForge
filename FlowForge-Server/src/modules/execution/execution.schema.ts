@@ -33,7 +33,7 @@ export class Execution {
   @Prop({ type: Object, default: {} })
   context: Record<string, unknown>;
 
-  @Prop({ unique: true, sparse: true })
+  @Prop()
   idempotency_key?: string;
 
   @Prop()
@@ -44,4 +44,14 @@ export class Execution {
 }
 
 export const ExecutionSchema = SchemaFactory.createForClass(Execution);
+
+ExecutionSchema.index(
+  { owner_id: 1, workflow_id: 1, idempotency_key: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      idempotency_key: { $exists: true, $type: 'string' },
+    },
+  },
+);
 
