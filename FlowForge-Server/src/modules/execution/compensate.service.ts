@@ -15,9 +15,15 @@ export class CompensateService {
     private readonly eventService: EventService,
   ) {}
 
-  async compensate(executionId: string): Promise<ExecutionDocument> {
+  async compensate(
+    executionId: string,
+    reason: 'compensation' | 'timeout' = 'compensation',
+  ): Promise<ExecutionDocument> {
     const execution = await this.executionModel.findById(executionId).exec();
     if (!execution) throw new NotFoundException('Execution not found');
+
+    const stepFailureMessage =
+      reason === 'timeout' ? 'Execution timed out' : 'Execution compensated';
 
     execution.status = 'compensating';
     await execution.save();
@@ -33,7 +39,7 @@ export class CompensateService {
         {
           $set: {
             status: 'failed',
-            error: 'Execution compensated',
+            error: stepFailureMessage,
             completed_at: new Date(),
           },
         },
@@ -44,9 +50,7 @@ export class CompensateService {
     execution.completed_at = new Date();
     await execution.save();
 
-    await this.eventService.append(executionId, 'execution.failed', {
-      reason: 'compensation',
-    });
+    await this.eventService.append(executionId, 'execution.failed', { reason });
 
     return execution;
   }

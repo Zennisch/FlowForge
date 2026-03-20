@@ -8,6 +8,7 @@ import { CompensateService } from './compensate.service';
 import { ExecutionController } from './execution.controller';
 import { ExecutionService } from './execution.service';
 import { Execution, ExecutionSchema } from './execution.schema';
+import { ExecutionWatchdogService } from './execution-watchdog.service';
 import { StepExecution, StepExecutionSchema } from './step-execution.schema';
 import { StepStateService } from './step-state.service';
 import { WebhookController } from './webhook.controller';
@@ -28,6 +29,7 @@ import { WebhookController } from './webhook.controller';
     StepStateService,
     CompensateService,
     EventRouterService,
+    ExecutionWatchdogService,
   ],
   exports: [ExecutionService, StepStateService, CompensateService],
 })

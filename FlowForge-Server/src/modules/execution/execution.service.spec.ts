@@ -62,12 +62,14 @@ const executionId = new Types.ObjectId().toHexString();
 
 const makeWorkflowDoc = (
   steps: { id: string; type: 'http' | 'transform' | 'store' | 'branch' }[] = [],
+  overrides: Record<string, unknown> = {},
 ) => ({
   _id: workflowId,
   owner_id: { toString: () => ownerId },
   name: 'Test Workflow',
   steps,
   edges: [],
+  ...overrides,
 });
 
 const makeExecutionDoc = (
@@ -143,6 +145,8 @@ describe('ExecutionService', () => {
           owner_id: expect.any(Types.ObjectId),
           status: 'running',
           trigger_payload: { foo: 'bar' },
+          timeout_policy: { timeout_ms: 3600000 },
+          timeout_at: expect.any(Date),
           workflow_snapshot: {
             steps: [
               {
@@ -173,6 +177,24 @@ describe('ExecutionService', () => {
         expect.any(Object),
       );
       expect(result).toEqual(savedExec);
+    });
+
+    it('uses workflow trigger execution timeout when configured', async () => {
+      jest.spyOn(workflowService, 'findOne').mockResolvedValue(
+        makeWorkflowDoc([], {
+          trigger: { config: { executionTimeoutMs: 120000 } },
+        }) as never,
+      );
+      mockExecutionSave.mockResolvedValue(makeExecutionDoc());
+
+      await service.trigger(workflowId, ownerId, {});
+
+      expect(mockExecutionModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeout_policy: { timeout_ms: 120000 },
+          timeout_at: expect.any(Date),
+        }),
+      );
     });
 
     it('does not create step executions when workflow has no steps', async () => {

@@ -142,5 +142,29 @@ describe('CompensateService', () => {
         NotFoundException,
       );
     });
+
+    it('uses timeout reason when compensation is triggered by watchdog', async () => {
+      const doc = makeExecutionDoc();
+      mockExecutionFindByIdExec.mockResolvedValue(doc);
+      mockUpdateManyExec.mockResolvedValue({ modifiedCount: 1 });
+      mockExecutionSave.mockResolvedValue(doc);
+
+      await service.compensate(executionId, 'timeout');
+
+      expect(mockStepExecutionModel.updateMany).toHaveBeenCalledWith(
+        expect.any(Object),
+        {
+          $set: expect.objectContaining({
+            status: 'failed',
+            error: 'Execution timed out',
+          }),
+        },
+      );
+      expect(eventService.append).toHaveBeenCalledWith(
+        executionId,
+        'execution.failed',
+        { reason: 'timeout' },
+      );
+    });
   });
 });

@@ -33,6 +33,12 @@ export class StepExecution {
   @Prop()
   started_at?: Date;
 
+  @Prop({ default: null })
+  timeout_ms?: number | null;
+
+  @Prop()
+  timeout_at?: Date;
+
   @Prop()
   completed_at?: Date;
 }

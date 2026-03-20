@@ -84,7 +84,12 @@ describe('StepStateService', () => {
     it('sets status to running and sets started_at', async () => {
       const doc = makeStepDoc({ status: 'running', started_at: new Date() });
       mockStepFindByIdExec.mockResolvedValue(makeStepDoc());
-      mockExecutionFindByIdExec.mockResolvedValue({ status: 'running' });
+      mockExecutionFindByIdExec.mockResolvedValue({
+        status: 'running',
+        workflow_snapshot: {
+          steps: [{ id: 'step-1', config: {} }],
+        },
+      });
       mockStepFindOneAndUpdateExec.mockResolvedValue(doc);
 
       const result = await service.markRunning(stepExecutionId);
@@ -93,7 +98,14 @@ describe('StepStateService', () => {
       expect(result.started_at).toBeInstanceOf(Date);
       expect(mockStepExecutionModel.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: stepExecutionId, status: 'queued' },
-        { $set: { status: 'running', started_at: expect.any(Date) } },
+        {
+          $set: {
+            status: 'running',
+            started_at: expect.any(Date),
+            timeout_ms: 300000,
+            timeout_at: expect.any(Date),
+          },
+        },
         { new: true },
       );
     });
@@ -101,7 +113,12 @@ describe('StepStateService', () => {
     it('appends a step.started event', async () => {
       const doc = makeStepDoc({ status: 'running', started_at: new Date() });
       mockStepFindByIdExec.mockResolvedValue(makeStepDoc());
-      mockExecutionFindByIdExec.mockResolvedValue({ status: 'running' });
+      mockExecutionFindByIdExec.mockResolvedValue({
+        status: 'running',
+        workflow_snapshot: {
+          steps: [{ id: 'step-1', config: {} }],
+        },
+      });
       mockStepFindOneAndUpdateExec.mockResolvedValue(doc);
 
       await service.markRunning(stepExecutionId);
@@ -124,7 +141,12 @@ describe('StepStateService', () => {
 
     it('returns null when step cannot transition from queued to running', async () => {
       mockStepFindByIdExec.mockResolvedValue(makeStepDoc());
-      mockExecutionFindByIdExec.mockResolvedValue({ status: 'running' });
+      mockExecutionFindByIdExec.mockResolvedValue({
+        status: 'running',
+        workflow_snapshot: {
+          steps: [{ id: 'step-1', config: {} }],
+        },
+      });
       mockStepFindOneAndUpdateExec.mockResolvedValue(null);
 
       const result = await service.markRunning(stepExecutionId);
@@ -143,6 +165,36 @@ describe('StepStateService', () => {
       expect(result).toBeNull();
       expect(mockStepExecutionModel.findOneAndUpdate).not.toHaveBeenCalled();
       expect(eventService.append).not.toHaveBeenCalled();
+    });
+
+    it('uses per-step timeout from workflow snapshot config when provided', async () => {
+      mockStepFindByIdExec.mockResolvedValue(makeStepDoc());
+      mockExecutionFindByIdExec.mockResolvedValue({
+        status: 'running',
+        workflow_snapshot: {
+          steps: [{ id: 'step-1', config: { timeoutMs: 15000 } }],
+        },
+      });
+      mockStepFindOneAndUpdateExec.mockResolvedValue(
+        makeStepDoc({
+          status: 'running',
+          timeout_ms: 15000,
+          timeout_at: new Date(),
+        }),
+      );
+
+      await service.markRunning(stepExecutionId);
+
+      expect(mockStepExecutionModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: stepExecutionId, status: 'queued' },
+        {
+          $set: expect.objectContaining({
+            timeout_ms: 15000,
+            timeout_at: expect.any(Date),
+          }),
+        },
+        { new: true },
+      );
     });
   });
 
