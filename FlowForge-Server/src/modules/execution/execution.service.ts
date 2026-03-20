@@ -28,6 +28,8 @@ export interface TriggerExecutionOptions {
   idempotencyKey?: string;
 }
 
+const DEFAULT_EXECUTION_TIMEOUT_MS = 60 * 60 * 1000;
+
 @Injectable()
 export class ExecutionService {
   constructor(
@@ -48,6 +50,11 @@ export class ExecutionService {
   ): Promise<ExecutionDocument> {
     const workflow = await this.workflowService.findOne(workflowId, ownerId);
     const workflowSnapshot = this.buildWorkflowSnapshot(workflow);
+    const executionTimeoutMs = this.resolveExecutionTimeoutMs(
+      workflow.trigger?.config as Record<string, unknown> | undefined,
+    );
+    const startedAt = new Date();
+    const timeoutAt = new Date(startedAt.getTime() + executionTimeoutMs);
 
     const triggerType = options.triggerType ?? 'manual';
     const triggerPayload = options.payload ?? dto.payload ?? {};
@@ -65,10 +72,12 @@ export class ExecutionService {
         trigger_payload: triggerPayload,
         context: {},
         workflow_snapshot: workflowSnapshot,
+        timeout_policy: { timeout_ms: executionTimeoutMs },
+        timeout_at: timeoutAt,
         ...(normalizedIdempotencyKey
           ? { idempotency_key: normalizedIdempotencyKey }
           : {}),
-        started_at: new Date(),
+        started_at: startedAt,
       }).save();
     } catch (error: unknown) {
       if (this.isDuplicateKeyError(error)) {
@@ -233,6 +242,27 @@ export class ExecutionService {
         ...(edge.condition !== undefined ? { condition: edge.condition } : {}),
       })),
     };
+  }
+
+  private resolveExecutionTimeoutMs(
+    triggerConfig?: Record<string, unknown>,
+  ): number {
+    const fromConfig =
+      triggerConfig?.executionTimeoutMs ?? triggerConfig?.execution_timeout_ms;
+    return this.parsePositiveTimeoutMs(fromConfig) ?? DEFAULT_EXECUTION_TIMEOUT_MS;
+  }
+
+  private parsePositiveTimeoutMs(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return Math.floor(value);
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value.trim());
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return Math.floor(parsed);
+      }
+    }
+    return undefined;
   }
 
   private isDuplicateKeyError(error: unknown): boolean {

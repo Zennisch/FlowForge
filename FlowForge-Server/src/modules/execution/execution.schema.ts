@@ -33,6 +33,10 @@ export interface ExecutionWorkflowSnapshot {
   edges: ExecutionWorkflowSnapshotEdge[];
 }
 
+export interface ExecutionTimeoutPolicy {
+  timeout_ms: number;
+}
+
 @Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } })
 export class Execution {
   @Prop({ type: Types.ObjectId, ref: 'Workflow', required: true })
@@ -58,6 +62,12 @@ export class Execution {
 
   @Prop({ type: Object, required: true })
   workflow_snapshot: ExecutionWorkflowSnapshot;
+
+  @Prop({ type: Object, default: null })
+  timeout_policy?: ExecutionTimeoutPolicy | null;
+
+  @Prop()
+  timeout_at?: Date;
 
   @Prop()
   idempotency_key?: string;

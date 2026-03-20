@@ -5,6 +5,8 @@ import { EventService } from '../event/event.service';
 import { Execution, ExecutionDocument } from './execution.schema';
 import { StepExecution, StepExecutionDocument } from './step-execution.schema';
 
+const DEFAULT_STEP_TIMEOUT_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class StepStateService {
   constructor(
@@ -29,10 +31,19 @@ export class StepStateService {
     }
 
     const startedAt = new Date();
+    const timeoutMs = this.resolveStepTimeoutMs(execution, stepExecution.step_id);
+    const timeoutAt = new Date(startedAt.getTime() + timeoutMs);
     const updated = await this.stepExecutionModel
       .findOneAndUpdate(
         { _id: stepExecutionId, status: 'queued' },
-        { $set: { status: 'running', started_at: startedAt } },
+        {
+          $set: {
+            status: 'running',
+            started_at: startedAt,
+            timeout_ms: timeoutMs,
+            timeout_at: timeoutAt,
+          },
+        },
         { new: true },
       )
       .exec();
@@ -104,6 +115,29 @@ export class StepStateService {
     );
 
     return stepExecution;
+  }
+
+  private resolveStepTimeoutMs(
+    execution: ExecutionDocument,
+    stepId: string,
+  ): number {
+    const step = execution.workflow_snapshot?.steps?.find((item) => item.id === stepId);
+    const fromConfig =
+      step?.config?.timeoutMs ?? step?.config?.timeout_ms;
+    return this.parsePositiveTimeoutMs(fromConfig) ?? DEFAULT_STEP_TIMEOUT_MS;
+  }
+
+  private parsePositiveTimeoutMs(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return Math.floor(value);
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value.trim());
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return Math.floor(parsed);
+      }
+    }
+    return undefined;
   }
 }
 
