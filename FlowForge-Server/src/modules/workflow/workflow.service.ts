@@ -46,6 +46,7 @@ export class WorkflowService {
     const steps = dto.steps ?? [];
     const edges = dto.edges ?? [];
     this.validateDagService.validate(steps, edges);
+    this.validateCompensationConfig(steps);
 
     const workflow = new this.workflowModel({
       ...dto,
@@ -65,6 +66,7 @@ export class WorkflowService {
     const steps = dto.steps ?? workflow.steps;
     const edges = dto.edges ?? workflow.edges;
     this.validateDagService.validate(steps, edges);
+    this.validateCompensationConfig(steps);
 
     Object.assign(workflow, dto);
     return workflow.save();
@@ -197,6 +199,69 @@ export class WorkflowService {
 
   private normalizeWebhookPath(path: string): string {
     return path.trim().replace(/^\/+|\/+$/g, '');
+  }
+
+  private validateCompensationConfig(
+    steps: Array<{
+      id: string;
+      compensation?: {
+        enabled?: boolean;
+        type?: 'noop' | 'http';
+        config?: Record<string, unknown>;
+        retry?: { maxAttempts?: number; backoff?: 'exponential' | 'fixed' };
+      };
+    }>,
+  ): void {
+    for (const step of steps) {
+      const compensation = step.compensation;
+      if (!compensation?.enabled) {
+        continue;
+      }
+
+      const type = compensation.type ?? 'noop';
+      const config = compensation.config ?? {};
+
+      if (!['noop', 'http'].includes(type)) {
+        throw new BadRequestException(
+          `Step '${step.id}' has unsupported compensation.type`,
+        );
+      }
+
+      if (type === 'http') {
+        const url = config.url;
+        if (typeof url !== 'string' || url.trim().length === 0) {
+          throw new BadRequestException(
+            `Step '${step.id}' compensation http requires config.url`,
+          );
+        }
+
+        const method = config.method;
+        if (method !== undefined) {
+          if (typeof method !== 'string') {
+            throw new BadRequestException(
+              `Step '${step.id}' compensation http method must be a string`,
+            );
+          }
+
+          const normalizedMethod = method.trim().toUpperCase();
+          if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(normalizedMethod)) {
+            throw new BadRequestException(
+              `Step '${step.id}' compensation http method is invalid`,
+            );
+          }
+        }
+      }
+
+      const maxAttempts = compensation.retry?.maxAttempts;
+      if (
+        maxAttempts !== undefined &&
+        (!Number.isFinite(maxAttempts) || maxAttempts < 1 || maxAttempts > 10)
+      ) {
+        throw new BadRequestException(
+          `Step '${step.id}' compensation retry.maxAttempts must be between 1 and 10`,
+        );
+      }
+    }
   }
 }
 

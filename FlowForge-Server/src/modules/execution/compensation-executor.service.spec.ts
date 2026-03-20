@@ -18,6 +18,7 @@ describe('CompensationExecutorService', () => {
       executionId: 'exec-1',
       stepExecutionId: 'step-exec-1',
       stepId: 'step-1',
+      idempotencyKey: 'exec-1:step-exec-1',
       compensation: { enabled: true, type: 'noop', config: {} },
       input: {},
       output: null,
@@ -34,6 +35,7 @@ describe('CompensationExecutorService', () => {
         executionId: 'exec-1',
         stepExecutionId: 'step-exec-1',
         stepId: 'step-1',
+        idempotencyKey: 'exec-1:step-exec-1',
         compensation: { enabled: true, type: 'http', config: {} },
         input: {},
         output: null,
@@ -49,6 +51,7 @@ describe('CompensationExecutorService', () => {
       executionId: 'exec-1',
       stepExecutionId: 'step-exec-1',
       stepId: 'step-1',
+      idempotencyKey: 'exec-1:step-exec-1',
       compensation: {
         enabled: true,
         type: 'http',
@@ -64,6 +67,9 @@ describe('CompensationExecutorService', () => {
         url: 'https://example.test/undo',
         method: 'POST',
         timeout: 10_000,
+        headers: {
+          'x-compensation-idempotency-key': 'exec-1:step-exec-1',
+        },
       }),
     );
     expect(result).toEqual({ mode: 'http', applied: true, status: 200 });
