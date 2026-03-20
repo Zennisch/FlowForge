@@ -47,6 +47,29 @@ export class ConsumerService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    if (job.notBefore) {
+      const notBeforeMs = Date.parse(job.notBefore);
+      if (Number.isFinite(notBeforeMs)) {
+        const remainingMs = notBeforeMs - Date.now();
+        if (remainingMs > 0) {
+          const delaySeconds = Math.max(1, Math.min(600, Math.ceil(remainingMs / 1000)));
+          this.logger.log(
+            `Deferring step "${job.stepId}" for execution ${job.executionId} ` +
+              `for ${delaySeconds}s until ${job.notBefore}`,
+          );
+          try {
+            message.modAck(delaySeconds);
+          } catch (err) {
+            this.logger.error(
+              `Failed to defer job for step "${job.stepId}": ${String(err)}`,
+            );
+            message.nack();
+          }
+          return;
+        }
+      }
+    }
+
     try {
       const started = await this.stepStateService.markRunning(job.stepExecutionId);
       if (!started) {

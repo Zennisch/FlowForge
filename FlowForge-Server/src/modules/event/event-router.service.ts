@@ -207,6 +207,7 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
 
     if (result.attempt + 1 < maxAttempts) {
       const delayMs = computeBackoffMs(result.attempt, backoffStrategy);
+      const notBefore = new Date(Date.now() + delayMs).toISOString();
       this.logger.log(
         `Retrying step "${result.stepId}" ` +
           `(attempt ${result.attempt + 1}/${maxAttempts}, delay ${delayMs}ms)`,
@@ -218,8 +219,6 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
         { attempt: result.attempt + 1, delayMs },
         result.stepId,
       );
-
-      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 
       const latestExecution = await this.executionModel
         .findById(result.executionId)
@@ -248,6 +247,7 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
         stepConfig: { type: step.type, ...(step.config as Record<string, unknown>) },
         context: execution.context,
         attempt: result.attempt + 1,
+        notBefore,
       };
       await this.pubSubService.publishJob(job);
     } else {
