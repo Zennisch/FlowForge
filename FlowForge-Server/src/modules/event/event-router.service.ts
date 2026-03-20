@@ -77,13 +77,20 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async onStepCompleted(result: StepResult): Promise<void> {
-    await this.stepStateService.markCompleted(result.stepExecutionId, result.output);
-
     const execution = await this.executionModel.findById(result.executionId).exec();
     if (!execution) {
       this.logger.warn(`Execution ${result.executionId} not found after step completion`);
       return;
     }
+
+    if (execution.status !== 'running') {
+      this.logger.log(
+        `Ignoring completed result for step "${result.stepId}" because execution ${result.executionId} is ${execution.status}`,
+      );
+      return;
+    }
+
+    await this.stepStateService.markCompleted(result.stepExecutionId, result.output);
 
     const newContext = { ...execution.context, ...result.output };
     execution.context = newContext;
@@ -182,6 +189,13 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    if (execution.status !== 'running') {
+      this.logger.log(
+        `Ignoring failed result for step "${result.stepId}" because execution ${result.executionId} is ${execution.status}`,
+      );
+      return;
+    }
+
     const workflow = await this.workflowService.findOne(
       execution.workflow_id.toString(),
       execution.owner_id.toString(),
@@ -208,6 +222,16 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       );
 
       await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+
+      const latestExecution = await this.executionModel
+        .findById(result.executionId)
+        .exec();
+      if (!latestExecution || latestExecution.status !== 'running') {
+        this.logger.log(
+          `Skipping retry for step "${result.stepId}" because execution ${result.executionId} is no longer running`,
+        );
+        return;
+      }
 
       const stepExecution = await this.stepExecutionModel
         .findById(result.stepExecutionId)

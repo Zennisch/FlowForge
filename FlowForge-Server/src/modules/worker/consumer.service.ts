@@ -48,7 +48,14 @@ export class ConsumerService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      await this.stepStateService.markRunning(job.stepExecutionId);
+      const started = await this.stepStateService.markRunning(job.stepExecutionId);
+      if (!started) {
+        this.logger.log(
+          `Dropping stale job for step "${job.stepId}" in execution ${job.executionId}`,
+        );
+        message.ack();
+        return;
+      }
     } catch (err) {
       this.logger.error(
         `markRunning failed for step "${job.stepId}": ${String(err)}`,

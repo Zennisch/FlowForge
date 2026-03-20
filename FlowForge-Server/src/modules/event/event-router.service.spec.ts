@@ -18,6 +18,7 @@ const mockExecutionModel: any = {
 
 const mockStepExecutionFindOneExec = jest.fn();
 const mockStepExecutionCountDocumentsExec = jest.fn();
+const mockStepExecutionFindByIdExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockStepExecutionModel: any = {
@@ -25,6 +26,7 @@ const mockStepExecutionModel: any = {
   countDocuments: jest
     .fn()
     .mockReturnValue({ exec: mockStepExecutionCountDocumentsExec }),
+  findById: jest.fn().mockReturnValue({ exec: mockStepExecutionFindByIdExec }),
 };
 
 describe('EventRouterService', () => {
@@ -190,6 +192,58 @@ describe('EventRouterService', () => {
       });
 
       expect(compensateService.compensate).toHaveBeenCalledWith(baseResult.executionId);
+      expect(pubSubService.publishJob).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancellation guards', () => {
+    it('ignores completed result when execution is cancelled', async () => {
+      const cancelledExecution = {
+        ...makeExecutionDoc(),
+        status: 'cancelled',
+      };
+
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(cancelledExecution),
+      });
+
+      await (
+        service as unknown as {
+          onStepCompleted: (r: typeof baseResult) => Promise<void>;
+        }
+      ).onStepCompleted(baseResult);
+
+      expect(stepStateService.markCompleted).not.toHaveBeenCalled();
+      expect(pubSubService.publishJob).not.toHaveBeenCalled();
+      expect(eventService.append).not.toHaveBeenCalledWith(
+        baseResult.executionId,
+        'execution.completed',
+      );
+    });
+
+    it('ignores failed result when execution is cancelled', async () => {
+      const cancelledExecution = {
+        ...makeExecutionDoc(),
+        status: 'cancelled',
+      };
+
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(cancelledExecution),
+      });
+      jest.spyOn(workflowService, 'findOne').mockResolvedValue(workflow as never);
+
+      await (
+        service as unknown as {
+          onStepFailed: (r: StepResult) => Promise<void>;
+        }
+      ).onStepFailed({
+        ...baseResult,
+        status: 'failed',
+        error: 'boom',
+      });
+
+      expect(stepStateService.markFailed).not.toHaveBeenCalled();
+      expect(compensateService.compensate).not.toHaveBeenCalled();
       expect(pubSubService.publishJob).not.toHaveBeenCalled();
     });
   });

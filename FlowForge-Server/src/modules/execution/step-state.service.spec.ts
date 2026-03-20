@@ -3,6 +3,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
 import { EventService } from '../event/event.service';
+import { Execution } from './execution.schema';
 import { StepExecution } from './step-execution.schema';
 import { StepStateService } from './step-state.service';
 
@@ -10,12 +11,19 @@ import { StepStateService } from './step-state.service';
 
 const mockStepSave = jest.fn();
 const mockStepFindByIdExec = jest.fn();
+const mockExecutionFindByIdExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockStepExecutionModel: any = {};
 mockStepExecutionModel.findById = jest
   .fn()
   .mockReturnValue({ exec: mockStepFindByIdExec });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockExecutionModel: any = {};
+mockExecutionModel.findById = jest
+  .fn()
+  .mockReturnValue({ exec: mockExecutionFindByIdExec });
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -48,6 +56,10 @@ describe('StepStateService', () => {
       providers: [
         StepStateService,
         {
+          provide: getModelToken(Execution.name),
+          useValue: mockExecutionModel,
+        },
+        {
           provide: getModelToken(StepExecution.name),
           useValue: mockStepExecutionModel,
         },
@@ -68,6 +80,7 @@ describe('StepStateService', () => {
     it('sets status to running and sets started_at', async () => {
       const doc = makeStepDoc();
       mockStepFindByIdExec.mockResolvedValue(doc);
+      mockExecutionFindByIdExec.mockResolvedValue({ status: 'running' });
       mockStepSave.mockResolvedValue(doc);
 
       const result = await service.markRunning(stepExecutionId);
@@ -80,6 +93,7 @@ describe('StepStateService', () => {
     it('appends a step.started event', async () => {
       const doc = makeStepDoc();
       mockStepFindByIdExec.mockResolvedValue(doc);
+      mockExecutionFindByIdExec.mockResolvedValue({ status: 'running' });
       mockStepSave.mockResolvedValue(doc);
 
       await service.markRunning(stepExecutionId);
@@ -98,6 +112,29 @@ describe('StepStateService', () => {
       await expect(service.markRunning(stepExecutionId)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('returns null when step is not queued', async () => {
+      const doc = makeStepDoc({ status: 'skipped' });
+      mockStepFindByIdExec.mockResolvedValue(doc);
+
+      const result = await service.markRunning(stepExecutionId);
+
+      expect(result).toBeNull();
+      expect(mockStepSave).not.toHaveBeenCalled();
+      expect(eventService.append).not.toHaveBeenCalled();
+    });
+
+    it('returns null when execution is not running', async () => {
+      const doc = makeStepDoc({ status: 'queued' });
+      mockStepFindByIdExec.mockResolvedValue(doc);
+      mockExecutionFindByIdExec.mockResolvedValue({ status: 'cancelled' });
+
+      const result = await service.markRunning(stepExecutionId);
+
+      expect(result).toBeNull();
+      expect(mockStepSave).not.toHaveBeenCalled();
+      expect(eventService.append).not.toHaveBeenCalled();
     });
   });
 

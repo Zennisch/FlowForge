@@ -209,6 +209,22 @@ export class ExecutionService {
     execution.completed_at = new Date();
     await execution.save();
 
+    await this.stepExecutionModel
+      .updateMany(
+        {
+          execution_id: execution._id,
+          status: { $in: ['queued', 'running'] },
+        },
+        {
+          $set: {
+            status: 'skipped',
+            error: 'Execution cancelled',
+            completed_at: new Date(),
+          },
+        },
+      )
+      .exec();
+
     await this.eventService.append(String(execution._id), 'execution.cancelled');
 
     return execution;
