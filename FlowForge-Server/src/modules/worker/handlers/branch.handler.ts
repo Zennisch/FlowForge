@@ -19,6 +19,12 @@ export class BranchHandler {
     const matched = (config.cases ?? []).find((c) => c.value === actual);
     const nextStep = matched?.next ?? config.default;
 
+    if (!nextStep) {
+      throw new Error(
+        `Branch step "${job.stepId}" has no matching case for field "${config.field}" and no default path`,
+      );
+    }
+
     return { _branch_next: nextStep };
   }
 

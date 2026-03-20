@@ -112,6 +112,14 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
         ? outEdges.filter((e) => e.to === result.output._branch_next)
         : outEdges.filter((e) => !e.condition);
 
+    if (outEdges.length > 0 && nextEdges.length === 0) {
+      this.logger.warn(
+        `No valid outgoing edge from step "${result.stepId}" for execution ${result.executionId}; compensating`,
+      );
+      await this.compensateService.compensate(result.executionId);
+      return;
+    }
+
     for (const edge of nextEdges) {
       const nextStep = workflow.steps.find((s) => s.id === edge.to);
       if (!nextStep) continue;

@@ -2,6 +2,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
 import { PubSubService } from '../../infra/pubsub/pubsub.provider';
+import { StepResult } from '../../shared/interfaces/step-result.interface';
 import { CompensateService } from '../execution/compensate.service';
 import { Execution } from '../execution/execution.schema';
 import { StepExecution } from '../execution/step-execution.schema';
@@ -32,12 +33,13 @@ describe('EventRouterService', () => {
   let eventService: EventService;
   let pubSubService: PubSubService;
   let stepStateService: StepStateService;
+  let compensateService: CompensateService;
 
   const executionId = new Types.ObjectId();
   const ownerId = new Types.ObjectId();
   const workflowId = new Types.ObjectId();
 
-  const baseResult = {
+  const baseResult: StepResult = {
     executionId: executionId.toHexString(),
     stepId: 'a',
     stepExecutionId: new Types.ObjectId().toHexString(),
@@ -96,6 +98,7 @@ describe('EventRouterService', () => {
     eventService = module.get<EventService>(EventService);
     pubSubService = module.get<PubSubService>(PubSubService);
     stepStateService = module.get<StepStateService>(StepStateService);
+    compensateService = module.get<CompensateService>(CompensateService);
   });
 
   describe('fan-in join dispatch', () => {
@@ -155,6 +158,39 @@ describe('EventRouterService', () => {
           stepExecutionId: String(queuedJoinStepExecution._id),
         }),
       );
+    });
+  });
+
+  describe('branch dead-end routing', () => {
+    it('compensates execution when branch output does not map to any outgoing edge', async () => {
+      const executionDoc = makeExecutionDoc();
+      const branchWorkflow = {
+        _id: workflowId,
+        owner_id: ownerId,
+        steps: [
+          { id: 'a', type: 'branch', config: {} },
+          { id: 'b', type: 'store', config: {} },
+        ],
+        edges: [{ from: 'a', to: 'b' }],
+      };
+
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(executionDoc),
+      });
+      jest.spyOn(workflowService, 'findOne').mockResolvedValue(branchWorkflow as never);
+      jest.spyOn(stepStateService, 'markCompleted').mockResolvedValue({} as never);
+
+      await (
+        service as unknown as {
+          onStepCompleted: (r: typeof baseResult) => Promise<void>;
+        }
+      ).onStepCompleted({
+        ...baseResult,
+        output: { _branch_next: 'missing-step' },
+      });
+
+      expect(compensateService.compensate).toHaveBeenCalledWith(baseResult.executionId);
+      expect(pubSubService.publishJob).not.toHaveBeenCalled();
     });
   });
 });
