@@ -18,7 +18,6 @@ import { StepExecution } from './step-execution.schema';
 // ─── Mongoose model mocks ─────────────────────────────────────────────────────
 
 const mockExecutionSave = jest.fn();
-const mockExecutionFindOneExec = jest.fn();
 const mockExecutionFindByIdExec = jest.fn();
 const mockExecutionFindSortExec = jest.fn();
 
@@ -31,9 +30,6 @@ const mockExecutionModel: any = jest
     save: mockExecutionSave,
   }));
 
-mockExecutionModel.findOne = jest
-  .fn()
-  .mockReturnValue({ exec: mockExecutionFindOneExec });
 mockExecutionModel.findById = jest
   .fn()
   .mockReturnValue({ exec: mockExecutionFindByIdExec });
@@ -128,7 +124,6 @@ describe('ExecutionService', () => {
       jest
         .spyOn(workflowService, 'findOne')
         .mockResolvedValue(makeWorkflowDoc(steps) as never);
-      mockExecutionFindOneExec.mockResolvedValue(null);
       const savedExec = makeExecutionDoc();
       mockExecutionSave.mockResolvedValue(savedExec);
       mockStepSave.mockResolvedValue({});
@@ -164,7 +159,6 @@ describe('ExecutionService', () => {
       jest
         .spyOn(workflowService, 'findOne')
         .mockResolvedValue(makeWorkflowDoc([]) as never);
-      mockExecutionFindOneExec.mockResolvedValue(null);
       mockExecutionSave.mockResolvedValue(makeExecutionDoc());
 
       await service.trigger(workflowId, ownerId, {});
@@ -176,16 +170,16 @@ describe('ExecutionService', () => {
       jest
         .spyOn(workflowService, 'findOne')
         .mockResolvedValue(makeWorkflowDoc() as never);
-      mockExecutionFindOneExec.mockResolvedValue(makeExecutionDoc());
+      mockExecutionSave.mockRejectedValue({ code: 11000 });
 
       await expect(
         service.trigger(workflowId, ownerId, { idempotency_key: 'dup-key' }),
       ).rejects.toThrow(ConflictException);
 
-      expect(mockExecutionModel).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'running' }));
+      expect(mockStepExecutionModel).not.toHaveBeenCalled();
     });
 
-    it('does not check idempotency when no key is provided', async () => {
+    it('does not set idempotency key when no key is provided', async () => {
       jest
         .spyOn(workflowService, 'findOne')
         .mockResolvedValue(makeWorkflowDoc() as never);
@@ -193,7 +187,11 @@ describe('ExecutionService', () => {
 
       await service.trigger(workflowId, ownerId, {});
 
-      expect(mockExecutionModel.findOne).not.toHaveBeenCalled();
+      expect(mockExecutionModel).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          idempotency_key: expect.anything(),
+        }),
+      );
     });
 
     it('handles undefined dto when request body is omitted', async () => {
@@ -209,7 +207,22 @@ describe('ExecutionService', () => {
           undefined as unknown as TriggerExecutionDto,
         ),
       ).resolves.toBeDefined();
-      expect(mockExecutionModel.findOne).not.toHaveBeenCalled();
+      expect(mockExecutionModel).toHaveBeenCalled();
+    });
+
+    it('trims idempotency key before persisting', async () => {
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(makeWorkflowDoc() as never);
+      mockExecutionSave.mockResolvedValue(makeExecutionDoc());
+
+      await service.trigger(workflowId, ownerId, {
+        idempotency_key: '  scoped-key  ',
+      });
+
+      expect(mockExecutionModel).toHaveBeenCalledWith(
+        expect.objectContaining({ idempotency_key: 'scoped-key' }),
+      );
     });
 
     it('propagates NotFoundException from WorkflowService', async () => {
