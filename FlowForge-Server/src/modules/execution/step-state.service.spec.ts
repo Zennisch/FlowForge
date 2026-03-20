@@ -106,7 +106,7 @@ describe('StepStateService', () => {
             timeout_at: expect.any(Date),
           },
         },
-        { new: true },
+        { returnDocument: 'after' },
       );
     });
 
@@ -193,7 +193,7 @@ describe('StepStateService', () => {
             timeout_at: expect.any(Date),
           }),
         },
-        { new: true },
+        { returnDocument: 'after' },
       );
     });
   });

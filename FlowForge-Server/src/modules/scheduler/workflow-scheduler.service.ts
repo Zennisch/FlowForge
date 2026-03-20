@@ -149,7 +149,7 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
             },
           },
           {
-            new: true,
+            returnDocument: 'after',
             upsert: true,
           },
         )
