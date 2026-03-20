@@ -7,6 +7,7 @@ export type StepType = 'http' | 'transform' | 'store' | 'branch';
 export type TriggerType = 'manual' | 'webhook' | 'schedule';
 export type WorkflowStatus = 'active' | 'inactive';
 export type BackoffStrategy = 'exponential' | 'fixed';
+export type CompensationType = 'noop' | 'http';
 
 @Schema({ _id: false })
 class RetryPolicy {
@@ -18,6 +19,23 @@ class RetryPolicy {
 }
 
 const RetryPolicySchema = SchemaFactory.createForClass(RetryPolicy);
+
+@Schema({ _id: false })
+class CompensationPolicy {
+  @Prop({ default: false })
+  enabled: boolean;
+
+  @Prop({ enum: ['noop', 'http'], default: 'noop' })
+  type: CompensationType;
+
+  @Prop({ type: Object, default: {} })
+  config: Record<string, unknown>;
+
+  @Prop({ type: RetryPolicySchema, default: () => ({}) })
+  retry: RetryPolicy;
+}
+
+const CompensationPolicySchema = SchemaFactory.createForClass(CompensationPolicy);
 
 @Schema({ _id: false })
 class WorkflowStep {
@@ -32,6 +50,9 @@ class WorkflowStep {
 
   @Prop({ type: RetryPolicySchema, default: () => ({}) })
   retry: RetryPolicy;
+
+  @Prop({ type: CompensationPolicySchema, default: () => ({ enabled: false, type: 'noop' }) })
+  compensation: CompensationPolicy;
 }
 
 const WorkflowStepSchema = SchemaFactory.createForClass(WorkflowStep);

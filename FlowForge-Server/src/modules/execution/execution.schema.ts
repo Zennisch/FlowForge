@@ -15,11 +15,19 @@ export interface ExecutionWorkflowSnapshotRetryPolicy {
   backoff?: 'exponential' | 'fixed';
 }
 
+export interface ExecutionWorkflowSnapshotCompensationPolicy {
+  enabled?: boolean;
+  type?: 'noop' | 'http';
+  config?: Record<string, unknown>;
+  retry?: ExecutionWorkflowSnapshotRetryPolicy;
+}
+
 export interface ExecutionWorkflowSnapshotStep {
   id: string;
   type: 'http' | 'transform' | 'store' | 'branch';
   config: Record<string, unknown>;
   retry?: ExecutionWorkflowSnapshotRetryPolicy;
+  compensation?: ExecutionWorkflowSnapshotCompensationPolicy;
 }
 
 export interface ExecutionWorkflowSnapshotEdge {

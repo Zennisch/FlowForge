@@ -214,6 +214,12 @@ export class ExecutionService {
         type: 'http' | 'transform' | 'store' | 'branch';
         config?: Record<string, unknown>;
         retry?: { maxAttempts?: number; backoff?: 'exponential' | 'fixed' };
+        compensation?: {
+          enabled?: boolean;
+          type?: 'noop' | 'http';
+          config?: Record<string, unknown>;
+          retry?: { maxAttempts?: number; backoff?: 'exponential' | 'fixed' };
+        };
       }>;
       edges: Array<{ from: string; to: string; condition?: string }>;
     },
@@ -231,6 +237,33 @@ export class ExecutionService {
                   : {}),
                 ...(step.retry.backoff !== undefined
                   ? { backoff: step.retry.backoff }
+                  : {}),
+              },
+            }
+          : {}),
+        ...(step.compensation
+          ? {
+              compensation: {
+                ...(step.compensation.enabled !== undefined
+                  ? { enabled: step.compensation.enabled }
+                  : {}),
+                ...(step.compensation.type !== undefined
+                  ? { type: step.compensation.type }
+                  : {}),
+                ...(step.compensation.config !== undefined
+                  ? { config: { ...step.compensation.config } }
+                  : {}),
+                ...(step.compensation.retry
+                  ? {
+                      retry: {
+                        ...(step.compensation.retry.maxAttempts !== undefined
+                          ? { maxAttempts: step.compensation.retry.maxAttempts }
+                          : {}),
+                        ...(step.compensation.retry.backoff !== undefined
+                          ? { backoff: step.compensation.retry.backoff }
+                          : {}),
+                      },
+                    }
                   : {}),
               },
             }
