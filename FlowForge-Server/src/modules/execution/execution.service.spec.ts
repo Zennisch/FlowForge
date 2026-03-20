@@ -42,6 +42,7 @@ mockExecutionModel.find = jest.fn().mockReturnValue({
 });
 
 const mockStepSave = jest.fn();
+const mockStepUpdateManyExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockStepExecutionModel: any = jest
@@ -51,6 +52,10 @@ const mockStepExecutionModel: any = jest
     _id: new Types.ObjectId(),
     save: mockStepSave,
   }));
+
+mockStepExecutionModel.updateMany = jest
+  .fn()
+  .mockReturnValue({ exec: mockStepUpdateManyExec });
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -317,12 +322,26 @@ describe('ExecutionService', () => {
       const doc = makeExecutionDoc({ status: 'running' });
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockExecutionSave.mockResolvedValue(doc);
+      mockStepUpdateManyExec.mockResolvedValue({ modifiedCount: 2 });
 
       const result = await service.cancel(executionId, ownerId);
 
       expect(result.status).toBe('cancelled');
       expect(result.completed_at).toBeInstanceOf(Date);
       expect(mockExecutionSave).toHaveBeenCalled();
+      expect(mockStepExecutionModel.updateMany).toHaveBeenCalledWith(
+        {
+          execution_id: executionId,
+          status: { $in: ['queued', 'running'] },
+        },
+        {
+          $set: expect.objectContaining({
+            status: 'skipped',
+            error: 'Execution cancelled',
+            completed_at: expect.any(Date),
+          }),
+        },
+      );
       expect(eventService.append).toHaveBeenCalledWith(
         expect.any(String),
         'execution.cancelled',
@@ -333,6 +352,7 @@ describe('ExecutionService', () => {
       const doc = makeExecutionDoc({ status: 'pending' });
       mockExecutionFindByIdExec.mockResolvedValue(doc);
       mockExecutionSave.mockResolvedValue(doc);
+      mockStepUpdateManyExec.mockResolvedValue({ modifiedCount: 0 });
 
       const result = await service.cancel(executionId, ownerId);
 
