@@ -23,6 +23,8 @@ export class UsersService {
     const user = new this.userModel({
       email: dto.email.toLowerCase(),
       password: hashed,
+      email_verified: dto.emailVerified ?? true,
+      email_verified_at: dto.emailVerified === false ? null : new Date(),
     });
     return user.save();
   }
@@ -33,6 +35,25 @@ export class UsersService {
 
   async findById(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id);
+  }
+
+  async markEmailVerified(id: string): Promise<void> {
+    await this.userModel.findByIdAndUpdate(id, {
+      $set: {
+        email_verified: true,
+        email_verified_at: new Date(),
+      },
+    });
+  }
+
+  async updatePassword(id: string, password: string): Promise<void> {
+    const hashed = await bcrypt.hash(password, 10);
+    await this.userModel.findByIdAndUpdate(id, {
+      $set: {
+        password: hashed,
+        password_changed_at: new Date(),
+      },
+    });
   }
 }
 
