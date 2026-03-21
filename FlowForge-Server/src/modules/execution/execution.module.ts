@@ -17,6 +17,10 @@ import {
   WebhookRateLimit,
   WebhookRateLimitSchema,
 } from './webhook-rate-limit.schema';
+import {
+  TriggerRateLimit,
+  TriggerRateLimitSchema,
+} from './trigger-rate-limit.schema';
 import { WebhookController } from './webhook.controller';
 
 @Module({
@@ -26,6 +30,7 @@ import { WebhookController } from './webhook.controller';
       { name: StepExecution.name, schema: StepExecutionSchema },
       { name: WebhookNonce.name, schema: WebhookNonceSchema },
       { name: WebhookRateLimit.name, schema: WebhookRateLimitSchema },
+      { name: TriggerRateLimit.name, schema: TriggerRateLimitSchema },
     ]),
     WorkflowModule,
     EventModule,
