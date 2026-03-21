@@ -13,6 +13,7 @@ const mockFindExec = jest.fn();
 const mockFindByIdExec = jest.fn();
 const mockFindOneExec = jest.fn();
 const mockFindByIdAndDeleteExec = jest.fn();
+const mockCountDocumentsExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockWorkflowModel: any = jest
@@ -31,6 +32,9 @@ mockWorkflowModel.findById = jest
 mockWorkflowModel.findOne = jest
   .fn()
   .mockReturnValue({ exec: mockFindOneExec });
+mockWorkflowModel.countDocuments = jest
+  .fn()
+  .mockReturnValue({ exec: mockCountDocumentsExec });
 mockWorkflowModel.findByIdAndDelete = jest
   .fn()
   .mockReturnValue({ exec: mockFindByIdAndDeleteExec });
@@ -62,6 +66,7 @@ describe('WorkflowService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockCountDocumentsExec.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -142,8 +147,136 @@ describe('WorkflowService', () => {
       expect(mockWorkflowModel).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'New Workflow' }),
       );
+      expect(mockWorkflowModel.countDocuments).toHaveBeenCalledWith(
+        expect.objectContaining({ owner_id: expect.any(Types.ObjectId) }),
+      );
       expect(mockSave).toHaveBeenCalled();
       expect(result).toEqual(savedDoc);
+    });
+
+    it('should throw HttpException when tenant workflow quota is exceeded', async () => {
+      process.env.WORKFLOW_MAX_PER_TENANT = '1';
+      mockCountDocumentsExec.mockResolvedValueOnce(1);
+
+      try {
+        await service.create(ownerId, { name: 'Over Quota Workflow' });
+        fail('Expected create to throw');
+      } catch (error) {
+        expect((error as BadRequestException).getStatus()).toBe(429);
+      } finally {
+        delete process.env.WORKFLOW_MAX_PER_TENANT;
+      }
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw HttpException when workflow exceeds step quota', async () => {
+      process.env.WORKFLOW_MAX_STEPS_PER_WORKFLOW = '1';
+
+      try {
+        await service.create(ownerId, {
+          name: 'Too Many Steps',
+          steps: [
+            { id: 'a', type: 'store' },
+            { id: 'b', type: 'store' },
+          ],
+        });
+        fail('Expected create to throw');
+      } catch (error) {
+        expect((error as BadRequestException).getStatus()).toBe(429);
+      } finally {
+        delete process.env.WORKFLOW_MAX_STEPS_PER_WORKFLOW;
+      }
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw HttpException when workflow exceeds edge quota', async () => {
+      process.env.WORKFLOW_MAX_EDGES_PER_WORKFLOW = '1';
+
+      try {
+        await service.create(ownerId, {
+          name: 'Too Many Edges',
+          steps: [{ id: 'a', type: 'store' }, { id: 'b', type: 'store' }],
+          edges: [
+            { from: 'a', to: 'b' },
+            { from: 'b', to: 'a' },
+          ],
+        });
+        fail('Expected create to throw');
+      } catch (error) {
+        expect((error as BadRequestException).getStatus()).toBe(429);
+      } finally {
+        delete process.env.WORKFLOW_MAX_EDGES_PER_WORKFLOW;
+      }
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw HttpException 413 when workflow definition exceeds byte limit', async () => {
+      process.env.WORKFLOW_MAX_DEFINITION_BYTES = '256';
+
+      try {
+        await service.create(ownerId, {
+          name: 'Large Workflow',
+          description: 'x'.repeat(2000),
+        });
+        fail('Expected create to throw');
+      } catch (error) {
+        expect((error as BadRequestException).getStatus()).toBe(413);
+      } finally {
+        delete process.env.WORKFLOW_MAX_DEFINITION_BYTES;
+      }
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw HttpException when active schedule workflow quota is exceeded', async () => {
+      process.env.WORKFLOW_MAX_ACTIVE_SCHEDULE_PER_TENANT = '1';
+      mockCountDocumentsExec
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(1);
+
+      try {
+        await service.create(ownerId, {
+          name: 'Schedule Workflow',
+          trigger: {
+            type: 'schedule',
+            config: { cron: '*/5 * * * *' },
+          },
+        });
+        fail('Expected create to throw');
+      } catch (error) {
+        expect((error as BadRequestException).getStatus()).toBe(429);
+      } finally {
+        delete process.env.WORKFLOW_MAX_ACTIVE_SCHEDULE_PER_TENANT;
+      }
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw HttpException when active webhook workflow quota is exceeded', async () => {
+      process.env.WORKFLOW_MAX_ACTIVE_WEBHOOK_PER_TENANT = '1';
+      mockCountDocumentsExec
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(1);
+
+      try {
+        await service.create(ownerId, {
+          name: 'Webhook Workflow',
+          trigger: {
+            type: 'webhook',
+            config: { path: 'orders-created' },
+          },
+        });
+        fail('Expected create to throw');
+      } catch (error) {
+        expect((error as BadRequestException).getStatus()).toBe(429);
+      } finally {
+        delete process.env.WORKFLOW_MAX_ACTIVE_WEBHOOK_PER_TENANT;
+      }
+
+      expect(mockSave).not.toHaveBeenCalled();
     });
 
     it('should use empty arrays when steps/edges are omitted', async () => {
@@ -577,6 +710,57 @@ describe('WorkflowService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
 
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw HttpException when update exceeds step quota', async () => {
+      process.env.WORKFLOW_MAX_STEPS_PER_WORKFLOW = '1';
+      const existingDoc = makeWorkflowDoc();
+      mockFindByIdExec.mockResolvedValue(existingDoc);
+
+      try {
+        await service.update(workflowId, ownerId, {
+          steps: [
+            { id: 'a', type: 'store' },
+            { id: 'b', type: 'store' },
+          ],
+        });
+        fail('Expected update to throw');
+      } catch (error) {
+        expect((error as BadRequestException).getStatus()).toBe(429);
+      } finally {
+        delete process.env.WORKFLOW_MAX_STEPS_PER_WORKFLOW;
+      }
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw HttpException when update activates schedule workflow over quota', async () => {
+      process.env.WORKFLOW_MAX_ACTIVE_SCHEDULE_PER_TENANT = '1';
+      const existingDoc = makeWorkflowDoc({
+        status: 'inactive',
+        trigger: { type: 'schedule', config: { cron: '*/5 * * * *' } },
+      });
+      mockFindByIdExec.mockResolvedValue(existingDoc);
+      mockCountDocumentsExec.mockResolvedValueOnce(1);
+
+      try {
+        await service.update(workflowId, ownerId, { status: 'active' });
+        fail('Expected update to throw');
+      } catch (error) {
+        expect((error as BadRequestException).getStatus()).toBe(429);
+      } finally {
+        delete process.env.WORKFLOW_MAX_ACTIVE_SCHEDULE_PER_TENANT;
+      }
+
+      expect(mockWorkflowModel.countDocuments).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner_id: expect.any(Types.ObjectId),
+          status: 'active',
+          'trigger.type': 'schedule',
+          _id: { $ne: workflowId },
+        }),
+      );
       expect(mockSave).not.toHaveBeenCalled();
     });
   });

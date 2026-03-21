@@ -35,6 +35,10 @@ import {
   WebhookRateLimit,
   WebhookRateLimitDocument,
 } from './webhook-rate-limit.schema';
+import {
+  TriggerRateLimit,
+  TriggerRateLimitDocument,
+} from './trigger-rate-limit.schema';
 
 type TriggerType = 'manual' | 'webhook' | 'schedule';
 
@@ -59,6 +63,11 @@ const DEFAULT_WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 const DEFAULT_WEBHOOK_NONCE_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_WEBHOOK_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const DEFAULT_WEBHOOK_RATE_LIMIT_MAX_REQUESTS = 60;
+const DEFAULT_TRIGGER_PAYLOAD_MAX_BYTES = 256 * 1024;
+const DEFAULT_TRIGGER_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const DEFAULT_TRIGGER_RATE_LIMIT_MAX_REQUESTS = 120;
+const DEFAULT_TENANT_MAX_RUNNING_EXECUTIONS = 100;
+const DEFAULT_WORKFLOW_MAX_RUNNING_EXECUTIONS = 50;
 const MAX_FILTER_WINDOW_MS = 1000 * 60 * 60 * 24 * 31;
 const MAX_UNFILTERED_LIMIT = 50;
 
@@ -99,6 +108,8 @@ export class ExecutionService {
     private readonly webhookNonceModel: Model<WebhookNonceDocument>,
     @InjectModel(WebhookRateLimit.name)
     private readonly webhookRateLimitModel: Model<WebhookRateLimitDocument>,
+    @InjectModel(TriggerRateLimit.name)
+    private readonly triggerRateLimitModel: Model<TriggerRateLimitDocument>,
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
     private readonly eventGovernanceService: EventGovernanceService,
@@ -112,18 +123,26 @@ export class ExecutionService {
     options: TriggerExecutionOptions = {},
   ): Promise<ExecutionDocument> {
     const workflow = await this.workflowService.findOne(workflowId, ownerId);
+    const triggerType = options.triggerType ?? 'manual';
+    const triggerPayload = options.payload ?? dto.payload ?? {};
+    const normalizedIdempotencyKey = this.normalizeIdempotencyKey(
+      options.idempotencyKey ?? dto.idempotency_key,
+    );
+
+    await this.enforceTriggerQuotas(
+      ownerId,
+      String(workflow._id),
+      triggerType,
+      triggerPayload,
+      workflow.trigger?.config,
+    );
+
     const workflowSnapshot = this.buildWorkflowSnapshot(workflow);
     const executionTimeoutMs = this.resolveExecutionTimeoutMs(
       workflow.trigger?.config as Record<string, unknown> | undefined,
     );
     const startedAt = new Date();
     const timeoutAt = new Date(startedAt.getTime() + executionTimeoutMs);
-
-    const triggerType = options.triggerType ?? 'manual';
-    const triggerPayload = options.payload ?? dto.payload ?? {};
-    const normalizedIdempotencyKey = this.normalizeIdempotencyKey(
-      options.idempotencyKey ?? dto.idempotency_key,
-    );
 
     let execution: ExecutionDocument;
     try {
@@ -590,6 +609,193 @@ export class ExecutionService {
     }
 
     return Math.floor(maxRequests);
+  }
+
+  private getTriggerPayloadMaxBytes(config?: Record<string, unknown>): number {
+    return (
+      this.parsePositiveInteger(
+        config?.triggerPayloadMaxBytes ??
+          config?.trigger_payload_max_bytes ??
+          process.env.TRIGGER_PAYLOAD_MAX_BYTES,
+      ) ?? DEFAULT_TRIGGER_PAYLOAD_MAX_BYTES
+    );
+  }
+
+  private getTriggerRateLimitWindowMs(config?: Record<string, unknown>): number {
+    const seconds =
+      this.parsePositiveInteger(
+        config?.triggerRateLimitWindowSeconds ??
+          config?.trigger_rate_limit_window_seconds ??
+          process.env.TRIGGER_RATE_LIMIT_WINDOW_SECONDS,
+      ) ?? Math.floor(DEFAULT_TRIGGER_RATE_LIMIT_WINDOW_MS / 1000);
+
+    return seconds * 1000;
+  }
+
+  private getTriggerRateLimitMaxRequests(config?: Record<string, unknown>): number {
+    return (
+      this.parsePositiveInteger(
+        config?.triggerRateLimitMaxRequests ??
+          config?.trigger_rate_limit_max_requests ??
+          process.env.TRIGGER_RATE_LIMIT_MAX_REQUESTS,
+      ) ?? DEFAULT_TRIGGER_RATE_LIMIT_MAX_REQUESTS
+    );
+  }
+
+  private getTenantMaxRunningExecutions(config?: Record<string, unknown>): number {
+    return (
+      this.parsePositiveInteger(
+        config?.maxRunningExecutionsPerTenant ??
+          config?.max_running_executions_per_tenant ??
+          process.env.TENANT_MAX_RUNNING_EXECUTIONS,
+      ) ?? DEFAULT_TENANT_MAX_RUNNING_EXECUTIONS
+    );
+  }
+
+  private getWorkflowMaxRunningExecutions(config?: Record<string, unknown>): number {
+    return (
+      this.parsePositiveInteger(
+        config?.maxRunningExecutionsPerWorkflow ??
+          config?.max_running_executions_per_workflow ??
+          process.env.WORKFLOW_MAX_RUNNING_EXECUTIONS,
+      ) ?? DEFAULT_WORKFLOW_MAX_RUNNING_EXECUTIONS
+    );
+  }
+
+  private parsePositiveInteger(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return Math.floor(value);
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value.trim());
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return Math.floor(parsed);
+      }
+    }
+
+    return undefined;
+  }
+
+  private async enforceTriggerQuotas(
+    ownerId: string,
+    workflowId: string,
+    triggerType: TriggerType,
+    payload: Record<string, unknown>,
+    config?: Record<string, unknown>,
+  ): Promise<void> {
+    const ownerObjectId = new Types.ObjectId(ownerId);
+    const workflowObjectId = new Types.ObjectId(workflowId);
+
+    this.enforceTriggerPayloadSize(payload, config);
+    await this.enforceConcurrentExecutionQuotas(
+      ownerObjectId,
+      workflowObjectId,
+      config,
+    );
+    await this.enforceTriggerRateLimit(
+      ownerObjectId,
+      workflowObjectId,
+      triggerType,
+      config,
+    );
+  }
+
+  private enforceTriggerPayloadSize(
+    payload: Record<string, unknown>,
+    config?: Record<string, unknown>,
+  ): void {
+    const maxPayloadBytes = this.getTriggerPayloadMaxBytes(config);
+    const payloadBytes = Buffer.byteLength(this.stableStringify(payload), 'utf8');
+
+    if (payloadBytes > maxPayloadBytes) {
+      throw new HttpException(
+        `Trigger payload exceeds ${maxPayloadBytes} bytes`,
+        HttpStatus.PAYLOAD_TOO_LARGE,
+      );
+    }
+  }
+
+  private async enforceConcurrentExecutionQuotas(
+    ownerId: Types.ObjectId,
+    workflowId: Types.ObjectId,
+    config?: Record<string, unknown>,
+  ): Promise<void> {
+    const tenantLimit = this.getTenantMaxRunningExecutions(config);
+    const workflowLimit = this.getWorkflowMaxRunningExecutions(config);
+
+    const tenantRunning = await this.executionModel
+      .countDocuments({
+        owner_id: ownerId,
+        status: { $in: ['pending', 'running'] },
+      })
+      .exec();
+
+    if (tenantRunning >= tenantLimit) {
+      throw new HttpException(
+        `Tenant concurrent execution quota exceeded (${tenantLimit})`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const workflowRunning = await this.executionModel
+      .countDocuments({
+        owner_id: ownerId,
+        workflow_id: workflowId,
+        status: { $in: ['pending', 'running'] },
+      })
+      .exec();
+
+    if (workflowRunning >= workflowLimit) {
+      throw new HttpException(
+        `Workflow concurrent execution quota exceeded (${workflowLimit})`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  private async enforceTriggerRateLimit(
+    ownerId: Types.ObjectId,
+    workflowId: Types.ObjectId,
+    triggerType: TriggerType,
+    config?: Record<string, unknown>,
+  ): Promise<void> {
+    const windowMs = this.getTriggerRateLimitWindowMs(config);
+    const maxRequests = this.getTriggerRateLimitMaxRequests(config);
+    const now = Date.now();
+    const windowStartMs = Math.floor(now / windowMs) * windowMs;
+
+    const bucket = `trigger:${triggerType}:${windowStartMs}`;
+
+    const bucketDoc = await this.triggerRateLimitModel.findOneAndUpdate(
+      {
+        owner_id: ownerId,
+        bucket,
+      },
+      {
+        $setOnInsert: {
+          owner_id: ownerId,
+          workflow_id: workflowId,
+          bucket,
+          trigger_type: triggerType,
+          window_started_at: new Date(windowStartMs),
+          expires_at: new Date(windowStartMs + windowMs * 2),
+        },
+        $inc: { count: 1 },
+      },
+      {
+        upsert: true,
+        returnDocument: 'after',
+      },
+    );
+
+    if (!bucketDoc) {
+      throw new BadRequestException('Unable to enforce trigger rate limit');
+    }
+
+    if (bucketDoc.count > maxRequests) {
+      throw new HttpException('Trigger rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+    }
   }
 
   private parsePositiveNumber(value: unknown): number | undefined {

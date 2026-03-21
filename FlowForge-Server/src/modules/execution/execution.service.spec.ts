@@ -19,6 +19,7 @@ import { TriggerExecutionDto } from './dto/trigger-execution.dto';
 import { ExecutionService } from './execution.service';
 import { Execution } from './execution.schema';
 import { StepExecution } from './step-execution.schema';
+import { TriggerRateLimit } from './trigger-rate-limit.schema';
 import { WebhookNonce } from './webhook-nonce.schema';
 import { WebhookRateLimit } from './webhook-rate-limit.schema';
 
@@ -30,6 +31,7 @@ const mockExecutionFindExec = jest.fn();
 const mockExecutionFindSort = jest.fn();
 const mockExecutionFindLimit = jest.fn();
 const mockExecutionAggregateExec = jest.fn();
+const mockExecutionCountDocumentsExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockExecutionModel: any = jest
@@ -51,6 +53,9 @@ mockExecutionModel.find = jest.fn().mockReturnValue({
 mockExecutionModel.aggregate = jest
   .fn()
   .mockReturnValue({ exec: mockExecutionAggregateExec });
+mockExecutionModel.countDocuments = jest
+  .fn()
+  .mockReturnValue({ exec: mockExecutionCountDocumentsExec });
 
 const mockStepSave = jest.fn();
 const mockStepUpdateManyExec = jest.fn();
@@ -78,6 +83,12 @@ const mockWebhookRateLimitFindOneAndUpdate = jest.fn();
 
 const mockWebhookRateLimitModel = {
   findOneAndUpdate: mockWebhookRateLimitFindOneAndUpdate,
+};
+
+const mockTriggerRateLimitFindOneAndUpdate = jest.fn();
+
+const mockTriggerRateLimitModel = {
+  findOneAndUpdate: mockTriggerRateLimitFindOneAndUpdate,
 };
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -121,6 +132,8 @@ describe('ExecutionService', () => {
     jest.clearAllMocks();
     mockWebhookNonceCreate.mockResolvedValue({});
     mockWebhookRateLimitFindOneAndUpdate.mockResolvedValue({ count: 1 });
+    mockTriggerRateLimitFindOneAndUpdate.mockResolvedValue({ count: 1 });
+    mockExecutionCountDocumentsExec.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -137,6 +150,10 @@ describe('ExecutionService', () => {
         {
           provide: getModelToken(WebhookRateLimit.name),
           useValue: mockWebhookRateLimitModel,
+        },
+        {
+          provide: getModelToken(TriggerRateLimit.name),
+          useValue: mockTriggerRateLimitModel,
         },
         {
           provide: WorkflowService,
@@ -224,7 +241,79 @@ describe('ExecutionService', () => {
         'execution.started',
         expect.any(Object),
       );
+      expect(mockExecutionModel.countDocuments).toHaveBeenCalledTimes(2);
+      expect(mockTriggerRateLimitFindOneAndUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner_id: expect.any(Types.ObjectId),
+          bucket: expect.stringMatching(/^trigger:manual:/),
+        }),
+        expect.objectContaining({
+          $inc: { count: 1 },
+        }),
+        expect.objectContaining({
+          upsert: true,
+          returnDocument: 'after',
+        }),
+      );
       expect(result).toEqual(savedExec);
+    });
+
+    it('throws PayloadTooLarge when trigger payload exceeds configured limit', async () => {
+      process.env.TRIGGER_PAYLOAD_MAX_BYTES = '16';
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(makeWorkflowDoc() as never);
+
+      try {
+        await service.trigger(workflowId, ownerId, {
+          payload: { value: 'x'.repeat(64) },
+        });
+        fail('Expected trigger to throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        expect((error as HttpException).getStatus()).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
+      } finally {
+        delete process.env.TRIGGER_PAYLOAD_MAX_BYTES;
+      }
+      expect(mockExecutionModel).not.toHaveBeenCalled();
+    });
+
+    it('throws HttpException 429 when tenant concurrent execution quota is exceeded', async () => {
+      process.env.TENANT_MAX_RUNNING_EXECUTIONS = '1';
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(makeWorkflowDoc() as never);
+      mockExecutionCountDocumentsExec.mockResolvedValueOnce(1);
+
+      try {
+        await service.trigger(workflowId, ownerId, {});
+        fail('Expected trigger to throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        expect((error as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+      } finally {
+        delete process.env.TENANT_MAX_RUNNING_EXECUTIONS;
+      }
+      expect(mockExecutionModel).not.toHaveBeenCalled();
+    });
+
+    it('throws HttpException 429 when trigger rate limit is exceeded', async () => {
+      process.env.TRIGGER_RATE_LIMIT_MAX_REQUESTS = '1';
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(makeWorkflowDoc() as never);
+      mockTriggerRateLimitFindOneAndUpdate.mockResolvedValueOnce({ count: 2 });
+
+      try {
+        await service.trigger(workflowId, ownerId, {});
+        fail('Expected trigger to throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        expect((error as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+      } finally {
+        delete process.env.TRIGGER_RATE_LIMIT_MAX_REQUESTS;
+      }
+      expect(mockExecutionModel).not.toHaveBeenCalled();
     });
 
     it('uses workflow trigger execution timeout when configured', async () => {
