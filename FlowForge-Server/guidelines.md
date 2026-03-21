@@ -336,6 +336,8 @@ src/
 | GET    | /executions/summary         | Get status counts for operations (optional workflow/time window) |
 | GET    | /executions/:id             | Get execution + step status|
 | GET    | /executions/:id/events      | Get event log             |
+| POST   | /executions/:id/legal-hold  | Place legal hold (optional reason) |
+| DELETE | /executions/:id/legal-hold  | Release legal hold |
 | POST   | /executions/:id/cancel      | Cancel running execution  |
 
 ---
@@ -429,6 +431,12 @@ docker compose down
 | `PUBSUB_JOBS_SUBSCRIPTION`  | Subscription name for orchestrator               |
 | `PUBSUB_EVENTS_TOPIC`       | Pub/Sub topic for step results                   |
 | `PUBSUB_EVENTS_SUBSCRIPTION`| Subscription name for orchestrator               |
+| `EVENT_RETENTION_DAYS_OPERATIONAL` | Optional retention days for operational events before hot-store expiry (default `90`) |
+| `EVENT_RETENTION_DAYS_SECURITY` | Optional retention days for security events before hot-store expiry (default `90`) |
+| `EVENT_RETENTION_DAYS_COMPLIANCE` | Optional retention days for compliance events before hot-store expiry (default `90`) |
+| `EVENT_ARCHIVE_ENABLED`     | Enable expired-event archive job (`true`/`false`, default `false`) |
+| `EVENT_ARCHIVE_INTERVAL_MS` | Archive job scan interval in milliseconds (default `60000`) |
+| `EVENT_ARCHIVE_BATCH_SIZE`  | Max expired events archived per scan (default `500`) |
 | `HTTP_STEP_ALLOWED_HOSTS`   | Optional comma-separated host allowlist for outbound HTTP steps (`api.example.com,*.trusted.example`) |
 | `HTTP_STEP_ALLOW_PRIVATE_NETWORK_TARGETS` | Optional override (`true`/`false`, default `false`) to allow private/local outbound targets for HTTP steps |
 
@@ -457,7 +465,7 @@ docker compose down
 | Users module                | Done          | User schema (Mongoose), UsersService (create/findByEmail/findById/markEmailVerified/updatePassword), UsersModule, CreateUserDto. Added `email_verified`, `email_verified_at`, and `password_changed_at`. Unit tests: users.service.spec.ts (8 tests). |
 | Workflows module (CRUD)     | Done          | WorkflowSchema (steps/edges/trigger sub-schemas), CreateWorkflowDto, UpdateWorkflowDto, ValidateDagService (Kahn's cycle detection + duplicate/unknown-ref checks), WorkflowService (CRUD + ownership), WorkflowController (JWT-guarded REST). Step-config contract hardening Phase 1+3 completed: shared validator (`step-config.validator.ts`) enforced in create/update path and at persistence layer via WorkflowSchema pre-validate hook. Unit tests: validate-dag.service.spec.ts (13 tests), workflow.service.spec.ts (38 tests), workflow.schema.spec.ts (3 tests). |
 | Executions module           | Done          | ExecutionSchema, StepExecutionSchema, TriggerExecutionDto, ExecutionService (trigger/findAll/findSummary/findOne/cancel/findEvents), StepStateService (markRunning/markCompleted/markFailed), CompensateService (Saga compensation), ExecutionWatchdogService (interval-based timeout watchdog for stuck steps/executions), ExecutionController (6 REST endpoints), ExecutionModule. Timeout policy persisted via `timeout_policy`, `timeout_at`, and per-step `timeout_ms`/`timeout_at`; watchdog compensates timed-out runs to avoid orphaned executions. Compensation Phase 1+2 completed: per-step compensation contract, reverse-order rollback for completed compensable steps, compensation audit events, HTTP/noop compensation executor, retry/backoff + idempotency header propagation, durable compensation status tracking in step executions, and compensation config validation hardening. Query hardening completed: validated operational filters, owner-scoped cursor pagination (`created_at desc`, `_id desc`), summary-by-status endpoint, and compound execution indexes for operational access patterns. |
-| Events module               | Done          | ExecutionEventSchema (immutable audit log, 11 event types), EventService (append + findByExecutionId), EventModule. Used as a dependency by ExecutionModule. |
+| Events module               | Done          | ExecutionEventSchema (immutable audit log, 11 event types + compensation events), EventService (append + owner-scoped list query), EventModule. Event governance Phase 1+2+3 delivered: query filters + cursor pagination on `GET /executions/:id/events`, retention metadata (`retention_class`, `expires_at`, `payload_size_bytes`), index/TTL lifecycle primitives, bounded archive pipeline (`EventArchiveService`), and legal-hold governance workflow (`EventGovernanceService`) with execution-scoped hold/release controls. |
 | Scheduled trigger module    | Done          | SchedulerModule + WorkflowSchedulerService using `@nestjs/schedule` and `cron`: scans active workflows with `trigger.type = schedule`, validates `trigger.config.cron` + optional `trigger.config.timezone`, registers per-workflow cron jobs, and triggers `ExecutionService` with `trigger_type = schedule`. Includes MongoDB-backed distributed leader lease (`scheduler_locks`) so only one app instance owns and runs scheduled jobs at a time. |
 | Webhook trigger             | Done          | Public `POST /webhook/:userId/:path` endpoint (WebhookController). Resolves active workflow by `owner_id + trigger.type=webhook + trigger.config.path`, validates/normalizes webhook path in WorkflowService, and triggers ExecutionService with `trigger_type = webhook` and webhook payload metadata. Security now enforces anti-replay (`x-webhook-timestamp`, `x-webhook-nonce`) for all webhook requests, and HMAC-SHA256 signature validation (`x-webhook-signature`) when `trigger.config.secret` is configured. |
 | Webhook security hardening  | Done          | Added anti-replay and abuse controls: required timestamp + nonce headers, durable nonce replay registry (`webhook_nonces`), HMAC-SHA256 signature validation (`x-webhook-signature`) for secret-enabled webhooks, and Mongo-backed fixed-window per-workflow/IP rate limiting (`webhook_rate_limits`). Unit tests in `execution.service.spec.ts` cover stale timestamp, replay, invalid signature, and 429 rate limiting. |
@@ -470,4 +478,4 @@ docker compose down
 
 ---
 
-*Last updated: 2026-03-22 — Step-config contract hardening Phase 1+2+3 completed and closed: shared validator now protects workflow create/update, worker runtime dispatch, and persistence-level schema validation, with full regression run passing 168/168 tests. Execution query hardening Phase 1+2+3 remains completed; auth verification/reset + SMTP remains done, with refresh token rotation and session revocation as follow-up.*
+*Last updated: 2026-03-22 — Event retention and audit governance Phase 3 delivered: formal retention-class policy by event type, execution-scoped legal-hold exception workflow (`POST/DELETE /executions/:id/legal-hold`), hold-aware append/retention behavior, and archive safeguards that exclude held events. Event governance backlog is now functionally complete in code and docs (`docs/event-governance.md`). Deferred hardening note added: operator/admin RBAC for legal-hold endpoints is documented for future implementation. Step-config contract hardening Phase 1+2+3 remains completed; execution query hardening and auth verification/reset + SMTP remain completed with session hardening follow-up.*

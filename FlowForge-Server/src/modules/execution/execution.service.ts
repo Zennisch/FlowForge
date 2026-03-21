@@ -13,8 +13,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PubSubService } from '../../infra/pubsub/pubsub.provider';
 import { StepJob } from '../../shared/interfaces/step-job.interface';
+import { EventGovernanceService } from '../event/event-governance.service';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
+import { ListExecutionEventsQueryDto } from './dto/list-execution-events-query.dto';
 import { ExecutionSummaryQueryDto } from './dto/execution-summary-query.dto';
 import { ListExecutionsQueryDto } from './dto/list-executions-query.dto';
 import { TriggerExecutionDto } from './dto/trigger-execution.dto';
@@ -99,6 +101,7 @@ export class ExecutionService {
     private readonly webhookRateLimitModel: Model<WebhookRateLimitDocument>,
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
+    private readonly eventGovernanceService: EventGovernanceService,
     private readonly pubSubService: PubSubService,
   ) {}
 
@@ -982,9 +985,48 @@ export class ExecutionService {
     return execution;
   }
 
-  async findEvents(id: string, ownerId: string) {
+  async findEvents(
+    id: string,
+    ownerId: string,
+    query: ListExecutionEventsQueryDto = new ListExecutionEventsQueryDto(),
+  ) {
     await this.findOne(id, ownerId);
-    return this.eventService.findByExecutionId(id);
+
+    const occurredAtRange = this.buildDateRange(
+      query.occurred_from,
+      query.occurred_to,
+      'occurred_at',
+    );
+
+    return this.eventService.findByExecutionId(id, {
+      type: query.type,
+      step_id: query.step_id,
+      occurred_from: occurredAtRange?.$gte,
+      occurred_to: occurredAtRange?.$lte,
+      cursor: query.cursor,
+      limit: query.limit,
+    });
+  }
+
+  async setLegalHold(id: string, ownerId: string, reason?: string) {
+    await this.findOne(id, ownerId);
+    await this.eventGovernanceService.placeExecutionLegalHold(id, ownerId, reason);
+
+    return {
+      execution_id: id,
+      legal_hold: true,
+      reason: reason?.trim() || null,
+    };
+  }
+
+  async releaseLegalHold(id: string, ownerId: string) {
+    await this.findOne(id, ownerId);
+    await this.eventGovernanceService.releaseExecutionLegalHold(id);
+
+    return {
+      execution_id: id,
+      legal_hold: false,
+    };
   }
 }
 
