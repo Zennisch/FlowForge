@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
@@ -23,7 +24,10 @@ import { WebhookRateLimit } from './webhook-rate-limit.schema';
 
 const mockExecutionSave = jest.fn();
 const mockExecutionFindByIdExec = jest.fn();
-const mockExecutionFindSortExec = jest.fn();
+const mockExecutionFindExec = jest.fn();
+const mockExecutionFindSort = jest.fn();
+const mockExecutionFindLimit = jest.fn();
+const mockExecutionAggregateExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockExecutionModel: any = jest
@@ -37,9 +41,14 @@ const mockExecutionModel: any = jest
 mockExecutionModel.findById = jest
   .fn()
   .mockReturnValue({ exec: mockExecutionFindByIdExec });
+mockExecutionFindLimit.mockReturnValue({ exec: mockExecutionFindExec });
+mockExecutionFindSort.mockReturnValue({ limit: mockExecutionFindLimit });
 mockExecutionModel.find = jest.fn().mockReturnValue({
-  sort: jest.fn().mockReturnValue({ exec: mockExecutionFindSortExec }),
+  sort: mockExecutionFindSort,
 });
+mockExecutionModel.aggregate = jest
+  .fn()
+  .mockReturnValue({ exec: mockExecutionAggregateExec });
 
 const mockStepSave = jest.fn();
 const mockStepUpdateManyExec = jest.fn();
@@ -352,16 +361,197 @@ describe('ExecutionService', () => {
   // ── findAll ──────────────────────────────────────────────────────────────────
 
   describe('findAll', () => {
-    it('returns all executions for the given owner', async () => {
+    it('returns cursor-paginated executions for the given owner', async () => {
       const docs = [makeExecutionDoc(), makeExecutionDoc()];
-      mockExecutionFindSortExec.mockResolvedValue(docs);
+      mockExecutionFindExec.mockResolvedValue(docs);
 
       const result = await service.findAll(ownerId);
 
       expect(mockExecutionModel.find).toHaveBeenCalledWith({
         owner_id: expect.any(Types.ObjectId),
       });
-      expect(result).toEqual(docs);
+      expect(mockExecutionFindSort).toHaveBeenCalledWith({ created_at: -1, _id: -1 });
+      expect(mockExecutionFindLimit).toHaveBeenCalledWith(21);
+      expect(result).toEqual({
+        items: docs,
+        page_info: {
+          limit: 20,
+          cursor: null,
+          next_cursor: null,
+          has_next_page: false,
+        },
+      });
+    });
+
+    it('applies status, trigger, workflow and q filters', async () => {
+      mockExecutionFindExec.mockResolvedValue([]);
+      const queryExecutionId = new Types.ObjectId().toHexString();
+      const workflowObjectId = new Types.ObjectId().toHexString();
+
+      await service.findAll(ownerId, {
+        status: ['running'],
+        trigger_type: ['manual', 'webhook'],
+        workflow_id: workflowObjectId,
+        q: queryExecutionId,
+        limit: 10,
+      });
+
+      expect(mockExecutionModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $and: expect.arrayContaining([
+            { owner_id: expect.any(Types.ObjectId) },
+            { status: { $in: ['running'] } },
+            { workflow_id: expect.any(Types.ObjectId) },
+            { trigger_type: { $in: ['manual', 'webhook'] } },
+            {
+              $or: [
+                { idempotency_key: queryExecutionId },
+                { _id: expect.any(Types.ObjectId) },
+              ],
+            },
+          ]),
+        }),
+      );
+      expect(mockExecutionFindLimit).toHaveBeenCalledWith(11);
+    });
+
+    it('applies cursor filter and returns next cursor when more data exists', async () => {
+      const cursorSeedDate = new Date('2026-03-22T08:00:00.000Z');
+      const cursorSeedId = new Types.ObjectId();
+      const cursor = Buffer.from(
+        JSON.stringify({ created_at: cursorSeedDate.toISOString(), id: cursorSeedId.toHexString() }),
+      ).toString('base64url');
+      const olderDoc = {
+        ...makeExecutionDoc({ _id: new Types.ObjectId(), created_at: new Date('2026-03-22T07:00:00.000Z') }),
+      };
+      const overflowDoc = {
+        ...makeExecutionDoc({ _id: new Types.ObjectId(), created_at: new Date('2026-03-22T06:00:00.000Z') }),
+      };
+      mockExecutionFindExec.mockResolvedValue([olderDoc, overflowDoc]);
+
+      const result = await service.findAll(ownerId, {
+        cursor,
+        limit: 1,
+      });
+
+      expect(mockExecutionModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $and: expect.arrayContaining([
+            { owner_id: expect.any(Types.ObjectId) },
+            {
+              $or: [
+                { created_at: { $lt: cursorSeedDate } },
+                { created_at: cursorSeedDate, _id: { $lt: cursorSeedId } },
+              ],
+            },
+          ]),
+        }),
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.page_info.has_next_page).toBe(true);
+      expect(result.page_info.next_cursor).toEqual(expect.any(String));
+    });
+
+    it('rejects invalid cursor value', async () => {
+      await expect(
+        service.findAll(ownerId, {
+          cursor: 'invalid-cursor',
+          limit: 20,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects unfiltered list requests with oversized limits', async () => {
+      await expect(
+        service.findAll(ownerId, { limit: 80 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects invalid started_at date ranges', async () => {
+      await expect(
+        service.findAll(ownerId, {
+          started_from: '2026-03-20T12:00:00.000Z',
+          started_to: '2026-03-19T12:00:00.000Z',
+          limit: 20,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ── findSummary ─────────────────────────────────────────────────────────────
+
+  describe('findSummary', () => {
+    it('returns status counts with zero defaults', async () => {
+      mockExecutionAggregateExec.mockResolvedValue([
+        { _id: 'running', count: 3 },
+        { _id: 'failed', count: 1 },
+      ]);
+
+      const result = await service.findSummary(ownerId);
+
+      expect(mockExecutionModel.aggregate).toHaveBeenCalledWith([
+        {
+          $match: {
+            owner_id: expect.any(Types.ObjectId),
+          },
+        },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+      expect(result).toEqual({
+        counts: {
+          pending: 0,
+          running: 3,
+          completed: 0,
+          failed: 1,
+          cancelled: 0,
+          compensating: 0,
+        },
+        total: 4,
+      });
+    });
+
+    it('applies workflow and started_at window filters to summary match stage', async () => {
+      mockExecutionAggregateExec.mockResolvedValue([]);
+      const workflowObjectId = new Types.ObjectId().toHexString();
+
+      await service.findSummary(ownerId, {
+        workflow_id: workflowObjectId,
+        started_from: '2026-03-20T00:00:00.000Z',
+        started_to: '2026-03-21T00:00:00.000Z',
+      });
+
+      expect(mockExecutionModel.aggregate).toHaveBeenCalledWith([
+        {
+          $match: expect.objectContaining({
+            owner_id: expect.any(Types.ObjectId),
+            workflow_id: expect.any(Types.ObjectId),
+            started_at: {
+              $gte: new Date('2026-03-20T00:00:00.000Z'),
+              $lte: new Date('2026-03-21T00:00:00.000Z'),
+            },
+          }),
+        },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+    });
+
+    it('rejects invalid summary date ranges', async () => {
+      await expect(
+        service.findSummary(ownerId, {
+          started_from: '2026-03-21T00:00:00.000Z',
+          started_to: '2026-03-20T00:00:00.000Z',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
