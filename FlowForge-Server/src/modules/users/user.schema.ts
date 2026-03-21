@@ -10,6 +10,15 @@ export class User {
 
   @Prop({ required: true })
   password: string;
+
+  @Prop({ default: true })
+  email_verified: boolean;
+
+  @Prop({ default: null })
+  email_verified_at: Date | null;
+
+  @Prop({ default: null })
+  password_changed_at: Date | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -85,6 +85,10 @@ Browser / Client
 - User registration & login (email + password)
 - JWT-based stateless auth (access token)
 - Password hashing with bcrypt
+- Email verification flow: register creates unverified user and sends one-time verification email token (24h TTL)
+- Resend verification endpoint for unverified accounts
+- Forgot/reset password flow with one-time reset token (15m TTL)
+- SMTP email delivery via Gmail App Password (Nodemailer)
 
 ### 4.2 Workflow Management (CRUD)
 - Create, read, update, delete workflow definitions
@@ -308,8 +312,12 @@ src/
 ### Auth
 | Method | Path              | Description         |
 |--------|-------------------|---------------------|
-| POST   | /auth/register    | Register user       |
-| POST   | /auth/login       | Login, return JWT   |
+| POST   | /auth/register    | Register user (no JWT returned) |
+| POST   | /auth/login       | Login, return JWT (verified email required) |
+| POST   | /auth/verify-email | Verify email using token |
+| POST   | /auth/resend-verification | Resend verification email |
+| POST   | /auth/forgot-password | Request password reset email |
+| POST   | /auth/reset-password | Reset password using token |
 
 ### Workflows
 | Method | Path                        | Description               |
@@ -408,6 +416,13 @@ docker compose down
 | `MONGODB_URI`               | MongoDB Atlas connection string                  |
 | `JWT_SECRET`                | Secret for signing JWT tokens                    |
 | `JWT_EXPIRES_IN`            | Token expiry, e.g. `7d`                          |
+| `VERIFY_EMAIL_URL_TEMPLATE` | URL template for verification links (`{token}` or `{{token}}`) |
+| `RESET_PASSWORD_URL_TEMPLATE` | URL template for reset-password links (`{token}` or `{{token}}`) |
+| `SMTP_HOST`                 | SMTP host (Gmail default: `smtp.gmail.com`)      |
+| `SMTP_PORT`                 | SMTP port (`587` for STARTTLS or `465` for SSL)  |
+| `SMTP_USER`                 | SMTP username (Gmail address)                     |
+| `SMTP_PASS`                 | SMTP password (Gmail App Password)                |
+| `MAIL_FROM`                 | Optional from-address for outgoing auth emails    |
 | `GOOGLE_CLOUD_PROJECT`      | GCP project ID for Pub/Sub                       |
 | `PUBSUB_JOBS_TOPIC`         | Pub/Sub topic for step jobs                      |
 | `PUBSUB_JOBS_SUBSCRIPTION`  | Subscription name for orchestrator               |
@@ -437,8 +452,8 @@ docker compose down
 |-----------------------------|---------------|------------------------------------|
 | Project scaffold (NestJS)   | Done          | src/ structure + empty files created |
 | MongoDB / Mongoose setup    | Done          | ConfigModule (global) + DatabaseModule with MongooseModule.forRootAsync; tsconfig, nest-cli, eslint, prettier configured |
-| Auth module (JWT)           | Done          | RegisterDto, LoginDto, JwtStrategy, JwtAuthGuard, AuthService, AuthController, AuthModule. Unit tests: auth.service.spec.ts (4 tests) |
-| Users module                | Done          | User schema (Mongoose), UsersService (create/findByEmail/findById), UsersModule, CreateUserDto. Unit tests: users.service.spec.ts (6 tests) |
+| Auth module (JWT)           | Done          | Added account security flows: register now requires email verification before login, one-time auth tokens (`auth_tokens`) with hash-at-rest + TTL, endpoints for verify/resend/forgot/reset password, and SMTP mail delivery via MailModule (Gmail App Password compatible). Unit tests: auth.service.spec.ts (12 tests). Follow-up backlog: refresh token rotation, session revocation, and advanced brute-force controls. |
+| Users module                | Done          | User schema (Mongoose), UsersService (create/findByEmail/findById/markEmailVerified/updatePassword), UsersModule, CreateUserDto. Added `email_verified`, `email_verified_at`, and `password_changed_at`. Unit tests: users.service.spec.ts (8 tests). |
 | Workflows module (CRUD)     | Done          | WorkflowSchema (steps/edges/trigger sub-schemas), CreateWorkflowDto, UpdateWorkflowDto, ValidateDagService (Kahn's cycle detection + duplicate/unknown-ref checks), WorkflowService (CRUD + ownership), WorkflowController (JWT-guarded REST). Unit tests: validate-dag.service.spec.ts (13 tests) + workflow.service.spec.ts (14 tests) |
 | Executions module           | Done          | ExecutionSchema, StepExecutionSchema, TriggerExecutionDto, ExecutionService (trigger/findAll/findOne/cancel/findEvents), StepStateService (markRunning/markCompleted/markFailed), CompensateService (Saga compensation), ExecutionWatchdogService (interval-based timeout watchdog for stuck steps/executions), ExecutionController (5 REST endpoints), ExecutionModule. Timeout policy persisted via `timeout_policy`, `timeout_at`, and per-step `timeout_ms`/`timeout_at`; watchdog compensates timed-out runs to avoid orphaned executions. Compensation Phase 1+2 completed: per-step compensation contract, reverse-order rollback for completed compensable steps, compensation audit events, HTTP/noop compensation executor, retry/backoff + idempotency header propagation, durable compensation status tracking in step executions, and compensation config validation hardening. |
 | Events module               | Done          | ExecutionEventSchema (immutable audit log, 11 event types), EventService (append + findByExecutionId), EventModule. Used as a dependency by ExecutionModule. |
@@ -454,4 +469,4 @@ docker compose down
 
 ---
 
-*Last updated: 2026-03-21 — Extended outbound hardening to compensation HTTP flow: `CompensationExecutorService` now enforces the same SSRF guardrails (protocol validation, host allowlist, localhost/private-IP/private-DNS blocking) with regression tests in `compensation-executor.service.spec.ts`.*
+*Last updated: 2026-03-22 — Auth hardening phase delivered: email verification tokens (24h), resend verification, forgot/reset password tokens (15m), and SMTP-based auth emails via Gmail App Password. Future auth phase should add refresh token rotation, session revocation, and stronger brute-force/lockout controls.*

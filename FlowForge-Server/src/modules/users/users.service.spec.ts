@@ -18,6 +18,7 @@ const mockUserModel: any = jest
 
 mockUserModel.findOne = jest.fn();
 mockUserModel.findById = jest.fn();
+mockUserModel.findByIdAndUpdate = jest.fn();
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -59,8 +60,32 @@ describe('UsersService', () => {
       expect(mockUserModel.findOne).toHaveBeenCalledWith({
         email: 'test@example.com',
       });
+      expect(mockUserModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email_verified: true,
+        }),
+      );
       expect(mockSave).toHaveBeenCalled();
       expect(result).toMatchObject({ password: 'hashed_pw' });
+    });
+
+    it('should create an unverified user when emailVerified is false', async () => {
+      mockUserModel.findOne.mockResolvedValue(null);
+      mockSave.mockResolvedValue({ ...existingUser, email_verified: false });
+      jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed_pw' as never);
+
+      await service.create({
+        email: 'test@example.com',
+        password: 'password123',
+        emailVerified: false,
+      });
+
+      expect(mockUserModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email_verified: false,
+          email_verified_at: null,
+        }),
+      );
     });
 
     it('should throw ConflictException when email already exists', async () => {
@@ -111,6 +136,41 @@ describe('UsersService', () => {
       const result = await service.findById('nonexistent');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('markEmailVerified', () => {
+    it('should mark email as verified and set verified timestamp', async () => {
+      await service.markEmailVerified('user-id-123');
+
+      expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        'user-id-123',
+        {
+          $set: expect.objectContaining({
+            email_verified: true,
+            email_verified_at: expect.any(Date),
+          }),
+        },
+      );
+    });
+  });
+
+  describe('updatePassword', () => {
+    it('should hash and update password', async () => {
+      jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed_pw' as never);
+
+      await service.updatePassword('user-id-123', 'password123');
+
+      expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
+      expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        'user-id-123',
+        {
+          $set: expect.objectContaining({
+            password: 'hashed_pw',
+            password_changed_at: expect.any(Date),
+          }),
+        },
+      );
     });
   });
 });
