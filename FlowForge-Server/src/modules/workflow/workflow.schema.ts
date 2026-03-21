@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { validateWorkflowStepConfigs } from './step-config.validator';
 
 export type WorkflowDocument = HydratedDocument<Workflow>;
 
@@ -107,4 +108,13 @@ export class Workflow {
 }
 
 export const WorkflowSchema = SchemaFactory.createForClass(Workflow);
+
+WorkflowSchema.pre('validate', function () {
+  const steps = (this.steps ?? []) as Array<{
+    id: string;
+    type: StepType;
+    config?: Record<string, unknown>;
+  }>;
+  validateWorkflowStepConfigs(steps);
+});
 

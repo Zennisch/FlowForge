@@ -8,6 +8,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { validateCronExpression } from 'cron';
 import { Model, Types } from 'mongoose';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
+import { validateWorkflowStepConfigs } from './step-config.validator';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
 import { ValidateDagService } from './validate-dag.service';
 import { Workflow, WorkflowDocument } from './workflow.schema';
@@ -46,6 +47,7 @@ export class WorkflowService {
     const steps = dto.steps ?? [];
     const edges = dto.edges ?? [];
     this.validateDagService.validate(steps, edges);
+    validateWorkflowStepConfigs(steps);
     this.validateCompensationConfig(steps);
 
     const workflow = new this.workflowModel({
@@ -66,6 +68,7 @@ export class WorkflowService {
     const steps = dto.steps ?? workflow.steps;
     const edges = dto.edges ?? workflow.edges;
     this.validateDagService.validate(steps, edges);
+    validateWorkflowStepConfigs(steps);
     this.validateCompensationConfig(steps);
 
     Object.assign(workflow, dto);
