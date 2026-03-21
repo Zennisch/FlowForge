@@ -328,10 +328,126 @@ describe('WorkflowService', () => {
             {
               id: 'step-1',
               type: 'http',
+              config: { url: 'https://example.test/action' },
               compensation: {
                 enabled: true,
                 type: 'http',
                 config: { url: 'https://example.test/undo' },
+              },
+            },
+          ],
+        }),
+      ).resolves.toEqual(savedDoc);
+    });
+
+    it('should throw BadRequestException when http step config.url is missing', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'HTTP Workflow',
+          steps: [{ id: 's1', type: 'http', config: {} }],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when http step config.url is not http/https', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'HTTP Workflow',
+          steps: [
+            {
+              id: 's1',
+              type: 'http',
+              config: { url: 'ftp://example.com/resource' },
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when transform mapping values are not non-empty strings', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Transform Workflow',
+          steps: [
+            {
+              id: 't1',
+              type: 'transform',
+              config: { mapping: { amount: 123 } },
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when branch step field is missing', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Branch Workflow',
+          steps: [
+            {
+              id: 'b1',
+              type: 'branch',
+              config: { cases: [{ value: 'ok', next: 'next-step' }] },
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when store step config.data is not an object', async () => {
+      await expect(
+        service.create(ownerId, {
+          name: 'Store Workflow',
+          steps: [{ id: 'st1', type: 'store', config: { data: 'invalid' } }],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('should create workflow when step configs are valid', async () => {
+      const savedDoc = makeWorkflowDoc({ name: 'Valid Config Workflow' });
+      mockSave.mockResolvedValue(savedDoc);
+
+      await expect(
+        service.create(ownerId, {
+          name: 'Valid Config Workflow',
+          steps: [
+            {
+              id: 'http-step',
+              type: 'http',
+              config: {
+                url: 'https://example.com/api',
+                method: 'POST',
+                headers: { 'x-trace-id': 'trace-123' },
+                timeoutMs: 5000,
+              },
+            },
+            {
+              id: 'transform-step',
+              type: 'transform',
+              config: { mapping: { customerId: 'payload.customer.id' } },
+            },
+            {
+              id: 'store-step',
+              type: 'store',
+              config: { data: { destination: 'archive' } },
+            },
+            {
+              id: 'branch-step',
+              type: 'branch',
+              config: {
+                field: 'payload.status',
+                cases: [{ value: 'approved', next: 'store-step' }],
+                default: 'store-step',
               },
             },
           ],
@@ -365,7 +481,9 @@ describe('WorkflowService', () => {
       mockFindByIdExec.mockResolvedValue(existingDoc);
       mockSave.mockResolvedValue(existingDoc);
 
-      const newSteps = [{ id: 'x', type: 'http' as const }];
+      const newSteps = [
+        { id: 'x', type: 'http' as const, config: { url: 'https://example.com' } },
+      ];
       const newEdges = [{ from: 'x', to: 'x' }];
 
       await service.update(workflowId, ownerId, {
@@ -441,6 +559,25 @@ describe('WorkflowService', () => {
         type: 'webhook',
         config: { path: 'hooks-new' },
       });
+    });
+
+    it('should throw BadRequestException on update when step config is invalid', async () => {
+      const existingDoc = makeWorkflowDoc();
+      mockFindByIdExec.mockResolvedValue(existingDoc);
+
+      await expect(
+        service.update(workflowId, ownerId, {
+          steps: [
+            {
+              id: 'http-step',
+              type: 'http',
+              config: { method: 'GET' },
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSave).not.toHaveBeenCalled();
     });
   });
 
