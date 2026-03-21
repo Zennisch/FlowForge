@@ -11,8 +11,10 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
 import { PubSubService } from '../../infra/pubsub/pubsub.provider';
+import { EventGovernanceService } from '../event/event-governance.service';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
+import { ListExecutionEventsQueryDto } from './dto/list-execution-events-query.dto';
 import { TriggerExecutionDto } from './dto/trigger-execution.dto';
 import { ExecutionService } from './execution.service';
 import { Execution } from './execution.schema';
@@ -113,6 +115,7 @@ describe('ExecutionService', () => {
   let service: ExecutionService;
   let workflowService: WorkflowService;
   let eventService: EventService;
+  let eventGovernanceService: EventGovernanceService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -144,6 +147,15 @@ describe('ExecutionService', () => {
           useValue: { append: jest.fn().mockResolvedValue({}), findByExecutionId: jest.fn() },
         },
         {
+          provide: EventGovernanceService,
+          useValue: {
+            isExecutionOnLegalHold: jest.fn().mockResolvedValue(false),
+            placeExecutionLegalHold: jest.fn().mockResolvedValue(undefined),
+            releaseExecutionLegalHold: jest.fn().mockResolvedValue(undefined),
+            computeExpiresAt: jest.fn(),
+          },
+        },
+        {
           provide: PubSubService,
           useValue: { publishJob: jest.fn().mockResolvedValue(undefined) },
         },
@@ -153,6 +165,7 @@ describe('ExecutionService', () => {
     service = module.get<ExecutionService>(ExecutionService);
     workflowService = module.get<WorkflowService>(WorkflowService);
     eventService = module.get<EventService>(EventService);
+    eventGovernanceService = module.get<EventGovernanceService>(EventGovernanceService);
   });
 
   // ── trigger ─────────────────────────────────────────────────────────────────
@@ -675,15 +688,70 @@ describe('ExecutionService', () => {
     it('returns events for the execution after verifying ownership', async () => {
       const doc = makeExecutionDoc();
       mockExecutionFindByIdExec.mockResolvedValue(doc);
-      const events = [{ type: 'execution.started' }];
+      const events = {
+        items: [{ type: 'execution.started' }],
+        page_info: {
+          limit: 50,
+          cursor: null,
+          next_cursor: null,
+          has_next_page: false,
+        },
+      };
       jest
         .spyOn(eventService, 'findByExecutionId')
         .mockResolvedValue(events as never);
 
       const result = await service.findEvents(executionId, ownerId);
 
-      expect(eventService.findByExecutionId).toHaveBeenCalledWith(executionId);
+      expect(eventService.findByExecutionId).toHaveBeenCalledWith(
+        executionId,
+        expect.objectContaining({
+          limit: 50,
+          cursor: undefined,
+          step_id: undefined,
+          type: undefined,
+          occurred_from: undefined,
+          occurred_to: undefined,
+        }),
+      );
       expect(result).toEqual(events);
+    });
+
+    it('forwards event filters and pagination query options', async () => {
+      const doc = makeExecutionDoc();
+      mockExecutionFindByIdExec.mockResolvedValue(doc);
+      jest.spyOn(eventService, 'findByExecutionId').mockResolvedValue({
+        items: [],
+        page_info: {
+          limit: 10,
+          cursor: 'abc',
+          next_cursor: null,
+          has_next_page: false,
+        },
+      } as never);
+
+      const query: ListExecutionEventsQueryDto = {
+        limit: 10,
+        cursor: 'abc',
+        step_id: 'step-1',
+        type: ['step.failed'],
+        occurred_from: '2026-03-01T00:00:00.000Z',
+        occurred_to: '2026-03-02T00:00:00.000Z',
+      };
+
+      await service.findEvents(executionId, ownerId, query);
+
+      expect(eventService.findByExecutionId).toHaveBeenCalledWith(
+        executionId,
+        expect.objectContaining({
+          limit: 10,
+          cursor: 'abc',
+          step_id: 'step-1',
+          type: ['step.failed'],
+          occurred_from: expect.any(Date),
+          occurred_to: expect.any(Date),
+        }),
+      );
     });
 
     it('throws ForbiddenException when execution belongs to another owner', async () => {
@@ -692,6 +760,39 @@ describe('ExecutionService', () => {
       await expect(
         service.findEvents(executionId, otherOwnerId),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('legal hold', () => {
+    it('sets legal hold for owned execution', async () => {
+      mockExecutionFindByIdExec.mockResolvedValue(makeExecutionDoc());
+
+      const result = await service.setLegalHold(executionId, ownerId, 'compliance hold');
+
+      expect(eventGovernanceService.placeExecutionLegalHold).toHaveBeenCalledWith(
+        executionId,
+        ownerId,
+        'compliance hold',
+      );
+      expect(result).toEqual({
+        execution_id: executionId,
+        legal_hold: true,
+        reason: 'compliance hold',
+      });
+    });
+
+    it('releases legal hold for owned execution', async () => {
+      mockExecutionFindByIdExec.mockResolvedValue(makeExecutionDoc());
+
+      const result = await service.releaseLegalHold(executionId, ownerId);
+
+      expect(eventGovernanceService.releaseExecutionLegalHold).toHaveBeenCalledWith(
+        executionId,
+      );
+      expect(result).toEqual({
+        execution_id: executionId,
+        legal_hold: false,
+      });
     });
   });
 
