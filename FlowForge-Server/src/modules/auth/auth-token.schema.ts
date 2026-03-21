@@ -27,7 +27,7 @@ export class AuthToken {
   @Prop({ required: true, unique: true })
   token_hash: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   expires_at: Date;
 
   @Prop({ default: null })
