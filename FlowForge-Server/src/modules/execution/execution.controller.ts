@@ -6,11 +6,15 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ExecutionSummaryQueryDto } from './dto/execution-summary-query.dto';
+import { ListExecutionsQueryDto } from './dto/list-executions-query.dto';
 import { TriggerExecutionDto } from './dto/trigger-execution.dto';
 import { ExecutionService } from './execution.service';
 
@@ -34,8 +38,33 @@ export class ExecutionController {
   }
 
   @Get('executions')
-  findAll(@Req() req: AuthenticatedRequest) {
-    return this.executionService.findAll(req.user.id);
+  findAll(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: ListExecutionsQueryDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.executionService.findAll(req.user.id, query);
+  }
+
+  @Get('executions/summary')
+  findSummary(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: ExecutionSummaryQueryDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.executionService.findSummary(req.user.id, query);
   }
 
   @Get('executions/:id')

@@ -89,6 +89,11 @@ export class Execution {
 
 export const ExecutionSchema = SchemaFactory.createForClass(Execution);
 
+ExecutionSchema.index({ owner_id: 1, created_at: -1, _id: -1 });
+ExecutionSchema.index({ owner_id: 1, status: 1, created_at: -1 });
+ExecutionSchema.index({ owner_id: 1, workflow_id: 1, created_at: -1 });
+ExecutionSchema.index({ owner_id: 1, trigger_type: 1, created_at: -1 });
+
 ExecutionSchema.index(
   { owner_id: 1, workflow_id: 1, idempotency_key: 1 },
   {

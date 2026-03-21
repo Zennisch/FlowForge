@@ -15,10 +15,13 @@ import { PubSubService } from '../../infra/pubsub/pubsub.provider';
 import { StepJob } from '../../shared/interfaces/step-job.interface';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
+import { ExecutionSummaryQueryDto } from './dto/execution-summary-query.dto';
+import { ListExecutionsQueryDto } from './dto/list-executions-query.dto';
 import { TriggerExecutionDto } from './dto/trigger-execution.dto';
 import {
   Execution,
   ExecutionDocument,
+  ExecutionStatus,
   ExecutionWorkflowSnapshot,
 } from './execution.schema';
 import { StepExecution, StepExecutionDocument } from './step-execution.schema';
@@ -54,6 +57,34 @@ const DEFAULT_WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 const DEFAULT_WEBHOOK_NONCE_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_WEBHOOK_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const DEFAULT_WEBHOOK_RATE_LIMIT_MAX_REQUESTS = 60;
+const MAX_FILTER_WINDOW_MS = 1000 * 60 * 60 * 24 * 31;
+const MAX_UNFILTERED_LIMIT = 50;
+
+interface ExecutionListPageInfo {
+  limit: number;
+  cursor: string | null;
+  next_cursor: string | null;
+  has_next_page: boolean;
+}
+
+export interface ExecutionListResponse {
+  items: ExecutionDocument[];
+  page_info: ExecutionListPageInfo;
+}
+
+export interface ExecutionSummaryResponse {
+  counts: Record<ExecutionStatus, number>;
+  total: number;
+}
+
+const ALL_EXECUTION_STATUSES: ExecutionStatus[] = [
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'cancelled',
+  'compensating',
+];
 
 @Injectable()
 export class ExecutionService {
@@ -636,11 +667,277 @@ export class ExecutionService {
     }
   }
 
-  findAll(ownerId: string): Promise<ExecutionDocument[]> {
-    return this.executionModel
-      .find({ owner_id: new Types.ObjectId(ownerId) })
-      .sort({ created_at: -1 })
+  async findAll(
+    ownerId: string,
+    query: ListExecutionsQueryDto = new ListExecutionsQueryDto(),
+  ): Promise<ExecutionListResponse> {
+    const ownerObjectId = new Types.ObjectId(ownerId);
+    const andFilters: Record<string, unknown>[] = [{ owner_id: ownerObjectId }];
+
+    const normalizedStatuses = this.resolveStatusFilter(query);
+    if (normalizedStatuses) {
+      andFilters.push({ status: { $in: normalizedStatuses } });
+    }
+
+    if (query.workflow_id) {
+      andFilters.push({ workflow_id: new Types.ObjectId(query.workflow_id) });
+    }
+
+    if (query.trigger_type?.length) {
+      andFilters.push({ trigger_type: { $in: query.trigger_type } });
+    }
+
+    const startedAtRange = this.buildDateRange(
+      query.started_from,
+      query.started_to,
+      'started_at',
+    );
+    if (startedAtRange) {
+      andFilters.push({ started_at: startedAtRange });
+    }
+
+    const completedAtRange = this.buildDateRange(
+      query.completed_from,
+      query.completed_to,
+      'completed_at',
+    );
+    if (completedAtRange) {
+      andFilters.push({ completed_at: completedAtRange });
+    }
+
+    if (query.q?.trim()) {
+      const exact = query.q.trim();
+      const orFilters: Record<string, unknown>[] = [{ idempotency_key: exact }];
+
+      if (Types.ObjectId.isValid(exact)) {
+        orFilters.push({ _id: new Types.ObjectId(exact) });
+      }
+
+      andFilters.push({ $or: orFilters });
+    }
+
+    if (query.cursor) {
+      const cursor = this.decodeListCursor(query.cursor);
+      andFilters.push({
+        $or: [
+          { created_at: { $lt: cursor.created_at } },
+          {
+            created_at: cursor.created_at,
+            _id: { $lt: cursor.id },
+          },
+        ],
+      });
+    }
+
+    const filter = andFilters.length === 1 ? andFilters[0] : { $and: andFilters };
+
+    this.validateFindAllGuardrails(andFilters, query.limit);
+
+    const limit = query.limit;
+    const docs = await this.executionModel
+      .find(filter)
+      .sort({ created_at: -1, _id: -1 })
+      .limit(limit + 1)
       .exec();
+
+    const hasNextPage = docs.length > limit;
+    const items = hasNextPage ? docs.slice(0, limit) : docs;
+    const nextCursor = hasNextPage
+      ? this.encodeListCursor(items[items.length - 1])
+      : null;
+
+    return {
+      items,
+      page_info: {
+        limit,
+        cursor: query.cursor ?? null,
+        next_cursor: nextCursor,
+        has_next_page: hasNextPage,
+      },
+    };
+  }
+
+  async findSummary(
+    ownerId: string,
+    query: ExecutionSummaryQueryDto = new ExecutionSummaryQueryDto(),
+  ): Promise<ExecutionSummaryResponse> {
+    const match: Record<string, unknown> = {
+      owner_id: new Types.ObjectId(ownerId),
+    };
+
+    if (query.workflow_id) {
+      match.workflow_id = new Types.ObjectId(query.workflow_id);
+    }
+
+    const startedAtRange = this.buildDateRange(
+      query.started_from,
+      query.started_to,
+      'started_at',
+    );
+    if (startedAtRange) {
+      match.started_at = startedAtRange;
+    }
+
+    const grouped = await this.executionModel
+      .aggregate<{ _id: ExecutionStatus; count: number }>([
+        { $match: match },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .exec();
+
+    const counts = ALL_EXECUTION_STATUSES.reduce<Record<ExecutionStatus, number>>(
+      (acc, status) => {
+        acc[status] = 0;
+        return acc;
+      },
+      {
+        pending: 0,
+        running: 0,
+        completed: 0,
+        failed: 0,
+        cancelled: 0,
+        compensating: 0,
+      },
+    );
+
+    for (const row of grouped) {
+      if (row._id in counts) {
+        counts[row._id] = row.count;
+      }
+    }
+
+    return {
+      counts,
+      total: Object.values(counts).reduce((sum, value) => sum + value, 0),
+    };
+  }
+
+  private encodeListCursor(item: ExecutionDocument): string {
+    const createdAtFromDoc =
+      typeof item.get === 'function'
+        ? ((item.get('created_at') as Date | undefined) ?? undefined)
+        : undefined;
+    const createdAtFromObject = (item as unknown as { created_at?: Date }).created_at;
+    const createdAt = createdAtFromDoc ?? createdAtFromObject;
+    if (!createdAt || Number.isNaN(createdAt.getTime())) {
+      throw new BadRequestException('Execution cursor source is invalid');
+    }
+
+    const payload = JSON.stringify({
+      created_at: createdAt.toISOString(),
+      id: item._id.toString(),
+    });
+
+    return Buffer.from(payload).toString('base64url');
+  }
+
+  private decodeListCursor(cursor: string): { created_at: Date; id: Types.ObjectId } {
+    try {
+      const raw = Buffer.from(cursor, 'base64url').toString('utf8');
+      const parsed = JSON.parse(raw) as { created_at?: string; id?: string };
+
+      if (!parsed.created_at || !parsed.id || !Types.ObjectId.isValid(parsed.id)) {
+        throw new BadRequestException('Invalid cursor');
+      }
+
+      const createdAt = new Date(parsed.created_at);
+      if (Number.isNaN(createdAt.getTime())) {
+        throw new BadRequestException('Invalid cursor');
+      }
+
+      return { created_at: createdAt, id: new Types.ObjectId(parsed.id) };
+    } catch {
+      throw new BadRequestException('Invalid cursor');
+    }
+  }
+
+  private resolveStatusFilter(
+    query: ListExecutionsQueryDto,
+  ): ExecutionStatus[] | undefined {
+    const hasErrorsStatus: ExecutionStatus[] = ['failed', 'compensating'];
+    const nonErrorsStatus: ExecutionStatus[] = [
+      'pending',
+      'running',
+      'completed',
+      'cancelled',
+    ];
+
+    const explicitStatuses = query.status?.length
+      ? [...new Set(query.status)]
+      : undefined;
+
+    if (query.has_errors === undefined) {
+      return explicitStatuses;
+    }
+
+    const targetSet = query.has_errors ? hasErrorsStatus : nonErrorsStatus;
+    if (!explicitStatuses) {
+      return targetSet;
+    }
+
+    const intersection = explicitStatuses.filter((status) =>
+      targetSet.includes(status as ExecutionStatus),
+    ) as ExecutionStatus[];
+
+    return intersection;
+  }
+
+  private buildDateRange(
+    from?: string,
+    to?: string,
+    fieldName?: string,
+  ): Record<string, Date> | undefined {
+    if (!from && !to) {
+      return undefined;
+    }
+
+    const range: Record<string, Date> = {};
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+
+    if (fromDate && Number.isNaN(fromDate.getTime())) {
+      throw new BadRequestException(`Invalid ${fieldName} from date`);
+    }
+
+    if (toDate && Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException(`Invalid ${fieldName} to date`);
+    }
+
+    if (fromDate && toDate && fromDate > toDate) {
+      throw new BadRequestException(`${fieldName} from date must be before to date`);
+    }
+
+    if (fromDate && toDate && toDate.getTime() - fromDate.getTime() > MAX_FILTER_WINDOW_MS) {
+      throw new BadRequestException(`${fieldName} date range exceeds 31 days`);
+    }
+
+    if (fromDate) {
+      range.$gte = fromDate;
+    }
+
+    if (toDate) {
+      range.$lte = toDate;
+    }
+
+    return range;
+  }
+
+  private validateFindAllGuardrails(
+    andFilters: Record<string, unknown>[],
+    limit: number,
+  ): void {
+    const hasAdditionalFilter = andFilters.length > 1;
+
+    if (!hasAdditionalFilter && limit > MAX_UNFILTERED_LIMIT) {
+      throw new BadRequestException(
+        `Unfiltered execution list limit cannot exceed ${MAX_UNFILTERED_LIMIT}`,
+      );
+    }
   }
 
   async findOne(id: string, ownerId: string): Promise<ExecutionDocument> {
