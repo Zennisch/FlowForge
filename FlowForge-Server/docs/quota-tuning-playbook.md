@@ -1,47 +1,47 @@
 # Quota Tuning Playbook
 
-Tai lieu nay huong dan cach chinh quota theo tai truoc khi khoi dong server, giam noisy-neighbor va giu on dinh cho workflow engine.
+Tài liệu này hướng dẫn cách chỉnh quota theo tải trước khi khởi động server, giảm noisy-neighbor và giữ ổn định cho workflow engine.
 
-## 1. Muc tieu
+## 1. Mục tiêu
 
-- Bao ve he thong khoi dot bien trigger va workflow qua lon.
-- Dam bao cong bang giua cac tenant.
-- Cho phep operator chinh quota theo moi truong ma khong can sua code.
-- Bat loi cau hinh sai ngay luc startup (fail-fast).
+- Bảo vệ hệ thống khỏi đột biến trigger và workflow quá lớn.
+- Đảm bảo công bằng giữa các tenant.
+- Cho phép operator chỉnh quota theo môi trường mà không cần sửa code.
+- Bắt lỗi cấu hình sai ngay lúc startup (fail-fast).
 
-## 2. Nhom quota va bien moi truong
+## 2. Nhóm quota và biến môi trường
 
 ### 2.1 Execution Trigger Quotas
 
-- `TRIGGER_PAYLOAD_MAX_BYTES`: gioi han kich thuoc payload trigger.
-- `TRIGGER_RATE_LIMIT_WINDOW_SECONDS`: cua so fixed-window cho rate limit trigger.
-- `TRIGGER_RATE_LIMIT_MAX_REQUESTS`: so trigger toi da trong moi window.
-- `TENANT_MAX_RUNNING_EXECUTIONS`: so execution `pending + running` toi da theo tenant.
-- `WORKFLOW_MAX_RUNNING_EXECUTIONS`: so execution `pending + running` toi da theo workflow.
+- `TRIGGER_PAYLOAD_MAX_BYTES`: giới hạn kích thước payload trigger.
+- `TRIGGER_RATE_LIMIT_WINDOW_SECONDS`: cửa sổ fixed-window cho rate limit trigger.
+- `TRIGGER_RATE_LIMIT_MAX_REQUESTS`: số trigger tối đa trong mỗi window.
+- `TENANT_MAX_RUNNING_EXECUTIONS`: số execution `pending + running` tối đa theo tenant.
+- `WORKFLOW_MAX_RUNNING_EXECUTIONS`: số execution `pending + running` tối đa theo workflow.
 
 ### 2.2 Workflow CRUD Business Limits
 
-- `WORKFLOW_MAX_PER_TENANT`: so workflow toi da mot tenant co the tao.
-- `WORKFLOW_MAX_STEPS_PER_WORKFLOW`: so step toi da trong mot workflow.
-- `WORKFLOW_MAX_EDGES_PER_WORKFLOW`: so edge toi da trong DAG.
-- `WORKFLOW_MAX_ACTIVE_SCHEDULE_PER_TENANT`: so workflow schedule dang active toi da.
-- `WORKFLOW_MAX_ACTIVE_WEBHOOK_PER_TENANT`: so workflow webhook dang active toi da.
-- `WORKFLOW_MAX_DEFINITION_BYTES`: gioi han kich thuoc workflow definition.
+- `WORKFLOW_MAX_PER_TENANT`: số workflow tối đa một tenant có thể tạo.
+- `WORKFLOW_MAX_STEPS_PER_WORKFLOW`: số step tối đa trong một workflow.
+- `WORKFLOW_MAX_EDGES_PER_WORKFLOW`: số edge tối đa trong DAG.
+- `WORKFLOW_MAX_ACTIVE_SCHEDULE_PER_TENANT`: số workflow schedule đang active tối đa.
+- `WORKFLOW_MAX_ACTIVE_WEBHOOK_PER_TENANT`: số workflow webhook đang active tối đa.
+- `WORKFLOW_MAX_DEFINITION_BYTES`: giới hạn kích thước workflow definition.
 
 ## 3. Fail-fast startup validation
 
-Khi server bootstrap, cac bien quota neu da khai bao bat buoc phai la so nguyen duong.
-Neu sai dinh dang (vi du `abc`, `0`, `-1`) server se dung ngay voi loi cau hinh.
+Khi server bootstrap, các biến quota nếu đã khai báo bắt buộc phải là số nguyên dương.
+Nếu sai định dạng (ví dụ `abc`, `0`, `-1`) server sẽ dừng ngay với lỗi cấu hình.
 
-Rang buoc cheo duoc enforce:
+Ràng buộc chéo được enforce:
 
-- `WORKFLOW_MAX_RUNNING_EXECUTIONS` phai nho hon hoac bang `TENANT_MAX_RUNNING_EXECUTIONS`.
+- `WORKFLOW_MAX_RUNNING_EXECUTIONS` phải nhỏ hơn hoặc bằng `TENANT_MAX_RUNNING_EXECUTIONS`.
 
-Muc dich la tranh truong hop he thong chay voi default ngoai y muon.
+Mục đích là tránh trường hợp hệ thống chạy với default ngoài ý muốn.
 
-## 4. Preset de xuat theo moi truong
+## 4. Preset đề xuất theo môi trường
 
-### 4.1 Development (nho, de debug)
+### 4.1 Development (nhỏ, dễ debug)
 
 ```dotenv
 TRIGGER_PAYLOAD_MAX_BYTES=131072
@@ -58,7 +58,7 @@ WORKFLOW_MAX_ACTIVE_WEBHOOK_PER_TENANT=20
 WORKFLOW_MAX_DEFINITION_BYTES=131072
 ```
 
-### 4.2 Staging (gan production, co soak test)
+### 4.2 Staging (gần production, có soak test)
 
 ```dotenv
 TRIGGER_PAYLOAD_MAX_BYTES=262144
@@ -75,7 +75,7 @@ WORKFLOW_MAX_ACTIVE_WEBHOOK_PER_TENANT=70
 WORKFLOW_MAX_DEFINITION_BYTES=262144
 ```
 
-### 4.3 Production (can bang fairness va throughput)
+### 4.3 Production (cân bằng fairness và throughput)
 
 ```dotenv
 TRIGGER_PAYLOAD_MAX_BYTES=262144
@@ -92,65 +92,65 @@ WORKFLOW_MAX_ACTIVE_WEBHOOK_PER_TENANT=100
 WORKFLOW_MAX_DEFINITION_BYTES=262144
 ```
 
-## 5. Quy trinh tuning khuyen nghi
+## 5. Quy trình tuning khuyến nghị
 
-1. Chon preset gan nhat voi moi truong hien tai.
-2. Chinh file env truoc khi run server.
-3. Khoi dong app va xac nhan khong co loi fail-fast.
-4. Theo doi 3 nhom chi so trong 24-72h:
-   - Ty le bi reject 413 (payload qua lon).
-   - Ty le bi reject 429 (rate-limit va concurrent limit).
-   - Do tre queue/worker va so execution running trung binh.
-5. Dieu chinh tung bien theo buoc nho 10-20% moi lan.
-6. Lap lai cho den khi on dinh.
+1. Chọn preset gần nhất với môi trường hiện tại.
+2. Chỉnh file env trước khi run server.
+3. Khởi động app và xác nhận không có lỗi fail-fast.
+4. Theo dõi 3 nhóm chỉ số trong 24-72h:
+   - Tỷ lệ bị reject 413 (payload quá lớn).
+   - Tỷ lệ bị reject 429 (rate-limit và concurrent limit).
+   - Độ trễ queue/worker và số execution running trung bình.
+5. Điều chỉnh từng biến theo bước nhỏ 10-20% mỗi lần.
+6. Lặp lại cho đến khi ổn định.
 
-## 6. Cach doc trieu chung de dieu chinh nhanh
+## 6. Cách đọc triệu chứng để điều chỉnh nhanh
 
-- Nhieu loi 413:
-  - Kiem tra payload thua thong tin; toi uu client payload truoc.
-  - Chi tang `TRIGGER_PAYLOAD_MAX_BYTES` neu co ly do nghiep vu ro rang.
+- Nhiều lỗi 413:
+  - Kiểm tra payload thừa thông tin; tối ưu client payload trước.
+  - Chỉ tăng `TRIGGER_PAYLOAD_MAX_BYTES` nếu có lý do nghiệp vụ rõ ràng.
 
-- Nhieu loi 429 do trigger:
-  - Neu traffic hop le tang `TRIGGER_RATE_LIMIT_MAX_REQUESTS` theo buoc nho.
-  - Neu la burst ngan, co the giu request cap va xu ly queue phia client.
+- Nhiều lỗi 429 do trigger:
+  - Nếu traffic hợp lệ, tăng `TRIGGER_RATE_LIMIT_MAX_REQUESTS` theo bước nhỏ.
+  - Nếu là burst ngắn, có thể giữ request cap và xử lý queue phía client.
 
-- Nhieu loi 429 do concurrent:
-  - Tang `TENANT_MAX_RUNNING_EXECUTIONS` neu worker/database con du headroom.
-  - Tang `WORKFLOW_MAX_RUNNING_EXECUTIONS` theo workflow quan trong, nhung phai giu <= tenant cap.
+- Nhiều lỗi 429 do concurrent:
+  - Tăng `TENANT_MAX_RUNNING_EXECUTIONS` nếu worker/database còn đủ headroom.
+  - Tăng `WORKFLOW_MAX_RUNNING_EXECUTIONS` theo workflow quan trọng, nhưng phải giữ <= tenant cap.
 
-- Lien tuc vuot workflow quota:
-  - Danh gia lai governance tenant.
-  - Uu tien tieu chuan hoa va tai su dung workflow thay vi mo rong vo han.
+- Liên tục vượt workflow quota:
+  - Đánh giá lại governance tenant.
+  - Ưu tiên tiêu chuẩn hóa và tái sử dụng workflow thay vì mở rộng vô hạn.
 
-## 7. Rule an toan khi thay doi quota
+## 7. Rule an toàn khi thay đổi quota
 
-- Moi lan chi doi 1-2 bien de de quy ket nguyen nhan.
-- Khong tang dong thoi rate-limit va concurrent qua lon trong 1 dot.
-- Luon co rollback value truoc thay doi.
-- Ghi lai ly do, timestamp, nguoi thay doi.
+- Mỗi lần chỉ đổi 1-2 biến để dễ quy kết nguyên nhân.
+- Không tăng đồng thời rate-limit và concurrent quá lớn trong 1 đợt.
+- Luôn có rollback value trước thay đổi.
+- Ghi lại lý do, timestamp, người thay đổi.
 
-## 8. Muc tieu SLO tham khao
+## 8. Mục tiêu SLO tham khảo
 
-- Ty le reject quota hop ly trong gio cao diem: 0.5% - 2% (de bao ve he thong).
-- Ty le reject sustained > 5%: can xem lai capacity va policy.
-- Execution running khong duoc gan sat hard cap trong thoi gian dai.
+- Tỷ lệ reject quota hợp lý trong giờ cao điểm: 0.5% - 2% (để bảo vệ hệ thống).
+- Tỷ lệ reject sustained > 5%: cần xem lại capacity và policy.
+- Execution running không được gần sát hard cap trong thời gian dài.
 
-## 9. Vi du thay doi an toan
+## 9. Ví dụ thay đổi an toàn
 
-Tinh huong: tenant lon gap nhieu 429 do concurrent, nhung CPU worker con du.
+Tình huống: tenant lớn gặp nhiều 429 do concurrent, nhưng CPU worker còn dư.
 
-Buoc de xuat:
+Bước đề xuất:
 
-1. Tang `TENANT_MAX_RUNNING_EXECUTIONS` tu 100 len 120.
-2. Giu nguyen `WORKFLOW_MAX_RUNNING_EXECUTIONS` trong dot dau.
-3. Theo doi 24h.
-4. Neu van bottleneck o 1 workflow, tang `WORKFLOW_MAX_RUNNING_EXECUTIONS` tu 50 len 60.
-5. Dam bao van thoa `WORKFLOW_MAX_RUNNING_EXECUTIONS <= TENANT_MAX_RUNNING_EXECUTIONS`.
+1. Tăng `TENANT_MAX_RUNNING_EXECUTIONS` từ 100 lên 120.
+2. Giữ nguyên `WORKFLOW_MAX_RUNNING_EXECUTIONS` trong đợt đầu.
+3. Theo dõi 24h.
+4. Nếu vẫn bottleneck ở 1 workflow, tăng `WORKFLOW_MAX_RUNNING_EXECUTIONS` từ 50 lên 60.
+5. Đảm bảo vẫn thỏa `WORKFLOW_MAX_RUNNING_EXECUTIONS <= TENANT_MAX_RUNNING_EXECUTIONS`.
 
-## 10. Checklist truoc khi deploy
+## 10. Checklist trước khi deploy
 
-- Da cap nhat env cua moi truong muc tieu.
-- App khoi dong thanh cong, khong fail-fast config.
-- Da chay test quota path trong CI.
-- Da co ke hoach rollback env.
-- Team van hanh nam ro nguong canh bao 413/429.
+- Đã cập nhật env của môi trường mục tiêu.
+- App khởi động thành công, không fail-fast config.
+- Đã chạy test quota path trong CI.
+- Đã có kế hoạch rollback env.
+- Team vận hành nắm rõ ngưỡng cảnh báo 413/429.

@@ -1,31 +1,31 @@
-# Execution Query Guide
+# Hướng Dẫn Truy Vấn Execution
 
-This document describes production-ready query capabilities for execution operations.
+Tài liệu này mô tả các năng lực truy vấn sẵn sàng cho môi trường production đối với nghiệp vụ execution.
 
 ## Endpoints
 
 ### `GET /executions`
-Owner-scoped execution listing with validated filters and cursor pagination.
+Danh sách execution theo phạm vi owner với bộ lọc đã được xác thực và phân trang bằng cursor.
 
-Supported query params:
-- `status`: comma-separated or repeated values (`pending,running,failed,cancelled,completed,compensating`)
-- `workflow_id`: workflow Mongo ObjectId
-- `trigger_type`: comma-separated or repeated values (`manual,webhook,schedule`)
-- `started_from`, `started_to`: ISO-8601 range for `started_at`
-- `completed_from`, `completed_to`: ISO-8601 range for `completed_at`
-- `has_errors`: `true` or `false`
-- `q`: exact search against `idempotency_key`, and `_id` when ObjectId format is provided
-- `cursor`: opaque cursor returned by the previous page
-- `limit`: integer from 1 to 100 (default 20)
+Các query params được hỗ trợ:
+- `status`: giá trị phân tách bằng dấu phẩy hoặc lặp lại (`pending,running,failed,cancelled,completed,compensating`)
+- `workflow_id`: Mongo ObjectId của workflow
+- `trigger_type`: giá trị phân tách bằng dấu phẩy hoặc lặp lại (`manual,webhook,schedule`)
+- `started_from`, `started_to`: khoảng thời gian ISO-8601 cho `started_at`
+- `completed_from`, `completed_to`: khoảng thời gian ISO-8601 cho `completed_at`
+- `has_errors`: `true` hoặc `false`
+- `q`: tìm kiếm chính xác theo `idempotency_key`, và theo `_id` khi cung cấp đúng định dạng ObjectId
+- `cursor`: cursor opaque trả về từ trang trước
+- `limit`: số nguyên từ 1 đến 100 (mặc định 20)
 
 Guardrails:
-- Unfiltered queries are capped at limit 50.
-- Date ranges must be valid and cannot exceed 31 days.
+- Truy vấn không có bộ lọc bị giới hạn tối đa `limit` là 50.
+- Khoảng thời gian phải hợp lệ và không vượt quá 31 ngày.
 
-Sort order:
-- `created_at desc`, then `_id desc` (deterministic ordering).
+Thứ tự sắp xếp:
+- `created_at desc`, sau đó `_id desc` (thứ tự xác định).
 
-Response shape:
+Response mẫu:
 ```json
 {
   "items": [
@@ -43,26 +43,26 @@ Response shape:
 }
 ```
 
-Example:
+Ví dụ:
 ```http
 GET /executions?status=running,failed&trigger_type=manual&limit=20
 Authorization: Bearer <token>
 ```
 
-Next page example:
+Ví dụ trang tiếp theo:
 ```http
 GET /executions?status=running,failed&trigger_type=manual&limit=20&cursor=<next_cursor>
 Authorization: Bearer <token>
 ```
 
 ### `GET /executions/summary`
-Returns execution counts grouped by status for operations dashboards.
+Trả về số lượng execution theo từng trạng thái để phục vụ dashboard vận hành.
 
-Supported query params:
-- `workflow_id`: optional workflow Mongo ObjectId
-- `started_from`, `started_to`: optional ISO-8601 range for `started_at`
+Các query params được hỗ trợ:
+- `workflow_id`: Mongo ObjectId của workflow (tùy chọn)
+- `started_from`, `started_to`: khoảng thời gian ISO-8601 cho `started_at` (tùy chọn)
 
-Response shape:
+Response mẫu:
 ```json
 {
   "counts": {
@@ -77,26 +77,26 @@ Response shape:
 }
 ```
 
-Example:
+Ví dụ:
 ```http
 GET /executions/summary?workflow_id=65f0d3fbd1d2a4b4b8f16c11&started_from=2026-03-01T00:00:00.000Z&started_to=2026-03-22T00:00:00.000Z
 Authorization: Bearer <token>
 ```
 
 ### `GET /executions/:id/events`
-Owner-scoped event timeline query with cursor pagination and optional filters.
+Truy vấn dòng thời gian sự kiện theo phạm vi owner với phân trang cursor và bộ lọc tùy chọn.
 
-Supported query params:
-- `type`: comma-separated or repeated event types (`execution.started,step.failed,...`)
-- `step_id`: exact step id
-- `occurred_from`, `occurred_to`: ISO-8601 range for `occurred_at`
-- `cursor`: opaque cursor returned by the previous page
-- `limit`: integer from 1 to 200 (default 50)
+Các query params được hỗ trợ:
+- `type`: loại sự kiện phân tách bằng dấu phẩy hoặc lặp lại (`execution.started,step.failed,...`)
+- `step_id`: định danh step chính xác
+- `occurred_from`, `occurred_to`: khoảng thời gian ISO-8601 cho `occurred_at`
+- `cursor`: cursor opaque trả về từ trang trước
+- `limit`: số nguyên từ 1 đến 200 (mặc định 50)
 
-Sort order:
-- `occurred_at asc`, then `_id asc`.
+Thứ tự sắp xếp:
+- `occurred_at asc`, sau đó `_id asc`.
 
-Response shape:
+Response mẫu:
 ```json
 {
   "items": [
@@ -115,7 +115,7 @@ Response shape:
 ```
 
 ### `POST /executions/:id/legal-hold`
-Places a legal hold for an execution. Optional body:
+Đặt legal hold cho một execution. Body tùy chọn:
 
 ```json
 {
@@ -124,14 +124,14 @@ Places a legal hold for an execution. Optional body:
 ```
 
 ### `DELETE /executions/:id/legal-hold`
-Releases legal hold and resumes retention lifecycle according to policy.
+Gỡ legal hold và tiếp tục vòng đời lưu giữ theo chính sách.
 
-## Operational Notes
+## Ghi Chú Vận Hành
 
-- All queries are owner-scoped via JWT identity.
-- Compound indexes in `execution.schema.ts` optimize owner-scoped list and summary queries.
-- Event timeline queries are backed by `execution_events` indexes on `(execution_id, occurred_at, _id)` and `(execution_id, type, occurred_at)`.
-- Expired hot events are eligible for archival when `EVENT_ARCHIVE_ENABLED=true`; archive jobs move eligible records to `execution_events_archive` before deleting from `execution_events`.
-- Legal-hold lifecycle and policy matrix are documented in `docs/event-governance.md`.
-- For high-volume investigations, prefer narrow windows (status + workflow_id + started range).
-- `cursor` is opaque and should be treated as a token, not parsed by clients.
+- Tất cả truy vấn đều được giới hạn theo owner thông qua danh tính JWT.
+- Các compound index trong `execution.schema.ts` tối ưu truy vấn danh sách và summary theo owner.
+- Truy vấn dòng thời gian sự kiện sử dụng index `execution_events` trên `(execution_id, occurred_at, _id)` và `(execution_id, type, occurred_at)`.
+- Sự kiện nóng đã hết hạn đủ điều kiện lưu trữ khi `EVENT_ARCHIVE_ENABLED=true`; job lưu trữ sẽ chuyển bản ghi đủ điều kiện sang `execution_events_archive` trước khi xóa khỏi `execution_events`.
+- Vòng đời legal-hold và ma trận chính sách được tài liệu hóa tại `docs/event-governance.md`.
+- Với các đợt điều tra lưu lượng lớn, nên ưu tiên cửa sổ hẹp (status + workflow_id + started range).
+- `cursor` là opaque token và client không nên tự phân tích.

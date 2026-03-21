@@ -1,70 +1,70 @@
-# Event Governance Guide
+# Hướng Dẫn Quản Trị Sự Kiện
 
-This document defines retention, archival, and legal-hold governance for execution events.
+Tài liệu này định nghĩa cơ chế quản trị vòng đời lưu giữ, lưu trữ và legal hold (giữ dữ liệu theo yêu cầu pháp lý) cho các sự kiện thực thi.
 
-## 1. Retention Policy
+## 1. Chính Sách Lưu Giữ
 
-Event retention class is resolved by event type when not explicitly provided:
+Nhóm lưu giữ sự kiện được xác định theo loại sự kiện khi không được chỉ định tường minh:
 
 - `security`: `execution.failed`, `execution.cancelled`, `step.failed`, `step.retrying`, `step.compensation.failed`
 - `compliance`: `execution.completed`, `execution.compensating`, `step.compensation.started`, `step.compensation.completed`
-- `operational`: all remaining event types
+- `operational`: tất cả loại sự kiện còn lại
 
-Retention windows are configurable by environment variables:
+Khoảng thời gian lưu giữ có thể cấu hình bằng biến môi trường:
 
-- `EVENT_RETENTION_DAYS_OPERATIONAL` (default: `90`)
-- `EVENT_RETENTION_DAYS_SECURITY` (default: `90`)
-- `EVENT_RETENTION_DAYS_COMPLIANCE` (default: `90`)
+- `EVENT_RETENTION_DAYS_OPERATIONAL` (mặc định: `90`)
+- `EVENT_RETENTION_DAYS_SECURITY` (mặc định: `90`)
+- `EVENT_RETENTION_DAYS_COMPLIANCE` (mặc định: `90`)
 
-At write-time, each event stores:
+Tại thời điểm ghi, mỗi sự kiện lưu các trường:
 
 - `retention_class`
 - `expires_at`
 - `payload_size_bytes`
 
-## 2. Archive Policy
+## 2. Chính Sách Lưu Trữ
 
-Archive pipeline behavior:
+Hành vi của pipeline lưu trữ:
 
-1. Scan expired records in `execution_events` where `expires_at <= now` and `legal_hold != true`.
-2. Upsert each event into `execution_events_archive` by unique `source_event_id`.
-3. Delete archived records from `execution_events`.
+1. Quét các bản ghi đã hết hạn trong `execution_events` với điều kiện `expires_at <= now` và `legal_hold != true`.
+2. Upsert từng sự kiện vào `execution_events_archive` theo khóa duy nhất `source_event_id`.
+3. Xóa các bản ghi đã lưu trữ khỏi `execution_events`.
 
-Controls:
+Thông số điều khiển:
 
-- `EVENT_ARCHIVE_ENABLED` (`true`/`false`, default `false`)
-- `EVENT_ARCHIVE_INTERVAL_MS` (default `60000`)
-- `EVENT_ARCHIVE_BATCH_SIZE` (default `500`)
+- `EVENT_ARCHIVE_ENABLED` (`true`/`false`, mặc định `false`)
+- `EVENT_ARCHIVE_INTERVAL_MS` (mặc định `60000`)
+- `EVENT_ARCHIVE_BATCH_SIZE` (mặc định `500`)
 
-## 3. Legal Hold Workflow
+## 3. Quy Trình Legal Hold
 
-Legal hold is execution-scoped and prevents retention lifecycle actions.
+Legal hold áp dụng theo phạm vi execution và ngăn các hành động của vòng đời lưu giữ.
 
 Endpoints:
 
-- `POST /executions/:id/legal-hold` with optional `{ "reason": "..." }`
+- `POST /executions/:id/legal-hold` với body tùy chọn `{ "reason": "..." }`
 - `DELETE /executions/:id/legal-hold`
 
-Behavior:
+Hành vi:
 
-- When hold is active, existing and future events for that execution are marked with `legal_hold=true` and set to non-expiring horizon.
-- Archive job skips all held events.
-- Releasing hold recomputes `expires_at` from `occurred_at` + retention policy and re-enables lifecycle processing.
+- Khi hold đang hoạt động, các sự kiện hiện tại và tương lai của execution đó được đánh dấu `legal_hold=true` và đặt mốc không hết hạn.
+- Job lưu trữ bỏ qua toàn bộ sự kiện đang bị hold.
+- Khi gỡ hold, hệ thống tính lại `expires_at` từ `occurred_at` + chính sách lưu giữ và bật lại xử lý vòng đời.
 
-## 4. Operational Recommendations
+## 4. Khuyến Nghị Vận Hành
 
-- Restrict legal-hold endpoint access to trusted operators.
-- Use reason strings for traceability and incident correlation.
-- Monitor archive throughput and lag with periodic metrics on moved/deleted counts.
+- Giới hạn quyền truy cập endpoint legal-hold cho operator đáng tin cậy.
+- Sử dụng chuỗi reason để truy vết và liên kết sự cố.
+- Theo dõi thông lượng và độ trễ lưu trữ bằng metric định kỳ về số lượng đã chuyển/xóa.
 
-## 5. Deferred Hardening (Authorization)
+## 5. Tăng Cường Bảo Mật Hoãn Triển Khai (Phân Quyền)
 
-Current implementation is owner-scoped and functional for project phase needs.
+Triển khai hiện tại đang giới hạn theo owner và đáp ứng nhu cầu của giai đoạn dự án.
 
-Planned hardening for future release:
+Các hạng mục tăng cường cho bản phát hành tương lai:
 
-- Introduce dedicated operator/admin roles for legal-hold actions.
-- Enforce role-based access checks on `POST /executions/:id/legal-hold` and `DELETE /executions/:id/legal-hold`.
-- Add immutable audit records for hold/release actor identity and approval context.
+- Bổ sung vai trò operator/admin chuyên biệt cho thao tác legal-hold.
+- Áp dụng kiểm tra truy cập theo vai trò cho `POST /executions/:id/legal-hold` và `DELETE /executions/:id/legal-hold`.
+- Bổ sung bản ghi kiểm toán bất biến cho danh tính người giữ/gỡ hold và ngữ cảnh phê duyệt.
 
-Status: documented and deferred by decision; not required for the current phase.
+Trạng thái: đã được tài liệu hóa và hoãn theo quyết định; không bắt buộc trong giai đoạn hiện tại.
