@@ -13,7 +13,11 @@ import { createHash, randomBytes } from 'crypto';
 import { Model, Types } from 'mongoose';
 import { MailService } from '../../infra/mail/mail.service';
 import { UsersService } from '../users/users.service';
-import { AuthToken, AuthTokenDocument, AuthTokenType } from './auth-token.schema';
+import {
+  AuthToken,
+  AuthTokenDocument,
+  AuthTokenType,
+} from './auth-token.schema';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -57,7 +61,10 @@ export class AuthService {
   }
 
   async verifyEmail(dto: VerifyEmailDto): Promise<{ message: string }> {
-    const authToken = await this.consumeToken(dto.token, AuthTokenType.VerifyEmail);
+    const authToken = await this.consumeToken(
+      dto.token,
+      AuthTokenType.VerifyEmail,
+    );
     if (!authToken) {
       throw new BadRequestException('Invalid or expired verification token');
     }
@@ -96,8 +103,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
       return {
-        message:
-          'If the account exists, a password reset email has been sent.',
+        message: 'If the account exists, a password reset email has been sent.',
       };
     }
 
@@ -124,7 +130,10 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired reset token');
     }
 
-    await this.usersService.updatePassword(authToken.user_id.toString(), dto.password);
+    await this.usersService.updatePassword(
+      authToken.user_id.toString(),
+      dto.password,
+    );
 
     await this.authTokenModel.updateMany(
       {
@@ -239,7 +248,10 @@ export class AuthService {
     }
   }
 
-  private async sendVerificationEmail(email: string, verifyUrl: string): Promise<void> {
+  private async sendVerificationEmail(
+    email: string,
+    verifyUrl: string,
+  ): Promise<void> {
     await this.mailService.sendMail({
       to: email,
       subject: 'Verify your FlowForge account',
@@ -260,4 +272,3 @@ export class AuthService {
     });
   }
 }
-

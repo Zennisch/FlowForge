@@ -7,11 +7,12 @@ import { WorkflowService } from './workflow.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Workflow.name, schema: WorkflowSchema }]),
+    MongooseModule.forFeature([
+      { name: Workflow.name, schema: WorkflowSchema },
+    ]),
   ],
   controllers: [WorkflowController],
   providers: [WorkflowService, ValidateDagService],
   exports: [WorkflowService],
 })
 export class WorkflowModule {}
-

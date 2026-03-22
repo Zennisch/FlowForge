@@ -43,7 +43,9 @@ function validateHttpStepConfig(step: WorkflowStepLike): void {
   try {
     parsedUrl = new URL(url);
   } catch {
-    throw new BadRequestException(`Step '${step.id}' http config.url is invalid`);
+    throw new BadRequestException(
+      `Step '${step.id}' http config.url is invalid`,
+    );
   }
 
   if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
@@ -138,7 +140,9 @@ function validateBranchStepConfig(step: WorkflowStepLike): void {
   const field = config.field;
 
   if (typeof field !== 'string' || field.trim().length === 0) {
-    throw new BadRequestException(`Step '${step.id}' branch requires config.field`);
+    throw new BadRequestException(
+      `Step '${step.id}' branch requires config.field`,
+    );
   }
 
   const cases = config.cases;
@@ -168,7 +172,10 @@ function validateBranchStepConfig(step: WorkflowStepLike): void {
 
   const defaultTarget = config.default;
   if (defaultTarget !== undefined) {
-    if (typeof defaultTarget !== 'string' || defaultTarget.trim().length === 0) {
+    if (
+      typeof defaultTarget !== 'string' ||
+      defaultTarget.trim().length === 0
+    ) {
       throw new BadRequestException(
         `Step '${step.id}' branch config.default must be a non-empty string`,
       );

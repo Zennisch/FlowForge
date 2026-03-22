@@ -193,7 +193,9 @@ export class CompensateService {
         return true;
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Unknown compensation failure';
+          error instanceof Error
+            ? error.message
+            : 'Unknown compensation failure';
         const willRetry = attempt + 1 < maxAttempts;
 
         await this.stepExecutionModel
@@ -233,7 +235,9 @@ export class CompensateService {
     return false;
   }
 
-  private async markCompensationRunning(stepExecutionId: Types.ObjectId): Promise<void> {
+  private async markCompensationRunning(
+    stepExecutionId: Types.ObjectId,
+  ): Promise<void> {
     await this.stepExecutionModel
       .findByIdAndUpdate(stepExecutionId, {
         $set: {
@@ -260,4 +264,3 @@ export class CompensateService {
     return String(value);
   }
 }
-

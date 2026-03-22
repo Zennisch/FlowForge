@@ -37,4 +37,3 @@ export class BranchHandler {
     }, obj);
   }
 }
-

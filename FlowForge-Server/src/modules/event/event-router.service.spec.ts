@@ -80,12 +80,24 @@ describe('EventRouterService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EventRouterService,
-        { provide: getModelToken(Execution.name), useValue: mockExecutionModel },
-        { provide: getModelToken(StepExecution.name), useValue: mockStepExecutionModel },
-        { provide: StepStateService, useValue: { markCompleted: jest.fn(), markFailed: jest.fn() } },
+        {
+          provide: getModelToken(Execution.name),
+          useValue: mockExecutionModel,
+        },
+        {
+          provide: getModelToken(StepExecution.name),
+          useValue: mockStepExecutionModel,
+        },
+        {
+          provide: StepStateService,
+          useValue: { markCompleted: jest.fn(), markFailed: jest.fn() },
+        },
         { provide: CompensateService, useValue: { compensate: jest.fn() } },
         { provide: WorkflowService, useValue: { findOne: jest.fn() } },
-        { provide: EventService, useValue: { append: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: EventService,
+          useValue: { append: jest.fn().mockResolvedValue({}) },
+        },
         {
           provide: PubSubService,
           useValue: {
@@ -108,14 +120,22 @@ describe('EventRouterService', () => {
     it('does not dispatch join step when not all parent steps are completed', async () => {
       const executionDoc = makeExecutionDoc();
 
-      mockExecutionModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(executionDoc) });
-      jest.spyOn(workflowService, 'findOne').mockResolvedValue(workflow as never);
-      jest.spyOn(stepStateService, 'markCompleted').mockResolvedValue({} as never);
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(executionDoc),
+      });
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(workflow as never);
+      jest
+        .spyOn(stepStateService, 'markCompleted')
+        .mockResolvedValue({} as never);
       mockStepExecutionCountDocumentsExec.mockResolvedValue(1);
 
-      await (service as unknown as { onStepCompleted: (r: typeof baseResult) => Promise<void> }).onStepCompleted(
-        baseResult,
-      );
+      await (
+        service as unknown as {
+          onStepCompleted: (r: typeof baseResult) => Promise<void>;
+        }
+      ).onStepCompleted(baseResult);
 
       expect(mockStepExecutionModel.countDocuments).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -138,15 +158,23 @@ describe('EventRouterService', () => {
       const executionDoc = makeExecutionDoc();
       const queuedJoinStepExecution = { _id: new Types.ObjectId() };
 
-      mockExecutionModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(executionDoc) });
-      jest.spyOn(workflowService, 'findOne').mockResolvedValue(workflow as never);
-      jest.spyOn(stepStateService, 'markCompleted').mockResolvedValue({} as never);
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(executionDoc),
+      });
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(workflow as never);
+      jest
+        .spyOn(stepStateService, 'markCompleted')
+        .mockResolvedValue({} as never);
       mockStepExecutionCountDocumentsExec.mockResolvedValue(2);
       mockStepExecutionFindOneExec.mockResolvedValue(queuedJoinStepExecution);
 
-      await (service as unknown as { onStepCompleted: (r: typeof baseResult) => Promise<void> }).onStepCompleted(
-        baseResult,
-      );
+      await (
+        service as unknown as {
+          onStepCompleted: (r: typeof baseResult) => Promise<void>;
+        }
+      ).onStepCompleted(baseResult);
 
       expect(eventService.append).toHaveBeenCalledWith(
         baseResult.executionId,
@@ -176,15 +204,23 @@ describe('EventRouterService', () => {
         edges: [{ from: 'a', to: 'b' }],
       };
 
-      mockExecutionModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(executionDoc) });
-      jest.spyOn(workflowService, 'findOne').mockResolvedValue(editedWorkflow as never);
-      jest.spyOn(stepStateService, 'markCompleted').mockResolvedValue({} as never);
+      mockExecutionModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(executionDoc),
+      });
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(editedWorkflow as never);
+      jest
+        .spyOn(stepStateService, 'markCompleted')
+        .mockResolvedValue({} as never);
       mockStepExecutionCountDocumentsExec.mockResolvedValue(2);
       mockStepExecutionFindOneExec.mockResolvedValue(queuedStepExecution);
 
-      await (service as unknown as { onStepCompleted: (r: typeof baseResult) => Promise<void> }).onStepCompleted(
-        baseResult,
-      );
+      await (
+        service as unknown as {
+          onStepCompleted: (r: typeof baseResult) => Promise<void>;
+        }
+      ).onStepCompleted(baseResult);
 
       expect(mockStepExecutionModel.findOne).toHaveBeenCalledWith({
         execution_id: executionId,
@@ -214,8 +250,12 @@ describe('EventRouterService', () => {
       mockExecutionModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue(executionDoc),
       });
-      jest.spyOn(workflowService, 'findOne').mockResolvedValue(branchWorkflow as never);
-      jest.spyOn(stepStateService, 'markCompleted').mockResolvedValue({} as never);
+      jest
+        .spyOn(workflowService, 'findOne')
+        .mockResolvedValue(branchWorkflow as never);
+      jest
+        .spyOn(stepStateService, 'markCompleted')
+        .mockResolvedValue({} as never);
 
       await (
         service as unknown as {
@@ -226,7 +266,9 @@ describe('EventRouterService', () => {
         output: { _branch_next: 'missing-step' },
       });
 
-      expect(compensateService.compensate).toHaveBeenCalledWith(baseResult.executionId);
+      expect(compensateService.compensate).toHaveBeenCalledWith(
+        baseResult.executionId,
+      );
       expect(pubSubService.publishJob).not.toHaveBeenCalled();
     });
   });
@@ -328,7 +370,8 @@ describe('EventRouterService', () => {
         }),
       );
 
-      const publishArg = (pubSubService.publishJob as jest.Mock).mock.calls[0][0] as {
+      const publishArg = (pubSubService.publishJob as jest.Mock).mock
+        .calls[0][0] as {
         notBefore: string;
       };
       expect(Number.isFinite(Date.parse(publishArg.notBefore))).toBe(true);

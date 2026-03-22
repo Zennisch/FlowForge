@@ -65,7 +65,10 @@ export class ExecutionWatchdogService {
         continue;
       }
 
-      const compensated = await this.compensateRunningExecution(executionId, 'step timeout');
+      const compensated = await this.compensateRunningExecution(
+        executionId,
+        'step timeout',
+      );
       if (compensated) {
         compensatedExecutionIds.add(executionId);
       }

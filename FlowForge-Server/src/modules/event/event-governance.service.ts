@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { EventLegalHold, EventLegalHoldDocument } from './event-legal-hold.schema';
-import { EventRetentionClass, ExecutionEvent, ExecutionEventDocument } from './execution-event.schema';
+import {
+  EventLegalHold,
+  EventLegalHoldDocument,
+} from './event-legal-hold.schema';
+import {
+  EventRetentionClass,
+  ExecutionEvent,
+  ExecutionEventDocument,
+} from './execution-event.schema';
 
 const LEGAL_HOLD_EXPIRATION_DATE = new Date('9999-12-31T00:00:00.000Z');
 const DEFAULT_EVENT_RETENTION_DAYS = 90;
@@ -34,7 +41,9 @@ export class EventGovernanceService {
     return Boolean(hold);
   }
 
-  async getExecutionLegalHoldState(executionId: string): Promise<ExecutionLegalHoldState> {
+  async getExecutionLegalHoldState(
+    executionId: string,
+  ): Promise<ExecutionLegalHoldState> {
     const hold = await this.legalHoldModel
       .findOne({ execution_id: new Types.ObjectId(executionId) })
       .select({
@@ -133,7 +142,10 @@ export class EventGovernanceService {
       .exec();
 
     for (const event of heldEvents) {
-      const expiresAt = this.computeExpiresAt(event.occurred_at, event.retention_class);
+      const expiresAt = this.computeExpiresAt(
+        event.occurred_at,
+        event.retention_class,
+      );
       await this.eventModel
         .updateOne(
           { _id: event._id },
@@ -151,7 +163,10 @@ export class EventGovernanceService {
     }
   }
 
-  computeExpiresAt(occurredAt: Date, retentionClass: EventRetentionClass): Date {
+  computeExpiresAt(
+    occurredAt: Date,
+    retentionClass: EventRetentionClass,
+  ): Date {
     const retentionDays = this.resolveRetentionDays(retentionClass);
     return new Date(occurredAt.getTime() + retentionDays * 24 * 60 * 60 * 1000);
   }

@@ -49,7 +49,9 @@ const makeExecutionDoc = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const makeCompletedStepExecution = (overrides: Record<string, unknown> = {}) => ({
+const makeCompletedStepExecution = (
+  overrides: Record<string, unknown> = {},
+) => ({
   _id: new Types.ObjectId(stepExecutionId),
   step_id: 'reserve-inventory',
   status: 'completed',
@@ -256,7 +258,9 @@ describe('CompensateService', () => {
     });
 
     it('skips completed steps when compensation is not enabled', async () => {
-      const stepExecution = makeCompletedStepExecution({ step_id: 'transform-a' });
+      const stepExecution = makeCompletedStepExecution({
+        step_id: 'transform-a',
+      });
       const doc = makeExecutionDoc({
         workflow_snapshot: {
           steps: [

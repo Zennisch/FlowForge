@@ -36,7 +36,8 @@ class CompensationPolicy {
   retry: RetryPolicy;
 }
 
-const CompensationPolicySchema = SchemaFactory.createForClass(CompensationPolicy);
+const CompensationPolicySchema =
+  SchemaFactory.createForClass(CompensationPolicy);
 
 @Schema({ _id: false })
 class WorkflowStep {
@@ -52,7 +53,10 @@ class WorkflowStep {
   @Prop({ type: RetryPolicySchema, default: () => ({}) })
   retry: RetryPolicy;
 
-  @Prop({ type: CompensationPolicySchema, default: () => ({ enabled: false, type: 'noop' }) })
+  @Prop({
+    type: CompensationPolicySchema,
+    default: () => ({ enabled: false, type: 'noop' }),
+  })
   compensation: CompensationPolicy;
 }
 
@@ -74,7 +78,11 @@ const WorkflowEdgeSchema = SchemaFactory.createForClass(WorkflowEdge);
 
 @Schema({ _id: false })
 class WorkflowTrigger {
-  @Prop({ required: true, enum: ['manual', 'webhook', 'schedule'], default: 'manual' })
+  @Prop({
+    required: true,
+    enum: ['manual', 'webhook', 'schedule'],
+    default: 'manual',
+  })
   type: TriggerType;
 
   @Prop({ type: Object, default: {} })
@@ -97,7 +105,10 @@ export class Workflow {
   @Prop({ enum: ['active', 'inactive'], default: 'active' })
   status: WorkflowStatus;
 
-  @Prop({ type: WorkflowTriggerSchema, default: () => ({ type: 'manual', config: {} }) })
+  @Prop({
+    type: WorkflowTriggerSchema,
+    default: () => ({ type: 'manual', config: {} }),
+  })
   trigger: WorkflowTrigger;
 
   @Prop({ type: [WorkflowStepSchema], default: [] })
@@ -117,4 +128,3 @@ WorkflowSchema.pre('validate', function () {
   }>;
   validateWorkflowStepConfigs(steps);
 });
-

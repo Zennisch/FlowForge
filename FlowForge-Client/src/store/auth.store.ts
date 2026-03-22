@@ -24,6 +24,6 @@ export const useAuthStore = create<AuthState>()(
       name: 'auth-storage',
       // Only persist the token — user can be re-fetched on every session
       partialize: (state) => ({ token: state.token }),
-    },
-  ),
+    }
+  )
 );

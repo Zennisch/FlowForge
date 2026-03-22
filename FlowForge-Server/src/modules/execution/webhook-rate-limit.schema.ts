@@ -25,7 +25,8 @@ export class WebhookRateLimit {
   expires_at: Date;
 }
 
-export const WebhookRateLimitSchema = SchemaFactory.createForClass(WebhookRateLimit);
+export const WebhookRateLimitSchema =
+  SchemaFactory.createForClass(WebhookRateLimit);
 
 WebhookRateLimitSchema.index({ workflow_id: 1, bucket: 1 }, { unique: true });
 WebhookRateLimitSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });

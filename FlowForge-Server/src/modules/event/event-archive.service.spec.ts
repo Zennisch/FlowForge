@@ -33,7 +33,10 @@ describe('EventArchiveService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EventArchiveService,
-        { provide: getModelToken(ExecutionEvent.name), useValue: mockEventModel },
+        {
+          provide: getModelToken(ExecutionEvent.name),
+          useValue: mockEventModel,
+        },
         {
           provide: getModelToken(ExecutionEventArchive.name),
           useValue: mockArchiveModel,

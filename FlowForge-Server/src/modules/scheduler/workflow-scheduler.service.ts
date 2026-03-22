@@ -26,7 +26,10 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
   private readonly instanceId = randomUUID();
   private readonly leaderLeaseDurationMs = 45_000;
   private readonly leaderLockId = 'workflow-scheduler-leader';
-  private readonly jobConfigs = new Map<string, { cron: string; timezone?: string }>();
+  private readonly jobConfigs = new Map<
+    string,
+    { cron: string; timezone?: string }
+  >();
   private isLeader = false;
 
   constructor(
@@ -59,7 +62,9 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
 
     if (!hasLeadership) {
       if (this.isLeader) {
-        this.logger.warn('Scheduler leadership lost; clearing local workflow cron jobs');
+        this.logger.warn(
+          'Scheduler leadership lost; clearing local workflow cron jobs',
+        );
       }
       this.isLeader = false;
       this.clearManagedJobs();
@@ -67,7 +72,9 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!this.isLeader) {
-      this.logger.log(`Scheduler leadership acquired by instance ${this.instanceId}`);
+      this.logger.log(
+        `Scheduler leadership acquired by instance ${this.instanceId}`,
+      );
     }
     this.isLeader = true;
 
@@ -134,10 +141,7 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
         .findOneAndUpdate(
           {
             _id: this.leaderLockId,
-            $or: [
-              { lease_until: { $lte: now } },
-              { owner: this.instanceId },
-            ],
+            $or: [{ lease_until: { $lte: now } }, { owner: this.instanceId }],
           },
           {
             $set: {
@@ -260,14 +264,19 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
 
   private async handleTick(config: ScheduledWorkflow): Promise<void> {
     try {
-      await this.executionService.trigger(config.workflowId, config.ownerId, {}, {
-        triggerType: 'schedule',
-        payload: {
-          cron: config.cron,
-          timezone: config.timezone,
-          scheduled_at: new Date().toISOString(),
+      await this.executionService.trigger(
+        config.workflowId,
+        config.ownerId,
+        {},
+        {
+          triggerType: 'schedule',
+          payload: {
+            cron: config.cron,
+            timezone: config.timezone,
+            scheduled_at: new Date().toISOString(),
+          },
         },
-      });
+      );
     } catch (error) {
       this.logger.error(
         `Failed scheduled trigger for workflow ${config.workflowId}`,
@@ -276,7 +285,9 @@ export class WorkflowSchedulerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private getCronExpression(config?: Record<string, unknown>): string | undefined {
+  private getCronExpression(
+    config?: Record<string, unknown>,
+  ): string | undefined {
     if (!config) {
       return undefined;
     }

@@ -30,10 +30,7 @@ import {
   ExecutionWorkflowSnapshot,
 } from './execution.schema';
 import { StepExecution, StepExecutionDocument } from './step-execution.schema';
-import {
-  WebhookNonce,
-  WebhookNonceDocument,
-} from './webhook-nonce.schema';
+import { WebhookNonce, WebhookNonceDocument } from './webhook-nonce.schema';
 import {
   WebhookRateLimit,
   WebhookRateLimitDocument,
@@ -171,7 +168,9 @@ export class ExecutionService {
       }).save();
     } catch (error: unknown) {
       if (this.isDuplicateKeyError(error)) {
-        throw new ConflictException('Duplicate idempotency key in this workflow scope');
+        throw new ConflictException(
+          'Duplicate idempotency key in this workflow scope',
+        );
       }
       throw error;
     }
@@ -186,24 +185,28 @@ export class ExecutionService {
         input: {},
         output: null,
         error: null,
-        compensation_status: step.compensation?.enabled ? 'pending' : 'disabled',
+        compensation_status: step.compensation?.enabled
+          ? 'pending'
+          : 'disabled',
         compensation_attempt: 0,
         compensation_error: null,
       }).save();
       stepExecutions.push(stepExecution);
     }
 
-    await this.eventService.append(
-      String(execution._id),
-      'execution.started',
-      { workflow_id: workflowId, trigger_type: triggerType },
-    );
+    await this.eventService.append(String(execution._id), 'execution.started', {
+      workflow_id: workflowId,
+      trigger_type: triggerType,
+    });
 
     if (workflow.steps.length === 0) {
       execution.status = 'completed';
       execution.completed_at = new Date();
       await execution.save();
-      await this.eventService.append(String(execution._id), 'execution.completed');
+      await this.eventService.append(
+        String(execution._id),
+        'execution.completed',
+      );
       return execution;
     }
 
@@ -215,13 +218,21 @@ export class ExecutionService {
       const stepExecution = stepExecutions.find((se) => se.step_id === step.id);
       if (!stepExecution) continue;
 
-      await this.eventService.append(String(execution._id), 'step.queued', {}, step.id);
+      await this.eventService.append(
+        String(execution._id),
+        'step.queued',
+        {},
+        step.id,
+      );
 
       const job: StepJob = {
         executionId: String(execution._id),
         stepId: step.id,
         stepExecutionId: String(stepExecution._id),
-        stepConfig: { type: step.type, ...(step.config as Record<string, unknown>) },
+        stepConfig: {
+          type: step.type,
+          ...(step.config as Record<string, unknown>),
+        },
         context: {},
         attempt: 0,
       };
@@ -254,9 +265,13 @@ export class ExecutionService {
       throw new UnauthorizedException('Missing or invalid webhook timestamp');
     }
 
-    const toleranceMs = this.getWebhookTimestampToleranceMs(workflow.trigger?.config);
+    const toleranceMs = this.getWebhookTimestampToleranceMs(
+      workflow.trigger?.config,
+    );
     if (Math.abs(Date.now() - timestampMs) > toleranceMs) {
-      throw new UnauthorizedException('Webhook timestamp is outside allowed tolerance');
+      throw new UnauthorizedException(
+        'Webhook timestamp is outside allowed tolerance',
+      );
     }
 
     const nonce = this.normalizeWebhookNonce(security.nonce);
@@ -282,7 +297,9 @@ export class ExecutionService {
       }
 
       const method = this.normalizeHttpMethod(security.method);
-      const requestPath = this.normalizeSignedWebhookPath(security.path ?? path);
+      const requestPath = this.normalizeSignedWebhookPath(
+        security.path ?? path,
+      );
       const bodyHash = this.hashWebhookPayloadBody(payload.body);
       const expectedSignature = this.computeWebhookSignature(
         expectedSecret,
@@ -297,13 +314,20 @@ export class ExecutionService {
         throw new UnauthorizedException('Invalid webhook signature');
       }
     } else if (security.providedSecret) {
-      throw new UnauthorizedException('Webhook secret is not configured for this workflow');
+      throw new UnauthorizedException(
+        'Webhook secret is not configured for this workflow',
+      );
     }
 
-    return this.trigger(String(workflow._id), userId, {}, {
-      triggerType: 'webhook',
-      payload,
-    });
+    return this.trigger(
+      String(workflow._id),
+      userId,
+      {},
+      {
+        triggerType: 'webhook',
+        payload,
+      },
+    );
   }
 
   private getConfiguredWebhookSecret(
@@ -333,9 +357,7 @@ export class ExecutionService {
     return timingSafeEqual(expectedBuffer, providedBuffer);
   }
 
-  private normalizeIdempotencyKey(
-    key?: string,
-  ): string | undefined {
+  private normalizeIdempotencyKey(key?: string): string | undefined {
     if (typeof key !== 'string') {
       return undefined;
     }
@@ -344,23 +366,21 @@ export class ExecutionService {
     return trimmed.length > 0 ? trimmed : undefined;
   }
 
-  private buildWorkflowSnapshot(
-    workflow: {
-      steps: Array<{
-        id: string;
-        type: 'http' | 'transform' | 'store' | 'branch';
+  private buildWorkflowSnapshot(workflow: {
+    steps: Array<{
+      id: string;
+      type: 'http' | 'transform' | 'store' | 'branch';
+      config?: Record<string, unknown>;
+      retry?: { maxAttempts?: number; backoff?: 'exponential' | 'fixed' };
+      compensation?: {
+        enabled?: boolean;
+        type?: 'noop' | 'http';
         config?: Record<string, unknown>;
         retry?: { maxAttempts?: number; backoff?: 'exponential' | 'fixed' };
-        compensation?: {
-          enabled?: boolean;
-          type?: 'noop' | 'http';
-          config?: Record<string, unknown>;
-          retry?: { maxAttempts?: number; backoff?: 'exponential' | 'fixed' };
-        };
-      }>;
-      edges: Array<{ from: string; to: string; condition?: string }>;
-    },
-  ): ExecutionWorkflowSnapshot {
+      };
+    }>;
+    edges: Array<{ from: string; to: string; condition?: string }>;
+  }): ExecutionWorkflowSnapshot {
     return {
       steps: workflow.steps.map((step) => ({
         id: step.id,
@@ -419,7 +439,9 @@ export class ExecutionService {
   ): number {
     const fromConfig =
       triggerConfig?.executionTimeoutMs ?? triggerConfig?.execution_timeout_ms;
-    return this.parsePositiveTimeoutMs(fromConfig) ?? DEFAULT_EXECUTION_TIMEOUT_MS;
+    return (
+      this.parsePositiveTimeoutMs(fromConfig) ?? DEFAULT_EXECUTION_TIMEOUT_MS
+    );
   }
 
   private parsePositiveTimeoutMs(value: unknown): number | undefined {
@@ -569,9 +591,7 @@ export class ExecutionService {
     return Math.floor(seconds * 1000);
   }
 
-  private getWebhookNonceTtlMs(
-    config?: Record<string, unknown>,
-  ): number {
+  private getWebhookNonceTtlMs(config?: Record<string, unknown>): number {
     const seconds = this.parsePositiveNumber(
       config?.webhookNonceTtlSeconds ??
         (config?.security as Record<string, unknown> | undefined)
@@ -585,8 +605,12 @@ export class ExecutionService {
     return Math.floor(seconds * 1000);
   }
 
-  private getWebhookRateLimitWindowMs(config?: Record<string, unknown>): number {
-    const securityConfig = config?.security as Record<string, unknown> | undefined;
+  private getWebhookRateLimitWindowMs(
+    config?: Record<string, unknown>,
+  ): number {
+    const securityConfig = config?.security as
+      | Record<string, unknown>
+      | undefined;
     const seconds = this.parsePositiveNumber(
       config?.webhookRateLimitWindowSeconds ??
         securityConfig?.rateLimitWindowSeconds ??
@@ -604,7 +628,9 @@ export class ExecutionService {
   private getWebhookRateLimitMaxRequests(
     config?: Record<string, unknown>,
   ): number {
-    const securityConfig = config?.security as Record<string, unknown> | undefined;
+    const securityConfig = config?.security as
+      | Record<string, unknown>
+      | undefined;
     const maxRequests = this.parsePositiveNumber(
       config?.webhookRateLimitMaxRequests ??
         securityConfig?.rateLimitMaxRequests ??
@@ -629,7 +655,9 @@ export class ExecutionService {
     );
   }
 
-  private getTriggerRateLimitWindowMs(config?: Record<string, unknown>): number {
+  private getTriggerRateLimitWindowMs(
+    config?: Record<string, unknown>,
+  ): number {
     const seconds =
       this.parsePositiveInteger(
         config?.triggerRateLimitWindowSeconds ??
@@ -640,7 +668,9 @@ export class ExecutionService {
     return seconds * 1000;
   }
 
-  private getTriggerRateLimitMaxRequests(config?: Record<string, unknown>): number {
+  private getTriggerRateLimitMaxRequests(
+    config?: Record<string, unknown>,
+  ): number {
     return (
       this.parsePositiveInteger(
         config?.triggerRateLimitMaxRequests ??
@@ -650,7 +680,9 @@ export class ExecutionService {
     );
   }
 
-  private getTenantMaxRunningExecutions(config?: Record<string, unknown>): number {
+  private getTenantMaxRunningExecutions(
+    config?: Record<string, unknown>,
+  ): number {
     return (
       this.parsePositiveInteger(
         config?.maxRunningExecutionsPerTenant ??
@@ -660,7 +692,9 @@ export class ExecutionService {
     );
   }
 
-  private getWorkflowMaxRunningExecutions(config?: Record<string, unknown>): number {
+  private getWorkflowMaxRunningExecutions(
+    config?: Record<string, unknown>,
+  ): number {
     return (
       this.parsePositiveInteger(
         config?.maxRunningExecutionsPerWorkflow ??
@@ -714,7 +748,10 @@ export class ExecutionService {
     config?: Record<string, unknown>,
   ): void {
     const maxPayloadBytes = this.getTriggerPayloadMaxBytes(config);
-    const payloadBytes = Buffer.byteLength(this.stableStringify(payload), 'utf8');
+    const payloadBytes = Buffer.byteLength(
+      this.stableStringify(payload),
+      'utf8',
+    );
 
     if (payloadBytes > maxPayloadBytes) {
       throw new HttpException(
@@ -802,7 +839,10 @@ export class ExecutionService {
     }
 
     if (bucketDoc.count > maxRequests) {
-      throw new HttpException('Trigger rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        'Trigger rate limit exceeded',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
   }
 
@@ -880,7 +920,10 @@ export class ExecutionService {
     }
 
     if (bucketDoc.count > maxRequests) {
-      throw new HttpException('Webhook rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        'Webhook rate limit exceeded',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
   }
 
@@ -946,7 +989,8 @@ export class ExecutionService {
       });
     }
 
-    const filter = andFilters.length === 1 ? andFilters[0] : { $and: andFilters };
+    const filter =
+      andFilters.length === 1 ? andFilters[0] : { $and: andFilters };
 
     this.validateFindAllGuardrails(andFilters, query.limit);
 
@@ -1007,7 +1051,9 @@ export class ExecutionService {
       ])
       .exec();
 
-    const counts = ALL_EXECUTION_STATUSES.reduce<Record<ExecutionStatus, number>>(
+    const counts = ALL_EXECUTION_STATUSES.reduce<
+      Record<ExecutionStatus, number>
+    >(
       (acc, status) => {
         acc[status] = 0;
         return acc;
@@ -1039,7 +1085,8 @@ export class ExecutionService {
       typeof item.get === 'function'
         ? ((item.get('created_at') as Date | undefined) ?? undefined)
         : undefined;
-    const createdAtFromObject = (item as unknown as { created_at?: Date }).created_at;
+    const createdAtFromObject = (item as unknown as { created_at?: Date })
+      .created_at;
     const createdAt = createdAtFromDoc ?? createdAtFromObject;
     if (!createdAt || Number.isNaN(createdAt.getTime())) {
       throw new BadRequestException('Execution cursor source is invalid');
@@ -1053,12 +1100,19 @@ export class ExecutionService {
     return Buffer.from(payload).toString('base64url');
   }
 
-  private decodeListCursor(cursor: string): { created_at: Date; id: Types.ObjectId } {
+  private decodeListCursor(cursor: string): {
+    created_at: Date;
+    id: Types.ObjectId;
+  } {
     try {
       const raw = Buffer.from(cursor, 'base64url').toString('utf8');
       const parsed = JSON.parse(raw) as { created_at?: string; id?: string };
 
-      if (!parsed.created_at || !parsed.id || !Types.ObjectId.isValid(parsed.id)) {
+      if (
+        !parsed.created_at ||
+        !parsed.id ||
+        !Types.ObjectId.isValid(parsed.id)
+      ) {
         throw new BadRequestException('Invalid cursor');
       }
 
@@ -1126,10 +1180,16 @@ export class ExecutionService {
     }
 
     if (fromDate && toDate && fromDate > toDate) {
-      throw new BadRequestException(`${fieldName} from date must be before to date`);
+      throw new BadRequestException(
+        `${fieldName} from date must be before to date`,
+      );
     }
 
-    if (fromDate && toDate && toDate.getTime() - fromDate.getTime() > MAX_FILTER_WINDOW_MS) {
+    if (
+      fromDate &&
+      toDate &&
+      toDate.getTime() - fromDate.getTime() > MAX_FILTER_WINDOW_MS
+    ) {
       throw new BadRequestException(`${fieldName} date range exceeds 31 days`);
     }
 
@@ -1194,7 +1254,10 @@ export class ExecutionService {
       )
       .exec();
 
-    await this.eventService.append(String(execution._id), 'execution.cancelled');
+    await this.eventService.append(
+      String(execution._id),
+      'execution.cancelled',
+    );
 
     return execution;
   }
@@ -1227,7 +1290,8 @@ export class ExecutionService {
     ownerId: string,
   ): Promise<ExecutionLegalHoldResponse> {
     await this.findOne(id, ownerId);
-    const legalHold = await this.eventGovernanceService.getExecutionLegalHoldState(id);
+    const legalHold =
+      await this.eventGovernanceService.getExecutionLegalHoldState(id);
 
     return {
       execution_id: id,
@@ -1237,7 +1301,11 @@ export class ExecutionService {
 
   async setLegalHold(id: string, ownerId: string, reason?: string) {
     await this.findOne(id, ownerId);
-    await this.eventGovernanceService.placeExecutionLegalHold(id, ownerId, reason);
+    await this.eventGovernanceService.placeExecutionLegalHold(
+      id,
+      ownerId,
+      reason,
+    );
 
     return {
       execution_id: id,
@@ -1256,4 +1324,3 @@ export class ExecutionService {
     };
   }
 }
-

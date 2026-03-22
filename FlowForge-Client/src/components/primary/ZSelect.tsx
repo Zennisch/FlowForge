@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { HTMLMotionProps, motion } from "framer-motion"
+import { HTMLMotionProps, motion } from 'framer-motion';
 import {
   ForwardedRef,
   forwardRef,
@@ -12,97 +12,103 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
-  useState
-} from "react"
-import { LabelPlacement, Shadow, Size } from "./types/select"
-import { theme } from "./themeConfig"
-import { cn } from "./utils"
-import { ZHelperText } from "./ZHelperText"
-import { ZSelectList } from "./ZSelectList"
-import { ZSelectTrigger } from "./ZSelectTrigger"
+  useState,
+} from 'react';
+import { LabelPlacement, Shadow, Size } from './types/select';
+import { theme } from './themeConfig';
+import { cn } from './utils';
+import { ZHelperText } from './ZHelperText';
+import { ZSelectList } from './ZSelectList';
+import { ZSelectTrigger } from './ZSelectTrigger';
 
 export interface ZSelectItem<T extends string | number> {
-  label: string
-  value: T
-  disabled?: boolean
-  icon?: ReactNode
+  label: string;
+  value: T;
+  disabled?: boolean;
+  icon?: ReactNode;
 }
 
 const LAYOUT = {
   dropdown: {
     offset: 8,
-    defaultWidth: "w-64",
-    labelMinWidth: "min-w-[120px]",
-    helperMarginLeft: "ml-34"
+    defaultWidth: 'w-64',
+    labelMinWidth: 'min-w-[120px]',
+    helperMarginLeft: 'ml-34',
   },
   gap: {
-    top: "gap-1.5",
-    left: "gap-4"
-  }
-} as const
+    top: 'gap-1.5',
+    left: 'gap-4',
+  },
+} as const;
 
 const getSelectedValuesArray = <T,>(value: T | T[] | undefined): T[] => {
-  if (Array.isArray(value)) return value
-  if (value !== undefined) return [value]
-  return []
-}
+  if (Array.isArray(value)) return value;
+  if (value !== undefined) return [value];
+  return [];
+};
 
 const getOptionLabel = <T extends string | number>(options: ZSelectItem<T>[], value: T): string => {
-  return options.find((o) => o.value === value)?.label || String(value)
-}
+  return options.find((o) => o.value === value)?.label || String(value);
+};
 
 const getLabelTextColor = (hasError: boolean, disabled: boolean): string => {
-  if (hasError) return theme.controlLabelError
-  if (disabled) return theme.textDisabled
-  return theme.textPrimary
+  if (hasError) return theme.controlLabelError;
+  if (disabled) return theme.textDisabled;
+  return theme.textPrimary;
+};
+
+interface ZSelectProps<T extends string | number> extends Omit<
+  HTMLMotionProps<'div'>,
+  'onChange' | 'defaultValue' | 'value'
+> {
+  label?: string;
+  labelPlacement?: LabelPlacement;
+
+  options?: ZSelectItem<T>[];
+  value?: T | T[];
+  defaultValue?: T | T[];
+  placeholder?: string;
+
+  error?: string | boolean;
+  helpText?: string;
+
+  iconStart?: ReactNode;
+
+  size?: Size;
+  shadow?: Shadow;
+  fullWidth?: boolean;
+
+  searchable?: boolean;
+  multiple?: boolean;
+  isLoading?: boolean;
+
+  containerClassName?: string;
+  disabled?: boolean;
+
+  onChange?: (value: T | T[]) => void;
+  onSearchChange?: (query: string) => void;
 }
 
-interface ZSelectProps<T extends string | number> extends Omit<HTMLMotionProps<"div">, "onChange" | "defaultValue" | "value"> {
-  label?: string
-  labelPlacement?: LabelPlacement
-
-  options?: ZSelectItem<T>[]
-  value?: T | T[]
-  defaultValue?: T | T[]
-  placeholder?: string
-
-  error?: string | boolean
-  helpText?: string
-
-  iconStart?: ReactNode
-
-  size?: Size
-  shadow?: Shadow
-  fullWidth?: boolean
-
-  searchable?: boolean
-  multiple?: boolean
-  isLoading?: boolean
-
-  containerClassName?: string
-  disabled?: boolean
-
-  onChange?: (value: T | T[]) => void
-  onSearchChange?: (query: string) => void
-}
-
-const ZSelectComponent = <T extends string | number>(props: ZSelectProps<T>, ref: ForwardedRef<HTMLDivElement>) => {
+const ZSelectComponent = <T extends string | number>(
+  props: ZSelectProps<T>,
+  ref: ForwardedRef<HTMLDivElement>
+) => {
   const {
     label,
-    labelPlacement = "top",
+    labelPlacement = 'top',
 
     options = [],
     value,
     defaultValue,
-    placeholder = "Select an option",
+    placeholder = 'Select an option',
 
     error,
     helpText,
 
     iconStart,
 
-    size = "md",
-    shadow = "none",
+    size = 'md',
+    shadow = 'none',
     fullWidth = false,
 
     searchable = false,
@@ -117,55 +123,55 @@ const ZSelectComponent = <T extends string | number>(props: ZSelectProps<T>, ref
     onChange,
     onSearchChange,
     ...rest
-  } = props
+  } = props;
 
-  const generatedId = useId()
-  const selectId = id || generatedId
-  const errorId = `${selectId}-error`
-  const helpId = `${selectId}-help`
+  const generatedId = useId();
+  const selectId = id || generatedId;
+  const errorId = `${selectId}-error`;
+  const helpId = `${selectId}-help`;
 
-  const [isOpen, setIsOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const [internalValue, setInternalValue] = useState<T | T[] | undefined>(
     defaultValue !== undefined ? defaultValue : multiple ? [] : undefined
-  )
-  const isControlled = value !== undefined
-  const currentValue = isControlled ? value : internalValue
+  );
+  const isControlled = value !== undefined;
+  const currentValue = isControlled ? value : internalValue;
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const triggerRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLUListElement>(null)
-  const [coords, setCoords] = useState({ left: 0, top: 0, width: 0 })
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [coords, setCoords] = useState({ left: 0, top: 0, width: 0 });
 
-  const isError = !!error
+  const isError = !!error;
 
-  useImperativeHandle(ref, () => containerRef.current as HTMLDivElement)
+  useImperativeHandle(ref, () => containerRef.current as HTMLDivElement);
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const updatePosition = () => {
       if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect()
+        const rect = triggerRef.current.getBoundingClientRect();
         setCoords({
           left: rect.left,
           top: rect.bottom + LAYOUT.dropdown.offset,
-          width: rect.width
-        })
+          width: rect.width,
+        });
       }
-    }
+    };
 
-    updatePosition()
-    window.addEventListener("resize", updatePosition)
-    window.addEventListener("scroll", updatePosition, true)
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
 
     return () => {
-      window.removeEventListener("resize", updatePosition)
-      window.removeEventListener("scroll", updatePosition, true)
-    }
-  }, [isOpen])
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: Event) => {
@@ -175,126 +181,132 @@ const ZSelectComponent = <T extends string | number>(props: ZSelectProps<T>, ref
         listRef.current &&
         !listRef.current.contains(event.target as Node)
       ) {
-        setIsOpen(false)
-        setSearchQuery("")
-        setFocusedIndex(-1)
+        setIsOpen(false);
+        setSearchQuery('');
+        setFocusedIndex(-1);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      setFocusedIndex(0)
+      setFocusedIndex(0);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
-  const selectedValues = useMemo(() => getSelectedValuesArray(currentValue), [currentValue])
+  const selectedValues = useMemo(() => getSelectedValuesArray(currentValue), [currentValue]);
 
   const handleSelect = (optionValue: T) => {
     if (multiple) {
-      let newValue: T[] = []
-      const currentArray = (Array.isArray(currentValue) ? currentValue : []) as T[]
+      let newValue: T[] = [];
+      const currentArray = (Array.isArray(currentValue) ? currentValue : []) as T[];
 
       if (currentArray.includes(optionValue)) {
-        newValue = currentArray.filter((v) => v !== optionValue)
+        newValue = currentArray.filter((v) => v !== optionValue);
       } else {
-        newValue = [...currentArray, optionValue]
+        newValue = [...currentArray, optionValue];
       }
 
       if (!isControlled) {
-        setInternalValue(newValue)
+        setInternalValue(newValue);
       }
-      onChange?.(newValue)
+      onChange?.(newValue);
     } else {
       if (!isControlled) {
-        setInternalValue(optionValue)
+        setInternalValue(optionValue);
       }
-      onChange?.(optionValue)
-      setIsOpen(false)
-      setSearchQuery("")
+      onChange?.(optionValue);
+      setIsOpen(false);
+      setSearchQuery('');
     }
-  }
+  };
 
   const removeValue = (valToRemove: T, e: MouseEvent) => {
-    e.stopPropagation()
+    e.stopPropagation();
     if (multiple && Array.isArray(currentValue)) {
-      const currentArray = currentValue as T[]
-      const newValue = currentArray.filter((v) => v !== valToRemove)
+      const currentArray = currentValue as T[];
+      const newValue = currentArray.filter((v) => v !== valToRemove);
       if (!isControlled) {
-        setInternalValue(newValue)
+        setInternalValue(newValue);
       }
-      onChange?.(newValue)
+      onChange?.(newValue);
     }
-  }
+  };
 
   const filteredOptions = useMemo(() => {
-    if (onSearchChange) return options
-    return options.filter((opt) => opt.label.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [options, searchQuery, onSearchChange])
+    if (onSearchChange) return options;
+    return options.filter((opt) => opt.label.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [options, searchQuery, onSearchChange]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (disabled) return
+    if (disabled) return;
 
     if (!isOpen) {
-      if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-        e.preventDefault()
-        setIsOpen(true)
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setIsOpen(true);
       }
-      return
+      return;
     }
 
     switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault()
+      case 'ArrowDown':
+        e.preventDefault();
         if (filteredOptions.length > 0) {
-          setFocusedIndex((prev) => (prev + 1) % filteredOptions.length)
+          setFocusedIndex((prev) => (prev + 1) % filteredOptions.length);
         }
-        break
-      case "ArrowUp":
-        e.preventDefault()
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
         if (filteredOptions.length > 0) {
-          setFocusedIndex((prev) => (prev - 1 + filteredOptions.length) % filteredOptions.length)
+          setFocusedIndex((prev) => (prev - 1 + filteredOptions.length) % filteredOptions.length);
         }
-        break
-      case "Enter":
-        e.preventDefault()
-        if (filteredOptions.length > 0 && focusedIndex >= 0 && !filteredOptions[focusedIndex].disabled) {
-          handleSelect(filteredOptions[focusedIndex].value)
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (
+          filteredOptions.length > 0 &&
+          focusedIndex >= 0 &&
+          !filteredOptions[focusedIndex].disabled
+        ) {
+          handleSelect(filteredOptions[focusedIndex].value);
         }
-        break
-      case "Escape":
-        e.preventDefault()
-        setIsOpen(false)
-        break
-      case "Tab":
-        setIsOpen(false)
-        break
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsOpen(false);
+        break;
+      case 'Tab':
+        setIsOpen(false);
+        break;
     }
-  }
+  };
 
-  const getLabel = (val: T) => getOptionLabel(options, val)
+  const getLabel = (val: T) => getOptionLabel(options, val);
 
   const containerClasses = cn(
-    "relative flex",
-    labelPlacement === "top" ? `flex-col ${LAYOUT.gap.top}` : `flex-row items-baseline ${LAYOUT.gap.left}`,
-    fullWidth ? "w-full" : "w-auto",
+    'relative flex',
+    labelPlacement === 'top'
+      ? `flex-col ${LAYOUT.gap.top}`
+      : `flex-row items-baseline ${LAYOUT.gap.left}`,
+    fullWidth ? 'w-full' : 'w-auto',
     containerClassName
-  )
+  );
 
   const labelClasses = cn(
-    "block text-sm font-medium leading-6",
+    'block text-sm font-medium leading-6',
     getLabelTextColor(isError, disabled || false),
-    disabled && "opacity-50 cursor-not-allowed",
-    labelPlacement === "left" && LAYOUT.dropdown.labelMinWidth
-  )
+    disabled && 'opacity-50 cursor-not-allowed',
+    labelPlacement === 'left' && LAYOUT.dropdown.labelMinWidth
+  );
 
   const wrapperClasses = cn(
-    "relative",
-    fullWidth ? "w-full" : LAYOUT.dropdown.defaultWidth,
-    labelPlacement === "left" && "flex-1"
-  )
+    'relative',
+    fullWidth ? 'w-full' : LAYOUT.dropdown.defaultWidth,
+    labelPlacement === 'left' && 'flex-1'
+  );
 
   return (
     <motion.div className={containerClasses} ref={containerRef} {...rest}>
@@ -331,8 +343,8 @@ const ZSelectComponent = <T extends string | number>(props: ZSelectProps<T>, ref
           searchable={searchable}
           searchQuery={searchQuery}
           onSearchChange={(q) => {
-            setSearchQuery(q)
-            onSearchChange?.(q)
+            setSearchQuery(q);
+            onSearchChange?.(q);
           }}
           onKeyDown={handleKeyDown}
           isLoading={isLoading}
@@ -350,16 +362,16 @@ const ZSelectComponent = <T extends string | number>(props: ZSelectProps<T>, ref
         helpText={helpText}
         errorId={errorId}
         helpId={helpId}
-        className={cn(labelPlacement === "left" && LAYOUT.dropdown.helperMarginLeft)}
+        className={cn(labelPlacement === 'left' && LAYOUT.dropdown.helperMarginLeft)}
       />
     </motion.div>
-  )
-}
+  );
+};
 
-ZSelectComponent.displayName = "ZSelect"
+ZSelectComponent.displayName = 'ZSelect';
 
 const ZSelect = forwardRef(ZSelectComponent) as <T extends string | number>(
   props: ZSelectProps<T> & { ref?: ForwardedRef<HTMLDivElement> }
-) => ReturnType<typeof ZSelectComponent>
+) => ReturnType<typeof ZSelectComponent>;
 
-export default ZSelect
+export default ZSelect;

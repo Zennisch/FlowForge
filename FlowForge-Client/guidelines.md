@@ -18,13 +18,13 @@ FlowForge Client is the frontend interface for the FlowForge workflow automation
 
 ## 2. Architecture
 
-| Attribute       | Detail                              |
-|-----------------|-------------------------------------|
-| Style           | Feature-based component hierarchy  |
-| Rendering       | SSR + CSR hybrid (Next.js App Router) |
-| State           | Server state via TanStack Query; minimal client state via Zustand |
-| API             | REST over HTTPS (FlowForge Server)  |
-| Deployment      | Vercel / Cloud Run (containerised)  |
+| Attribute  | Detail                                                            |
+| ---------- | ----------------------------------------------------------------- |
+| Style      | Feature-based component hierarchy                                 |
+| Rendering  | SSR + CSR hybrid (Next.js App Router)                             |
+| State      | Server state via TanStack Query; minimal client state via Zustand |
+| API        | REST over HTTPS (FlowForge Server)                                |
+| Deployment | Vercel / Cloud Run (containerised)                                |
 
 ### High-Level Component Flow
 
@@ -71,6 +71,7 @@ Browser
 ## 4. Core Features
 
 ### 4.1 Authentication
+
 - Register/login with email + password and verification-aware flow
 - Public auth journey includes verify-email, resend verification, forgot password, reset password
 - JWT stored in `localStorage` (access token)
@@ -82,6 +83,7 @@ Browser
 - Register success shows verification guidance; login success redirects to `/workflows`
 
 ### 4.2 Workflow List & Management
+
 - Dashboard lists all workflows owned by the current user
 - Create workflow → form with name, description, steps (ordered list), edges (DAG adjacency)
 - Edit workflow → pre-populated form, PATCH to server
@@ -89,22 +91,26 @@ Browser
 - Status badge (`active` / `inactive`) displayed inline
 
 ### 4.3 Workflow Execution
+
 - Trigger execution button on workflow detail page
 - Execution history list per workflow
 - Global execution list (`/executions`) with status filter
 
 ### 4.4 Execution Monitor
+
 - Real-time execution detail page polling `GET /executions/:id` every 3 seconds while status is `pending | running | compensating`
 - Step-level status table showing each step's current state, attempt count, input/output snapshot
 - Polling stops automatically once execution reaches a terminal state (`completed | failed | cancelled`)
 
 ### 4.5 Event Log Viewer
+
 - `GET /executions/:id/events` rendered as an immutable, chronological timeline
 - Event query supports server-side filters and cursor pagination (`type`, `step_id`, `occurred_from`, `occurred_to`, `cursor`, `limit`)
 - Each event card displays type, step ID, payload, and timestamp
 - Auto-scroll to latest event while execution is in progress
 
 ### 4.6 Operations & Governance
+
 - Global execution dashboard consumes `GET /executions/summary` for status counters
 - Execution detail supports legal hold lifecycle:
   - `GET /executions/:id/legal-hold` for current legal-hold state
@@ -211,58 +217,74 @@ src/
 ## 6. API Contract (consumed from FlowForge Server)
 
 ### Base URL
+
 `NEXT_PUBLIC_API_URL` (e.g., `http://localhost:3000` in development)
 
 ### Auth
-| Method | Path                         | Request Body                               | Response                                  |
-|--------|------------------------------|--------------------------------------------|-------------------------------------------|
-| POST   | /auth/register               | `{ email, password }`                      | verification-oriented register response   |
-| POST   | /auth/login                  | `{ email, password }`                      | `{ access_token }`                        |
-| POST   | /auth/verify-email           | `{ token }`                                | success message                           |
-| POST   | /auth/resend-verification    | `{ email }`                                | success message                           |
-| POST   | /auth/forgot-password        | `{ email }`                                | success message                           |
-| POST   | /auth/reset-password         | `{ token, password }`                      | success message                           |
+
+| Method | Path                      | Request Body          | Response                                |
+| ------ | ------------------------- | --------------------- | --------------------------------------- |
+| POST   | /auth/register            | `{ email, password }` | verification-oriented register response |
+| POST   | /auth/login               | `{ email, password }` | `{ access_token }`                      |
+| POST   | /auth/verify-email        | `{ token }`           | success message                         |
+| POST   | /auth/resend-verification | `{ email }`           | success message                         |
+| POST   | /auth/forgot-password     | `{ email }`           | success message                         |
+| POST   | /auth/reset-password      | `{ token, password }` | success message                         |
 
 > Frontend API adapter (`lib/api/auth.api.ts`) maps `access_token` → `accessToken` before returning to hooks/components.
 
 ### Workflows
-| Method | Path                   | Auth | Description                 |
-|--------|------------------------|------|-----------------------------|
-| GET    | /workflows             | JWT  | List user's workflows       |
-| POST   | /workflows             | JWT  | Create workflow             |
-| GET    | /workflows/:id         | JWT  | Get workflow detail         |
-| PATCH  | /workflows/:id         | JWT  | Update workflow             |
-| DELETE | /workflows/:id         | JWT  | Delete workflow             |
-| POST   | /workflows/:id/trigger | JWT  | Trigger execution           |
+
+| Method | Path                   | Auth | Description           |
+| ------ | ---------------------- | ---- | --------------------- |
+| GET    | /workflows             | JWT  | List user's workflows |
+| POST   | /workflows             | JWT  | Create workflow       |
+| GET    | /workflows/:id         | JWT  | Get workflow detail   |
+| PATCH  | /workflows/:id         | JWT  | Update workflow       |
+| DELETE | /workflows/:id         | JWT  | Delete workflow       |
+| POST   | /workflows/:id/trigger | JWT  | Trigger execution     |
 
 ### Executions
-| Method | Path                         | Auth | Description                                                           |
-|--------|------------------------------|------|-----------------------------------------------------------------------|
-| GET    | /executions                  | JWT  | List executions with validated filters + cursor pagination            |
-| GET    | /executions/summary          | JWT  | Aggregate execution status summary                                    |
-| GET    | /executions/:id              | JWT  | Get execution + step status                                           |
-| POST   | /executions/:id/cancel       | JWT  | Cancel running execution                                              |
-| GET    | /executions/:id/events       | JWT  | Get immutable event log with filters + cursor pagination             |
-| GET    | /executions/:id/legal-hold   | JWT  | Get legal-hold state (`active`, `reason`, `set_by_owner_id`, dates) |
-| POST   | /executions/:id/legal-hold   | JWT  | Place legal hold                                                      |
-| DELETE | /executions/:id/legal-hold   | JWT  | Release legal hold                                                    |
+
+| Method | Path                       | Auth | Description                                                         |
+| ------ | -------------------------- | ---- | ------------------------------------------------------------------- |
+| GET    | /executions                | JWT  | List executions with validated filters + cursor pagination          |
+| GET    | /executions/summary        | JWT  | Aggregate execution status summary                                  |
+| GET    | /executions/:id            | JWT  | Get execution + step status                                         |
+| POST   | /executions/:id/cancel     | JWT  | Cancel running execution                                            |
+| GET    | /executions/:id/events     | JWT  | Get immutable event log with filters + cursor pagination            |
+| GET    | /executions/:id/legal-hold | JWT  | Get legal-hold state (`active`, `reason`, `set_by_owner_id`, dates) |
+| POST   | /executions/:id/legal-hold | JWT  | Place legal hold                                                    |
+| DELETE | /executions/:id/legal-hold | JWT  | Release legal hold                                                  |
 
 ### Key TypeScript Types (mirroring server contracts)
 
 ```typescript
 // execution.types.ts
 type ExecutionStatus =
-  | 'pending' | 'running' | 'completed'
-  | 'failed' | 'cancelled' | 'compensating';
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'compensating';
 
 type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skipped';
 
 type EventType =
-  | 'execution.started' | 'execution.completed' | 'execution.failed'
-  | 'execution.cancelled' | 'execution.compensating'
-  | 'step.queued' | 'step.started' | 'step.completed'
-  | 'step.failed' | 'step.skipped' | 'step.retrying'
-  | 'step.compensation.started' | 'step.compensation.completed'
+  | 'execution.started'
+  | 'execution.completed'
+  | 'execution.failed'
+  | 'execution.cancelled'
+  | 'execution.compensating'
+  | 'step.queued'
+  | 'step.started'
+  | 'step.completed'
+  | 'step.failed'
+  | 'step.skipped'
+  | 'step.retrying'
+  | 'step.compensation.started'
+  | 'step.compensation.completed'
   | 'step.compensation.failed';
 
 export const ACTIVE_STATUSES: ExecutionStatus[] = ['pending', 'running', 'compensating'];
@@ -272,16 +294,17 @@ export const ACTIVE_STATUSES: ExecutionStatus[] = ['pending', 'running', 'compen
 
 ## 7. State Management Strategy
 
-| State Type             | Tool              | Location               |
-|------------------------|-------------------|------------------------|
-| Auth token / user      | Zustand           | `store/auth.store.ts`  |
-| Workflow list / detail | TanStack Query    | `hooks/useWorkflows.ts`|
-| Execution list/detail  | TanStack Query    | `hooks/useExecutions.ts`|
-| Event log              | TanStack Query    | `hooks/useExecutions.ts`|
-| Form state             | React Hook Form   | inside form components |
-| UI state (modals etc.) | `useState`        | inside components      |
+| State Type             | Tool            | Location                 |
+| ---------------------- | --------------- | ------------------------ |
+| Auth token / user      | Zustand         | `store/auth.store.ts`    |
+| Workflow list / detail | TanStack Query  | `hooks/useWorkflows.ts`  |
+| Execution list/detail  | TanStack Query  | `hooks/useExecutions.ts` |
+| Event log              | TanStack Query  | `hooks/useExecutions.ts` |
+| Form state             | React Hook Form | inside form components   |
+| UI state (modals etc.) | `useState`      | inside components        |
 
 **Polling strategy:**
+
 ```typescript
 // hooks/useExecutions.ts
 const ACTIVE_STATUSES = ['pending', 'running', 'compensating'];
@@ -338,10 +361,10 @@ pnpm run format
 
 ## 9. Environment Variables
 
-| Variable              | Description                                     |
-|-----------------------|-------------------------------------------------|
+| Variable              | Description                                              |
+| --------------------- | -------------------------------------------------------- |
 | `NEXT_PUBLIC_API_URL` | FlowForge Server base URL (e.g. `http://localhost:3000`) |
-| `NODE_ENV`            | `development` / `production`                    |
+| `NODE_ENV`            | `development` / `production`                             |
 
 > All variables exposed to the browser **must** be prefixed with `NEXT_PUBLIC_`.  
 > Server-only variables (e.g., secrets) must never carry the `NEXT_PUBLIC_` prefix.
@@ -372,24 +395,24 @@ pnpm run format
 
 ## 12. Progress Tracker
 
-| Area                                | Status      | Notes                                           |
-|-------------------------------------|-------------|-------------------------------------------------|
-| Project scaffold (Next.js 14)       | Done        | All files created (empty). Configs in place.    |
-| Tailwind CSS + global styles setup  | Done        | v4 via @tailwindcss/postcss + FlowForge blue/slate tokens in `globals.css` |
-| Axios client + interceptors         | Done        | `lib/api/client.ts` — request (JWT) + protected-route 401 redirect, auth-endpoint inline error handling |
-| Zustand auth store                  | Done        | `store/auth.store.ts` — token persisted to localStorage via `persist` middleware |
-| TanStack Query provider setup       | Done        | `app/providers.tsx` (client) wrapped in `app/layout.tsx` |
-| Auth pages (login / register)       | Done        | Implemented simple forms, inline API error, register→login redirect, login→workflows redirect |
-| Dashboard layout (sidebar / header) | Done        | Responsive shell completed with shared `Sidebar` + `Header` in dashboard route group |
-| Workflow list page                  | Done        | Implemented list query + loading/error/empty states + responsive cards |
-| Workflow create / edit form         | Done        | Implemented reusable RHF+Zod form with dynamic steps/edges and create/update integration |
-| Workflow delete modal               | Done        | Added confirmation modal and wired delete mutation with query invalidation |
-| Execution history page              | Done        | Added workflow-scoped history and global `/executions` list with status filter, refresh, and cancel actions. |
+| Area                                | Status      | Notes                                                                                                                          |
+| ----------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Project scaffold (Next.js 14)       | Done        | All files created (empty). Configs in place.                                                                                   |
+| Tailwind CSS + global styles setup  | Done        | v4 via @tailwindcss/postcss + FlowForge blue/slate tokens in `globals.css`                                                     |
+| Axios client + interceptors         | Done        | `lib/api/client.ts` — request (JWT) + protected-route 401 redirect, auth-endpoint inline error handling                        |
+| Zustand auth store                  | Done        | `store/auth.store.ts` — token persisted to localStorage via `persist` middleware                                               |
+| TanStack Query provider setup       | Done        | `app/providers.tsx` (client) wrapped in `app/layout.tsx`                                                                       |
+| Auth pages (login / register)       | Done        | Implemented simple forms, inline API error, register→login redirect, login→workflows redirect                                  |
+| Dashboard layout (sidebar / header) | Done        | Responsive shell completed with shared `Sidebar` + `Header` in dashboard route group                                           |
+| Workflow list page                  | Done        | Implemented list query + loading/error/empty states + responsive cards                                                         |
+| Workflow create / edit form         | Done        | Implemented reusable RHF+Zod form with dynamic steps/edges and create/update integration                                       |
+| Workflow delete modal               | Done        | Added confirmation modal and wired delete mutation with query invalidation                                                     |
+| Execution history page              | Done        | Added workflow-scoped history and global `/executions` list with status filter, refresh, and cancel actions.                   |
 | Execution detail + polling          | Done        | Built `/executions/[id]` monitor with conditional 3s polling, cancel action, legal-hold controls, and header legal-hold badge. |
-| Event log timeline                  | Done        | Added immutable event timeline rendering with live refresh, expanded event taxonomy support, and paginated response handling. |
-| E2E tests (Playwright)              | Not started |                                                 |
-| CI/CD (GitHub Actions)              | Not started |                                                 |
+| Event log timeline                  | Done        | Added immutable event timeline rendering with live refresh, expanded event taxonomy support, and paginated response handling.  |
+| E2E tests (Playwright)              | Not started |                                                                                                                                |
+| CI/CD (GitHub Actions)              | Not started |                                                                                                                                |
 
 ---
 
-*Last updated: 2026-03-23 — Guidelines aligned with backend contract for auth verification/reset and executions governance (summary, pagination, legal hold).*
+_Last updated: 2026-03-23 — Guidelines aligned with backend contract for auth verification/reset and executions governance (summary, pagination, legal hold)._

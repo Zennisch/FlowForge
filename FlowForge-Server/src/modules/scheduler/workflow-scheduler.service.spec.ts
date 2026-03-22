@@ -61,7 +61,9 @@ describe('WorkflowSchedulerService', () => {
   });
 
   it('does not refresh schedules when leadership lock is not acquired', async () => {
-    mockSchedulerLockFindOneAndUpdateExec.mockResolvedValue({ owner: 'other-instance' });
+    mockSchedulerLockFindOneAndUpdateExec.mockResolvedValue({
+      owner: 'other-instance',
+    });
 
     await service.refreshSchedules();
 

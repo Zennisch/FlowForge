@@ -10,4 +10,3 @@ export class CreateUserDto {
 
   emailVerified?: boolean;
 }
-

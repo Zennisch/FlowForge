@@ -37,10 +37,7 @@ export class WorkflowController {
   }
 
   @Post()
-  create(
-    @Body() dto: CreateWorkflowDto,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  create(@Body() dto: CreateWorkflowDto, @Req() req: AuthenticatedRequest) {
     return this.workflowService.create(req.user.id, dto);
   }
 
@@ -59,4 +56,3 @@ export class WorkflowController {
     return this.workflowService.remove(id, req.user.id);
   }
 }
-

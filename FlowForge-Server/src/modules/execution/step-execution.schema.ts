@@ -2,7 +2,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 export type StepExecutionDocument = HydratedDocument<StepExecution>;
-export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skipped';
+export type StepStatus =
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'skipped';
 export type CompensationStatus =
   | 'disabled'
   | 'pending'
@@ -36,7 +41,10 @@ export class StepExecution {
   @Prop({ default: null })
   error: string | null;
 
-  @Prop({ enum: ['disabled', 'pending', 'running', 'completed', 'failed'], default: 'disabled' })
+  @Prop({
+    enum: ['disabled', 'pending', 'running', 'completed', 'failed'],
+    default: 'disabled',
+  })
   compensation_status: CompensationStatus;
 
   @Prop({ default: 0 })
@@ -65,4 +73,3 @@ export class StepExecution {
 }
 
 export const StepExecutionSchema = SchemaFactory.createForClass(StepExecution);
-

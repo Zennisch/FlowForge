@@ -1,55 +1,55 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 html,
 body {
-	height: 100%;
+  height: 100%;
 }
 
 :root {
-	--zui-surface: #ffffff;
+  --zui-surface: #ffffff;
 
-	--color-primary: #2563eb;
-	--color-primary-hover: #1d4ed8;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
 
-	--color-error: #dc2626;
-	--color-error-light: #fee2e2;
-	--color-success: #059669;
-	--color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-error-light: #fee2e2;
+  --color-success: #059669;
+  --color-warning: #d97706;
 
-	--color-border: #bfdbfe;
-	--color-border-hover: #93c5fd;
+  --color-border: #bfdbfe;
+  --color-border-hover: #93c5fd;
 
-	--color-text-primary: #0f172a;
-	--color-text-secondary: #334155;
-	--color-text-disabled: #94a3b8;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-disabled: #94a3b8;
 
-	--color-overlay-modal: rgba(0, 0, 0, 0.5);
-	--color-bg-disabled: #f3f4f6;
+  --color-overlay-modal: rgba(0, 0, 0, 0.5);
+  --color-bg-disabled: #f3f4f6;
 }
 
 .dark {
-	--zui-surface: #0b1220;
+  --zui-surface: #0b1220;
 
-	--color-primary: #60a5fa;
-	--color-primary-hover: #3b82f6;
+  --color-primary: #60a5fa;
+  --color-primary-hover: #3b82f6;
 
-	--color-error: #f87171;
-	--color-error-light: #450a0a;
-	--color-success: #34d399;
-	--color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-error-light: #450a0a;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
 
-	--color-border: #1e3a8a;
-	--color-border-hover: #1d4ed8;
+  --color-border: #1e3a8a;
+  --color-border-hover: #1d4ed8;
 
-	--color-text-primary: #e2e8f0;
-	--color-text-secondary: #94a3b8;
-	--color-text-disabled: #64748b;
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-disabled: #64748b;
 
-	--color-overlay-modal: rgba(0, 0, 0, 0.75);
-	--color-bg-disabled: #334155;
+  --color-overlay-modal: rgba(0, 0, 0, 0.75);
+  --color-bg-disabled: #334155;
 }
 
 body {
-	background-color: var(--zui-surface);
-	color: var(--color-text-primary);
+  background-color: var(--zui-surface);
+  color: var(--color-text-primary);
 }

@@ -37,8 +37,14 @@ describe('ExecutionWatchdogService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ExecutionWatchdogService,
-        { provide: getModelToken(Execution.name), useValue: mockExecutionModel },
-        { provide: getModelToken(StepExecution.name), useValue: mockStepExecutionModel },
+        {
+          provide: getModelToken(Execution.name),
+          useValue: mockExecutionModel,
+        },
+        {
+          provide: getModelToken(StepExecution.name),
+          useValue: mockStepExecutionModel,
+        },
         {
           provide: StepStateService,
           useValue: { markFailed: jest.fn() },
@@ -69,7 +75,10 @@ describe('ExecutionWatchdogService', () => {
     ]);
     mockExecutionFindExec.mockResolvedValue([]);
     jest.spyOn(stepStateService, 'markFailed').mockResolvedValue({} as never);
-    mockExecutionFindByIdExec.mockResolvedValue({ _id: executionId, status: 'running' });
+    mockExecutionFindByIdExec.mockResolvedValue({
+      _id: executionId,
+      status: 'running',
+    });
 
     await service.scanForTimeouts();
 
@@ -90,7 +99,10 @@ describe('ExecutionWatchdogService', () => {
     mockExecutionFindExec.mockResolvedValue([
       { _id: executionId, status: 'running' },
     ]);
-    mockExecutionFindByIdExec.mockResolvedValue({ _id: executionId, status: 'running' });
+    mockExecutionFindByIdExec.mockResolvedValue({
+      _id: executionId,
+      status: 'running',
+    });
 
     await service.scanForTimeouts();
 

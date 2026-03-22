@@ -14,7 +14,9 @@ const mockLegalHoldModel = {
   findOne: jest.fn().mockReturnValue({
     select: mockLegalHoldFindOneSelect,
   }),
-  findOneAndUpdate: jest.fn().mockReturnValue({ exec: mockLegalHoldFindOneAndUpdateExec }),
+  findOneAndUpdate: jest
+    .fn()
+    .mockReturnValue({ exec: mockLegalHoldFindOneAndUpdateExec }),
 };
 
 mockLegalHoldFindOneSelect.mockReturnValue({ lean: mockLegalHoldFindOneLean });
@@ -41,8 +43,14 @@ describe('EventGovernanceService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EventGovernanceService,
-        { provide: getModelToken(EventLegalHold.name), useValue: mockLegalHoldModel },
-        { provide: getModelToken(ExecutionEvent.name), useValue: mockEventModel },
+        {
+          provide: getModelToken(EventLegalHold.name),
+          useValue: mockLegalHoldModel,
+        },
+        {
+          provide: getModelToken(ExecutionEvent.name),
+          useValue: mockEventModel,
+        },
       ],
     }).compile();
 
@@ -50,15 +58,17 @@ describe('EventGovernanceService', () => {
   });
 
   it('reports legal hold status for an execution', async () => {
-    mockLegalHoldFindOneExec.mockResolvedValueOnce({ _id: new Types.ObjectId() });
-    await expect(service.isExecutionOnLegalHold(new Types.ObjectId().toHexString())).resolves.toBe(
-      true,
-    );
+    mockLegalHoldFindOneExec.mockResolvedValueOnce({
+      _id: new Types.ObjectId(),
+    });
+    await expect(
+      service.isExecutionOnLegalHold(new Types.ObjectId().toHexString()),
+    ).resolves.toBe(true);
 
     mockLegalHoldFindOneExec.mockResolvedValueOnce(null);
-    await expect(service.isExecutionOnLegalHold(new Types.ObjectId().toHexString())).resolves.toBe(
-      false,
-    );
+    await expect(
+      service.isExecutionOnLegalHold(new Types.ObjectId().toHexString()),
+    ).resolves.toBe(false);
   });
 
   it('returns legal hold state details for an execution', async () => {
@@ -136,7 +146,10 @@ describe('EventGovernanceService', () => {
     expect(mockEventModel.updateOne).toHaveBeenCalledWith(
       { _id: heldEventId },
       expect.objectContaining({
-        $set: expect.objectContaining({ legal_hold: false, expires_at: expect.any(Date) }),
+        $set: expect.objectContaining({
+          legal_hold: false,
+          expires_at: expect.any(Date),
+        }),
       }),
     );
   });

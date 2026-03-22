@@ -118,4 +118,3 @@ export class ExecutionController {
     return this.executionService.releaseLegalHold(id, req.user.id);
   }
 }
-
