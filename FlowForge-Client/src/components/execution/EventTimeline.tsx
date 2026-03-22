@@ -4,6 +4,23 @@ interface EventTimelineProps {
 	events: ExecutionEvent[];
 }
 
+const EVENT_LABELS: Partial<Record<ExecutionEvent['type'], string>> = {
+	'execution.started': 'Execution started',
+	'execution.completed': 'Execution completed',
+	'execution.failed': 'Execution failed',
+	'execution.cancelled': 'Execution cancelled',
+	'execution.compensating': 'Execution compensating',
+	'step.queued': 'Step queued',
+	'step.started': 'Step started',
+	'step.completed': 'Step completed',
+	'step.failed': 'Step failed',
+	'step.skipped': 'Step skipped',
+	'step.retrying': 'Step retrying',
+	'step.compensation.started': 'Step compensation started',
+	'step.compensation.completed': 'Step compensation completed',
+	'step.compensation.failed': 'Step compensation failed',
+};
+
 function formatDateTime(value: string): string {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) {
@@ -28,6 +45,10 @@ function formatPayload(payload: Record<string, unknown>): string {
 	}
 }
 
+function formatEventLabel(type: ExecutionEvent['type']): string {
+	return EVENT_LABELS[type] ?? type;
+}
+
 export function EventTimeline({ events }: EventTimelineProps) {
 	if (events.length === 0) {
 		return (
@@ -42,7 +63,7 @@ export function EventTimeline({ events }: EventTimelineProps) {
 			{events.map((event) => (
 				<article key={event.id} className="rounded-xl border border-(--color-border) bg-white p-4">
 					<div className="flex flex-wrap items-center justify-between gap-2">
-						<p className="text-sm font-semibold text-(--color-text-primary)">{event.type}</p>
+						<p className="text-sm font-semibold text-(--color-text-primary)">{formatEventLabel(event.type)}</p>
 						<p className="text-xs text-(--color-text-secondary)">{formatDateTime(event.createdAt)}</p>
 					</div>
 

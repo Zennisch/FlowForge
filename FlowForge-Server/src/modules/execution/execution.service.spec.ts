@@ -167,6 +167,13 @@ describe('ExecutionService', () => {
           provide: EventGovernanceService,
           useValue: {
             isExecutionOnLegalHold: jest.fn().mockResolvedValue(false),
+            getExecutionLegalHoldState: jest.fn().mockResolvedValue({
+              active: false,
+              reason: null,
+              set_by_owner_id: null,
+              created_at: null,
+              released_at: null,
+            }),
             placeExecutionLegalHold: jest.fn().mockResolvedValue(undefined),
             releaseExecutionLegalHold: jest.fn().mockResolvedValue(undefined),
             computeExpiresAt: jest.fn(),
@@ -853,6 +860,35 @@ describe('ExecutionService', () => {
   });
 
   describe('legal hold', () => {
+    it('returns legal hold state for owned execution', async () => {
+      mockExecutionFindByIdExec.mockResolvedValue(makeExecutionDoc());
+      jest
+        .spyOn(eventGovernanceService, 'getExecutionLegalHoldState')
+        .mockResolvedValue({
+          active: true,
+          reason: 'investigation',
+          set_by_owner_id: ownerId,
+          created_at: new Date('2026-03-22T10:00:00.000Z'),
+          released_at: null,
+        });
+
+      const result = await service.getLegalHold(executionId, ownerId);
+
+      expect(eventGovernanceService.getExecutionLegalHoldState).toHaveBeenCalledWith(
+        executionId,
+      );
+      expect(result).toEqual({
+        execution_id: executionId,
+        legal_hold: {
+          active: true,
+          reason: 'investigation',
+          set_by_owner_id: ownerId,
+          created_at: new Date('2026-03-22T10:00:00.000Z'),
+          released_at: null,
+        },
+      });
+    });
+
     it('sets legal hold for owned execution', async () => {
       mockExecutionFindByIdExec.mockResolvedValue(makeExecutionDoc());
 

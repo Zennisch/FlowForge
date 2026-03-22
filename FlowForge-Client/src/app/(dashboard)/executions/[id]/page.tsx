@@ -2,12 +2,25 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 
 import { EventTimeline } from '@/components/execution/EventTimeline';
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
 import { StepStatusTable } from '@/components/execution/StepStatusTable';
-import { useCancelExecution, useExecution, useExecutionEvents } from '@/hooks/useExecutions';
-import { ACTIVE_STATUSES, type ExecutionStatus, type StepExecution } from '@/types/execution.types';
+import {
+	useCancelExecution,
+	useExecution,
+	useExecutionEvents,
+	useExecutionLegalHold,
+	useReleaseExecutionLegalHold,
+	useSetExecutionLegalHold,
+} from '@/hooks/useExecutions';
+import {
+	ACTIVE_STATUSES,
+	type ExecutionEvent,
+	type ExecutionStatus,
+	type StepExecution,
+} from '@/types/execution.types';
 
 function getExecutionId(value: string | string[] | undefined): string {
 	if (Array.isArray(value)) {
@@ -37,8 +50,8 @@ function isCancellable(status: ExecutionStatus): boolean {
 	return status === 'pending' || status === 'running';
 }
 
-function deriveStepExecutionsFromEvents(executionId: string, events: ReturnType<typeof useExecutionEvents>['data']): StepExecution[] {
-	if (!events || events.length === 0) {
+function deriveStepExecutionsFromEvents(executionId: string, events: ExecutionEvent[]): StepExecution[] {
+	if (events.length === 0) {
 		return [];
 	}
 
@@ -110,18 +123,49 @@ function deriveStepExecutionsFromEvents(executionId: string, events: ReturnType<
 export default function ExecutionDetailPage() {
 	const params = useParams<{ id: string | string[] }>();
 	const executionId = getExecutionId(params.id);
+	const [legalHoldReason, setLegalHoldReason] = useState('');
+	const [legalHoldMessage, setLegalHoldMessage] = useState<string | null>(null);
 
 	const executionQuery = useExecution(executionId);
+	const legalHoldQuery = useExecutionLegalHold(executionId);
 	const executionStatus = executionQuery.data?.status;
 	const isExecutionActive = Boolean(executionStatus && ACTIVE_STATUSES.includes(executionStatus));
-	const eventsQuery = useExecutionEvents(executionId, isExecutionActive);
+	const eventsQuery = useExecutionEvents(executionId, { limit: 200 }, isExecutionActive);
 	const cancelExecutionMutation = useCancelExecution();
+	const setLegalHoldMutation = useSetExecutionLegalHold();
+	const releaseLegalHoldMutation = useReleaseExecutionLegalHold();
 
 	const execution = executionQuery.data;
+	const legalHold = legalHoldQuery.data?.legalHold;
 	const stepsFromExecution = execution?.stepExecutions ?? [];
-	const stepsFromEvents = deriveStepExecutionsFromEvents(executionId, eventsQuery.data);
+	const events = eventsQuery.data?.items ?? [];
+	const stepsFromEvents = deriveStepExecutionsFromEvents(executionId, events);
 	const stepExecutions = stepsFromExecution.length > 0 ? stepsFromExecution : stepsFromEvents;
-	const events = eventsQuery.data ?? [];
+	const isLegalHoldMutating = setLegalHoldMutation.isPending || releaseLegalHoldMutation.isPending;
+
+	async function handlePlaceLegalHold(): Promise<void> {
+		if (!executionId) {
+			return;
+		}
+
+		const result = await setLegalHoldMutation.mutateAsync({
+			id: executionId,
+			reason: legalHoldReason,
+		});
+
+		setLegalHoldReason(result.legalHold.reason ?? '');
+		setLegalHoldMessage('Legal hold has been enabled for this execution.');
+	}
+
+	async function handleReleaseLegalHold(): Promise<void> {
+		if (!executionId) {
+			return;
+		}
+
+		const result = await releaseLegalHoldMutation.mutateAsync(executionId);
+		setLegalHoldReason(result.legalHold.reason ?? '');
+		setLegalHoldMessage('Legal hold has been released for this execution.');
+	}
 
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
@@ -195,6 +239,24 @@ export default function ExecutionDetailPage() {
 					</div>
 				) : null}
 
+				{setLegalHoldMutation.isError ? (
+					<div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+						<p className="text-sm text-red-700">{setLegalHoldMutation.error.message}</p>
+					</div>
+				) : null}
+
+				{releaseLegalHoldMutation.isError ? (
+					<div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+						<p className="text-sm text-red-700">{releaseLegalHoldMutation.error.message}</p>
+					</div>
+				) : null}
+
+				{legalHoldQuery.isError ? (
+					<div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+						<p className="text-sm text-red-700">{legalHoldQuery.error.message}</p>
+					</div>
+				) : null}
+
 				{execution ? (
 					<div className="mt-6 space-y-6">
 						<div className="grid gap-3 rounded-xl border border-(--color-border) bg-blue-50/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -231,6 +293,61 @@ export default function ExecutionDetailPage() {
 						</div>
 
 						<div>
+							<h2 className="text-lg font-semibold text-(--color-text-primary)">Compliance controls</h2>
+							<p className="mt-1 text-sm text-(--color-text-secondary)">
+								Apply or release legal hold to protect execution events from retention cleanup.
+							</p>
+							<div className="mt-3 rounded-xl border border-(--color-border) bg-slate-50/50 p-4">
+								<div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+									<input
+										type="text"
+										value={legalHoldReason}
+										onChange={(event) => {
+											setLegalHoldReason(event.target.value);
+										}}
+										placeholder="Optional reason for legal hold"
+										className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm text-(--color-text-primary) focus:border-(--color-primary) focus:outline-none"
+									/>
+									<button
+										type="button"
+										onClick={() => {
+											void handlePlaceLegalHold();
+										}}
+										disabled={isLegalHoldMutating}
+										className="inline-flex rounded-lg border border-(--color-primary) px-3 py-2 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+									>
+										Place legal hold
+									</button>
+									<button
+										type="button"
+										onClick={() => {
+											void handleReleaseLegalHold();
+										}}
+										disabled={isLegalHoldMutating}
+										className="inline-flex rounded-lg border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+									>
+										Release legal hold
+									</button>
+								</div>
+								{legalHoldMessage ? (
+									<p className="mt-2 text-sm text-emerald-700">{legalHoldMessage}</p>
+								) : null}
+								{legalHoldQuery.isPending ? (
+									<p className="mt-1 text-xs text-(--color-text-secondary)">Loading legal hold state...</p>
+								) : null}
+								{legalHold ? (
+									<div className="mt-2 space-y-1 text-xs text-(--color-text-secondary)">
+										<p>Current legal hold state: {legalHold.active ? 'enabled' : 'disabled'}</p>
+										<p>Reason: {legalHold.reason?.trim() ? legalHold.reason : 'N/A'}</p>
+										<p>Set by owner: {legalHold.setByOwnerId ?? 'N/A'}</p>
+										<p>Created at: {formatDateTime(legalHold.createdAt ?? undefined)}</p>
+										<p>Released at: {formatDateTime(legalHold.releasedAt ?? undefined)}</p>
+									</div>
+								) : null}
+							</div>
+						</div>
+
+						<div>
 							<h2 className="text-lg font-semibold text-(--color-text-primary)">Step status</h2>
 							<p className="mt-1 text-sm text-(--color-text-secondary)">
 								Current per-step state with attempt, input/output and error snapshots.
@@ -248,9 +365,15 @@ export default function ExecutionDetailPage() {
 										Immutable event stream for this execution.
 									</p>
 								</div>
-								{eventsQuery.isFetching ? (
-									<span className="text-xs text-(--color-text-secondary)">Updating...</span>
-								) : null}
+								<div className="text-right">
+									{eventsQuery.isFetching ? (
+										<span className="text-xs text-(--color-text-secondary)">Updating...</span>
+									) : null}
+									<p className="text-xs text-(--color-text-secondary)">
+										Loaded {events.length} events
+										{eventsQuery.data?.pageInfo.hasNextPage ? ' (more available)' : ''}
+									</p>
+								</div>
 							</div>
 
 							{eventsQuery.isError ? (

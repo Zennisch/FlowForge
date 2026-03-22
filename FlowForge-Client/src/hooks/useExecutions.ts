@@ -1,30 +1,53 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { executionsApi } from '@/lib/api/executions.api';
-import { ACTIVE_STATUSES } from '@/types/execution.types';
+import {
+	ACTIVE_STATUSES,
+	type ExecutionEventsQuery,
+	type ExecutionListQuery,
+	type ExecutionSummaryQuery,
+} from '@/types/execution.types';
 
 export const executionQueryKeys = {
 	all: ['executions'] as const,
+	list: (query: ExecutionListQuery) => ['executions', 'list', query] as const,
+	summary: (query: ExecutionSummaryQuery) => ['executions', 'summary', query] as const,
 	detail: (id: string) => ['executions', id] as const,
-	events: (id: string) => ['executions', id, 'events'] as const,
-	byWorkflow: (workflowId: string) => ['executions', 'workflow', workflowId] as const,
+	legalHold: (id: string) => ['executions', id, 'legal-hold'] as const,
+	events: (id: string, query: ExecutionEventsQuery) => ['executions', id, 'events', query] as const,
 };
 
-export function useExecutions() {
+export function useExecutions(query: ExecutionListQuery = {}) {
 	return useQuery({
-		queryKey: executionQueryKeys.all,
-		queryFn: () => executionsApi.list(),
+		queryKey: executionQueryKeys.list(query),
+		queryFn: () => executionsApi.list(query),
 	});
 }
 
-export function useWorkflowExecutions(workflowId: string) {
+export function useWorkflowExecutions(
+	workflowId: string,
+	options: Pick<ExecutionListQuery, 'cursor' | 'limit' | 'status' | 'startedFrom' | 'startedTo'> = {},
+) {
+	const query: ExecutionListQuery = {
+		workflowId,
+		cursor: options.cursor,
+		limit: options.limit,
+		status: options.status,
+		startedFrom: options.startedFrom,
+		startedTo: options.startedTo,
+	};
+
 	return useQuery({
-		queryKey: executionQueryKeys.byWorkflow(workflowId),
-		queryFn: async () => {
-			const executions = await executionsApi.list();
-			return executions.filter((execution) => execution.workflowId === workflowId);
-		},
+		queryKey: executionQueryKeys.list(query),
+		queryFn: () => executionsApi.list(query),
 		enabled: Boolean(workflowId),
+	});
+}
+
+export function useExecutionSummary(query: ExecutionSummaryQuery = {}) {
+	return useQuery({
+		queryKey: executionQueryKeys.summary(query),
+		queryFn: () => executionsApi.getSummary(query),
 	});
 }
 
@@ -40,10 +63,22 @@ export function useExecution(id: string) {
 	});
 }
 
-export function useExecutionEvents(id: string, isExecutionActive = false) {
+export function useExecutionLegalHold(id: string) {
 	return useQuery({
-		queryKey: executionQueryKeys.events(id),
-		queryFn: () => executionsApi.getEvents(id),
+		queryKey: executionQueryKeys.legalHold(id),
+		queryFn: () => executionsApi.getLegalHold(id),
+		enabled: Boolean(id),
+	});
+}
+
+export function useExecutionEvents(
+	id: string,
+	query: ExecutionEventsQuery = {},
+	isExecutionActive = false,
+) {
+	return useQuery({
+		queryKey: executionQueryKeys.events(id, query),
+		queryFn: () => executionsApi.getEvents(id, query),
 		enabled: Boolean(id),
 		refetchInterval: isExecutionActive ? 3000 : false,
 	});
@@ -57,8 +92,34 @@ export function useCancelExecution() {
 		onSuccess: (execution) => {
 			queryClient.setQueryData(executionQueryKeys.detail(execution.id), execution);
 			void queryClient.invalidateQueries({ queryKey: executionQueryKeys.all });
-			void queryClient.invalidateQueries({ queryKey: executionQueryKeys.byWorkflow(execution.workflowId) });
-			void queryClient.invalidateQueries({ queryKey: executionQueryKeys.events(execution.id) });
+			void queryClient.invalidateQueries({ queryKey: ['executions', execution.id, 'events'] });
+		},
+	});
+}
+
+export function useSetExecutionLegalHold() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+			executionsApi.setLegalHold(id, reason),
+		onSuccess: (_, variables) => {
+			void queryClient.invalidateQueries({ queryKey: executionQueryKeys.detail(variables.id) });
+			void queryClient.invalidateQueries({ queryKey: executionQueryKeys.legalHold(variables.id) });
+			void queryClient.invalidateQueries({ queryKey: ['executions', variables.id, 'events'] });
+		},
+	});
+}
+
+export function useReleaseExecutionLegalHold() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (id: string) => executionsApi.releaseLegalHold(id),
+		onSuccess: (_, executionId) => {
+			void queryClient.invalidateQueries({ queryKey: executionQueryKeys.detail(executionId) });
+			void queryClient.invalidateQueries({ queryKey: executionQueryKeys.legalHold(executionId) });
+			void queryClient.invalidateQueries({ queryKey: ['executions', executionId, 'events'] });
 		},
 	});
 }

@@ -75,6 +75,11 @@ export class ExecutionController {
     return this.executionService.findOne(id, req.user.id);
   }
 
+  @Get('executions/:id/legal-hold')
+  getLegalHold(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.executionService.getLegalHold(id, req.user.id);
+  }
+
   @Post('executions/:id/cancel')
   @HttpCode(HttpStatus.OK)
   cancel(@Param('id') id: string, @Req() req: AuthenticatedRequest) {

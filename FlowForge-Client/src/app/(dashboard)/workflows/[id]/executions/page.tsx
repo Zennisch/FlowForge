@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
 import { useCancelExecution, useWorkflowExecutions } from '@/hooks/useExecutions';
@@ -9,6 +10,7 @@ import { useWorkflow } from '@/hooks/useWorkflows';
 import type { Execution, ExecutionStatus } from '@/types/execution.types';
 
 const CANCELLABLE_STATUSES: ExecutionStatus[] = ['pending', 'running'];
+const PAGE_LIMIT = 20;
 
 function getWorkflowId(value: string | string[] | undefined): string {
 	if (Array.isArray(value)) {
@@ -63,12 +65,37 @@ function isCancellable(status: ExecutionStatus): boolean {
 export default function WorkflowExecutionsPage() {
 	const params = useParams<{ id: string | string[] }>();
 	const workflowId = getWorkflowId(params.id);
+	const [cursor, setCursor] = useState<string | undefined>(undefined);
+	const [cursorStack, setCursorStack] = useState<string[]>([]);
 
 	const workflowQuery = useWorkflow(workflowId);
-	const executionsQuery = useWorkflowExecutions(workflowId);
+	const executionsQuery = useWorkflowExecutions(workflowId, {
+		cursor,
+		limit: PAGE_LIMIT,
+	});
 	const cancelExecutionMutation = useCancelExecution();
 
-	const executions = executionsQuery.data ?? [];
+	const executions = executionsQuery.data?.items ?? [];
+	const pageInfo = executionsQuery.data?.pageInfo;
+
+	function goToNextPage(): void {
+		if (!pageInfo?.nextCursor) {
+			return;
+		}
+
+		setCursorStack((previous) => [...previous, pageInfo.cursor ?? '']);
+		setCursor(pageInfo.nextCursor);
+	}
+
+	function goToPreviousPage(): void {
+		if (cursorStack.length === 0) {
+			return;
+		}
+
+		const previousCursor = cursorStack[cursorStack.length - 1] || undefined;
+		setCursorStack((previous) => previous.slice(0, previous.length - 1));
+		setCursor(previousCursor);
+	}
 
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
@@ -94,6 +121,8 @@ export default function WorkflowExecutionsPage() {
 						<button
 							type="button"
 							onClick={() => {
+								setCursor(undefined);
+								setCursorStack([]);
 								void executionsQuery.refetch();
 							}}
 							className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50"
@@ -216,6 +245,32 @@ export default function WorkflowExecutionsPage() {
 								))}
 							</tbody>
 						</table>
+					</div>
+				) : null}
+
+				{!executionsQuery.isPending && !executionsQuery.isError ? (
+					<div className="mt-4 flex items-center justify-between gap-3">
+						<p className="text-xs text-(--color-text-secondary)">
+							Page size: {pageInfo?.limit ?? PAGE_LIMIT}
+						</p>
+						<div className="flex items-center gap-2">
+							<button
+								type="button"
+								onClick={goToPreviousPage}
+								disabled={cursorStack.length === 0 || executionsQuery.isFetching}
+								className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+							>
+								Previous
+							</button>
+							<button
+								type="button"
+								onClick={goToNextPage}
+								disabled={!pageInfo?.hasNextPage || !pageInfo?.nextCursor || executionsQuery.isFetching}
+								className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+							>
+								Next
+							</button>
+						</div>
 					</div>
 				) : null}
 			</section>
