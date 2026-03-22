@@ -61,6 +61,39 @@ describe('EventGovernanceService', () => {
     );
   });
 
+  it('returns legal hold state details for an execution', async () => {
+    const ownerId = new Types.ObjectId();
+    mockLegalHoldFindOneExec.mockResolvedValueOnce({
+      active: true,
+      reason: 'audit',
+      set_by_owner_id: ownerId,
+      created_at: new Date('2026-03-22T10:00:00.000Z'),
+      released_at: null,
+    });
+
+    await expect(
+      service.getExecutionLegalHoldState(new Types.ObjectId().toHexString()),
+    ).resolves.toEqual({
+      active: true,
+      reason: 'audit',
+      set_by_owner_id: ownerId.toHexString(),
+      created_at: new Date('2026-03-22T10:00:00.000Z'),
+      released_at: null,
+    });
+
+    mockLegalHoldFindOneExec.mockResolvedValueOnce(null);
+
+    await expect(
+      service.getExecutionLegalHoldState(new Types.ObjectId().toHexString()),
+    ).resolves.toEqual({
+      active: false,
+      reason: null,
+      set_by_owner_id: null,
+      created_at: null,
+      released_at: null,
+    });
+  });
+
   it('places legal hold and marks existing events as held', async () => {
     mockLegalHoldFindOneAndUpdateExec.mockResolvedValue({});
     mockEventUpdateManyExec.mockResolvedValue({ modifiedCount: 2 });

@@ -13,7 +13,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PubSubService } from '../../infra/pubsub/pubsub.provider';
 import { StepJob } from '../../shared/interfaces/step-job.interface';
-import { EventGovernanceService } from '../event/event-governance.service';
+import {
+  EventGovernanceService,
+  ExecutionLegalHoldState,
+} from '../event/event-governance.service';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ListExecutionEventsQueryDto } from './dto/list-execution-events-query.dto';
@@ -86,6 +89,11 @@ export interface ExecutionListResponse {
 export interface ExecutionSummaryResponse {
   counts: Record<ExecutionStatus, number>;
   total: number;
+}
+
+export interface ExecutionLegalHoldResponse {
+  execution_id: string;
+  legal_hold: ExecutionLegalHoldState;
 }
 
 const ALL_EXECUTION_STATUSES: ExecutionStatus[] = [
@@ -1212,6 +1220,19 @@ export class ExecutionService {
       cursor: query.cursor,
       limit: query.limit,
     });
+  }
+
+  async getLegalHold(
+    id: string,
+    ownerId: string,
+  ): Promise<ExecutionLegalHoldResponse> {
+    await this.findOne(id, ownerId);
+    const legalHold = await this.eventGovernanceService.getExecutionLegalHoldState(id);
+
+    return {
+      execution_id: id,
+      legal_hold: legalHold,
+    };
   }
 
   async setLegalHold(id: string, ownerId: string, reason?: string) {

@@ -7,6 +7,14 @@ import { EventRetentionClass, ExecutionEvent, ExecutionEventDocument } from './e
 const LEGAL_HOLD_EXPIRATION_DATE = new Date('9999-12-31T00:00:00.000Z');
 const DEFAULT_EVENT_RETENTION_DAYS = 90;
 
+export interface ExecutionLegalHoldState {
+  active: boolean;
+  reason: string | null;
+  set_by_owner_id: string | null;
+  created_at: Date | null;
+  released_at: Date | null;
+}
+
 @Injectable()
 export class EventGovernanceService {
   constructor(
@@ -24,6 +32,40 @@ export class EventGovernanceService {
       .exec();
 
     return Boolean(hold);
+  }
+
+  async getExecutionLegalHoldState(executionId: string): Promise<ExecutionLegalHoldState> {
+    const hold = await this.legalHoldModel
+      .findOne({ execution_id: new Types.ObjectId(executionId) })
+      .select({
+        active: 1,
+        reason: 1,
+        set_by_owner_id: 1,
+        created_at: 1,
+        released_at: 1,
+      })
+      .lean()
+      .exec();
+
+    if (!hold) {
+      return {
+        active: false,
+        reason: null,
+        set_by_owner_id: null,
+        created_at: null,
+        released_at: null,
+      };
+    }
+
+    return {
+      active: Boolean(hold.active),
+      reason: hold.reason ?? null,
+      set_by_owner_id: hold.set_by_owner_id
+        ? hold.set_by_owner_id.toString()
+        : null,
+      created_at: hold.created_at ?? null,
+      released_at: hold.released_at ?? null,
+    };
   }
 
   async placeExecutionLegalHold(

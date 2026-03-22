@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
-import { useCancelExecution, useExecutions } from '@/hooks/useExecutions';
+import { useCancelExecution, useExecutionSummary, useExecutions } from '@/hooks/useExecutions';
 import type { Execution, ExecutionStatus } from '@/types/execution.types';
 
 const CANCELLABLE_STATUSES: ExecutionStatus[] = ['pending', 'running'];
+const PAGE_LIMIT = 20;
 const STATUS_FILTERS: Array<'all' | ExecutionStatus> = [
 	'all',
 	'pending',
@@ -74,18 +75,62 @@ function isCancellable(status: ExecutionStatus): boolean {
 
 export default function ExecutionsPage() {
 	const [statusFilter, setStatusFilter] = useState<'all' | ExecutionStatus>('all');
+	const [cursor, setCursor] = useState<string | undefined>(undefined);
+	const [cursorStack, setCursorStack] = useState<string[]>([]);
 
-	const executionsQuery = useExecutions();
+	const executionListQueryInput = useMemo(
+		() => ({
+			status: statusFilter === 'all' ? undefined : [statusFilter],
+			cursor,
+			limit: PAGE_LIMIT,
+		}),
+		[statusFilter, cursor],
+	);
+
+	const executionsQuery = useExecutions(executionListQueryInput);
+	const summaryQuery = useExecutionSummary();
 	const cancelExecutionMutation = useCancelExecution();
 
-	const executions = executionsQuery.data ?? [];
-	const filteredExecutions = useMemo(() => {
-		if (statusFilter === 'all') {
-			return executions;
+	const executions = executionsQuery.data?.items ?? [];
+	const pageInfo = executionsQuery.data?.pageInfo;
+	const summary = summaryQuery.data;
+
+	const summaryCards = useMemo(
+		() => [
+			{ key: 'total', label: 'Total', value: summary?.total ?? 0 },
+			{ key: 'running', label: 'Running', value: summary?.counts.running ?? 0 },
+			{ key: 'pending', label: 'Pending', value: summary?.counts.pending ?? 0 },
+			{ key: 'compensating', label: 'Compensating', value: summary?.counts.compensating ?? 0 },
+			{ key: 'failed', label: 'Failed', value: summary?.counts.failed ?? 0 },
+			{ key: 'completed', label: 'Completed', value: summary?.counts.completed ?? 0 },
+		],
+		[summary],
+	);
+
+	function onChangeStatus(nextStatus: 'all' | ExecutionStatus): void {
+		setStatusFilter(nextStatus);
+		setCursor(undefined);
+		setCursorStack([]);
+	}
+
+	function goToNextPage(): void {
+		if (!pageInfo?.nextCursor) {
+			return;
 		}
 
-		return executions.filter((execution) => execution.status === statusFilter);
-	}, [executions, statusFilter]);
+		setCursorStack((previous) => [...previous, pageInfo.cursor ?? '']);
+		setCursor(pageInfo.nextCursor);
+	}
+
+	function goToPreviousPage(): void {
+		if (cursorStack.length === 0) {
+			return;
+		}
+
+		const previousCursor = cursorStack[cursorStack.length - 1] || undefined;
+		setCursorStack((previous) => previous.slice(0, previous.length - 1));
+		setCursor(previousCursor);
+	}
 
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
@@ -102,11 +147,21 @@ export default function ExecutionsPage() {
 						type="button"
 						onClick={() => {
 							void executionsQuery.refetch();
+							void summaryQuery.refetch();
 						}}
 						className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50"
 					>
 						Refresh
 					</button>
+				</div>
+
+				<div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+					{summaryCards.map((card) => (
+						<div key={card.key} className="rounded-xl border border-(--color-border) bg-blue-50/40 p-3">
+							<p className="text-xs uppercase tracking-wide text-(--color-text-secondary)">{card.label}</p>
+							<p className="mt-1 text-xl font-semibold text-(--color-text-primary)">{card.value}</p>
+						</div>
+					))}
 				</div>
 
 				<div className="mt-5 flex flex-wrap items-center gap-2">
@@ -118,7 +173,7 @@ export default function ExecutionsPage() {
 								key={status}
 								type="button"
 								onClick={() => {
-									setStatusFilter(status);
+									onChangeStatus(status);
 								}}
 								className={[
 									'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
@@ -160,7 +215,7 @@ export default function ExecutionsPage() {
 					</div>
 				) : null}
 
-				{!executionsQuery.isPending && !executionsQuery.isError && filteredExecutions.length === 0 ? (
+				{!executionsQuery.isPending && !executionsQuery.isError && executions.length === 0 ? (
 					<div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-center">
 						<p className="text-base font-medium text-(--color-text-primary)">No executions found</p>
 						<p className="mt-2 text-sm text-(--color-text-secondary)">
@@ -169,7 +224,7 @@ export default function ExecutionsPage() {
 					</div>
 				) : null}
 
-				{!executionsQuery.isPending && !executionsQuery.isError && filteredExecutions.length > 0 ? (
+				{!executionsQuery.isPending && !executionsQuery.isError && executions.length > 0 ? (
 					<div className="mt-6 overflow-x-auto rounded-xl border border-(--color-border)">
 						<table className="min-w-full divide-y divide-(--color-border)">
 							<thead className="bg-blue-50/70">
@@ -202,7 +257,7 @@ export default function ExecutionsPage() {
 							</thead>
 
 							<tbody className="divide-y divide-(--color-border) bg-white">
-								{filteredExecutions.map((execution) => (
+								{executions.map((execution) => (
 									<tr key={execution.id}>
 										<td className="px-4 py-3 text-sm font-medium text-(--color-text-primary)">
 											{execution.id.slice(-8)}
@@ -257,6 +312,32 @@ export default function ExecutionsPage() {
 								))}
 							</tbody>
 						</table>
+					</div>
+				) : null}
+
+				{!executionsQuery.isPending && !executionsQuery.isError ? (
+					<div className="mt-4 flex items-center justify-between gap-3">
+						<p className="text-xs text-(--color-text-secondary)">
+							Page size: {pageInfo?.limit ?? PAGE_LIMIT}
+						</p>
+						<div className="flex items-center gap-2">
+							<button
+								type="button"
+								onClick={goToPreviousPage}
+								disabled={cursorStack.length === 0 || executionsQuery.isFetching}
+								className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+							>
+								Previous
+							</button>
+							<button
+								type="button"
+								onClick={goToNextPage}
+								disabled={!pageInfo?.hasNextPage || !pageInfo?.nextCursor || executionsQuery.isFetching}
+								className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+							>
+								Next
+							</button>
+						</div>
 					</div>
 				) : null}
 			</section>

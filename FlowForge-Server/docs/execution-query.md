@@ -114,6 +114,23 @@ Response mẫu:
 }
 ```
 
+### `GET /executions/:id/legal-hold`
+Đọc trạng thái legal hold hiện tại của execution theo phạm vi owner, dùng để đồng bộ UI sau reload.
+
+Response mẫu:
+```json
+{
+  "execution_id": "65f0d3fbd1d2a4b4b8f16c11",
+  "legal_hold": {
+    "active": true,
+    "reason": "audit investigation 2026-03",
+    "set_by_owner_id": "65f0d3fbd1d2a4b4b8f16a10",
+    "created_at": "2026-03-22T10:00:00.000Z",
+    "released_at": null
+  }
+}
+```
+
 ### `POST /executions/:id/legal-hold`
 Đặt legal hold cho một execution. Body tùy chọn:
 
