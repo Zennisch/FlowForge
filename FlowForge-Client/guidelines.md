@@ -71,14 +71,15 @@ Browser
 ## 4. Core Features
 
 ### 4.1 Authentication
-- Register and login with email + password
+- Register/login with email + password and verification-aware flow
+- Public auth journey includes verify-email, resend verification, forgot password, reset password
 - JWT stored in `localStorage` (access token)
-- Axios request interceptor attaches `Authorization: Bearer <token>` on every request
+- Axios request interceptor attaches `Authorization: Bearer <token>` on every protected request
 - Axios response interceptor catches 401 on protected endpoints → clears token → redirects to `/login`
-- 401 from `/auth/login` and `/auth/register` is surfaced as inline form error (no forced redirect/reload)
+- Public auth endpoints (`/auth/login`, `/auth/register`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/forgot-password`, `/auth/reset-password`) surface inline errors without forced redirect
 - Route guard: protected routes redirect unauthenticated users to `/login`
 - Root route (`/`) resolves auth state after Zustand hydration, then redirects to `/workflows` or `/login`
-- Register success redirects to `/login`; login success redirects to `/workflows`
+- Register success shows verification guidance; login success redirects to `/workflows`
 
 ### 4.2 Workflow List & Management
 - Dashboard lists all workflows owned by the current user
@@ -99,8 +100,17 @@ Browser
 
 ### 4.5 Event Log Viewer
 - `GET /executions/:id/events` rendered as an immutable, chronological timeline
+- Event query supports server-side filters and cursor pagination (`type`, `step_id`, `occurred_from`, `occurred_to`, `cursor`, `limit`)
 - Each event card displays type, step ID, payload, and timestamp
 - Auto-scroll to latest event while execution is in progress
+
+### 4.6 Operations & Governance
+- Global execution dashboard consumes `GET /executions/summary` for status counters
+- Execution detail supports legal hold lifecycle:
+  - `GET /executions/:id/legal-hold` for current legal-hold state
+  - `POST /executions/:id/legal-hold` to place hold
+  - `DELETE /executions/:id/legal-hold` to release hold
+- Execution detail header includes a legal-hold badge for quick state visibility
 
 ---
 
@@ -204,10 +214,14 @@ src/
 `NEXT_PUBLIC_API_URL` (e.g., `http://localhost:3000` in development)
 
 ### Auth
-| Method | Path           | Request Body                      | Response                      |
-|--------|----------------|-----------------------------------|-------------------------------|
-| POST   | /auth/register | `{ email, password }`             | `{ access_token }`            |
-| POST   | /auth/login    | `{ email, password }`             | `{ access_token }`            |
+| Method | Path                         | Request Body                               | Response                                  |
+|--------|------------------------------|--------------------------------------------|-------------------------------------------|
+| POST   | /auth/register               | `{ email, password }`                      | verification-oriented register response   |
+| POST   | /auth/login                  | `{ email, password }`                      | `{ access_token }`                        |
+| POST   | /auth/verify-email           | `{ token }`                                | success message                           |
+| POST   | /auth/resend-verification    | `{ email }`                                | success message                           |
+| POST   | /auth/forgot-password        | `{ email }`                                | success message                           |
+| POST   | /auth/reset-password         | `{ token, password }`                      | success message                           |
 
 > Frontend API adapter (`lib/api/auth.api.ts`) maps `access_token` → `accessToken` before returning to hooks/components.
 
@@ -222,12 +236,16 @@ src/
 | POST   | /workflows/:id/trigger | JWT  | Trigger execution           |
 
 ### Executions
-| Method | Path                       | Auth | Description                    |
-|--------|----------------------------|------|--------------------------------|
-| GET    | /executions                | JWT  | List executions                |
-| GET    | /executions/:id            | JWT  | Get execution + step status    |
-| GET    | /executions/:id/events     | JWT  | Get immutable event log        |
-| POST   | /executions/:id/cancel     | JWT  | Cancel running execution       |
+| Method | Path                         | Auth | Description                                                           |
+|--------|------------------------------|------|-----------------------------------------------------------------------|
+| GET    | /executions                  | JWT  | List executions with validated filters + cursor pagination            |
+| GET    | /executions/summary          | JWT  | Aggregate execution status summary                                    |
+| GET    | /executions/:id              | JWT  | Get execution + step status                                           |
+| POST   | /executions/:id/cancel       | JWT  | Cancel running execution                                              |
+| GET    | /executions/:id/events       | JWT  | Get immutable event log with filters + cursor pagination             |
+| GET    | /executions/:id/legal-hold   | JWT  | Get legal-hold state (`active`, `reason`, `set_by_owner_id`, dates) |
+| POST   | /executions/:id/legal-hold   | JWT  | Place legal hold                                                      |
+| DELETE | /executions/:id/legal-hold   | JWT  | Release legal hold                                                    |
 
 ### Key TypeScript Types (mirroring server contracts)
 
@@ -243,7 +261,9 @@ type EventType =
   | 'execution.started' | 'execution.completed' | 'execution.failed'
   | 'execution.cancelled' | 'execution.compensating'
   | 'step.queued' | 'step.started' | 'step.completed'
-  | 'step.failed' | 'step.skipped' | 'step.retrying';
+  | 'step.failed' | 'step.skipped' | 'step.retrying'
+  | 'step.compensation.started' | 'step.compensation.completed'
+  | 'step.compensation.failed';
 
 export const ACTIVE_STATUSES: ExecutionStatus[] = ['pending', 'running', 'compensating'];
 ```
@@ -365,11 +385,11 @@ pnpm run format
 | Workflow create / edit form         | Done        | Implemented reusable RHF+Zod form with dynamic steps/edges and create/update integration |
 | Workflow delete modal               | Done        | Added confirmation modal and wired delete mutation with query invalidation |
 | Execution history page              | Done        | Added workflow-scoped history and global `/executions` list with status filter, refresh, and cancel actions. |
-| Execution detail + polling          | Done        | Built `/executions/[id]` monitor with conditional 3s polling, summary, and cancel action. |
-| Event log timeline                  | Done        | Added immutable event timeline rendering with live refresh while execution is active. |
+| Execution detail + polling          | Done        | Built `/executions/[id]` monitor with conditional 3s polling, cancel action, legal-hold controls, and header legal-hold badge. |
+| Event log timeline                  | Done        | Added immutable event timeline rendering with live refresh, expanded event taxonomy support, and paginated response handling. |
 | E2E tests (Playwright)              | Not started |                                                 |
 | CI/CD (GitHub Actions)              | Not started |                                                 |
 
 ---
 
-*Last updated: 2026-03-18 — Execution detail monitor completed with active polling, step status table, and event timeline.*
+*Last updated: 2026-03-23 — Guidelines aligned with backend contract for auth verification/reset and executions governance (summary, pagination, legal hold).*

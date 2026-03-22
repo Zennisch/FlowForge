@@ -33,7 +33,7 @@
 
 | Issue | Status | Related Files | Details | Notes |
 |---|---|---|---|---|
-| Frontend guideline contract section is outdated compared to backend | Open | guidelines.md, src/lib/api/auth.api.ts, src/lib/api/executions.api.ts | Client guideline still documents auth register as returning access token and does not reflect new auth/execution/legal-hold capabilities. This increases implementation drift risk. | 2026-03-23: Update client guidelines after API/client refactor is completed. |
+| Frontend guideline contract section is outdated compared to backend | Done | guidelines.md, src/lib/api/auth.api.ts, src/lib/api/executions.api.ts | Client guideline still documents auth register as returning access token and does not reflect new auth/execution/legal-hold capabilities. This increases implementation drift risk. | 2026-03-23: Updated guideline contract sections for auth verification/reset flows, execution query pagination/filtering, summary endpoint, and legal-hold state/operations. |
 | Missing tests for new backend-aligned API adapters and query behavior | Open | src/lib/api/*.ts, src/hooks/*.ts, vitest.config.ts, playwright.config.ts | No visible coverage for auth verification/reset flows, execution cursor pagination, event filtering, or legal-hold actions. | 2026-03-23: Add unit tests for adapters/hooks and E2E happy-paths for new auth journey. |
 
 ---
@@ -48,4 +48,4 @@
 
 ---
 
-*Last updated: 2026-03-23 — Auth verification/reset flow alignment implemented on frontend.*
+*Last updated: 2026-03-23 — Guideline contract section aligned with backend auth/execution governance APIs.*
