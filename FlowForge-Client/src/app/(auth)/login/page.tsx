@@ -61,6 +61,14 @@ export default function LoginPage() {
 							required
 							className="w-full rounded-xl border border-(--color-border) bg-white px-3 py-2 text-sm text-(--color-text-primary) outline-none transition-colors focus:border-(--color-primary)"
 						/>
+						<div className="mt-2 text-right">
+							<Link
+								className="text-xs font-medium text-(--color-primary) hover:underline"
+								href="/forgot-password"
+							>
+								Forgot password?
+							</Link>
+						</div>
 					</label>
 
 					{loginMutation.isError ? (
@@ -82,6 +90,16 @@ export default function LoginPage() {
 					No account yet?{' '}
 					<Link className="font-medium text-(--color-primary) hover:underline" href="/register">
 						Create one
+					</Link>
+				</p>
+
+				<p className="mt-2 text-center text-sm text-(--color-text-secondary)">
+					Need a new verification email?{' '}
+					<Link
+						className="font-medium text-(--color-primary) hover:underline"
+						href="/resend-verification"
+					>
+						Resend verification
 					</Link>
 				</p>
 			</section>
