@@ -53,6 +53,7 @@ export function validateAppEnv(config: AppEnv): AppEnv {
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      expandVariables: true,
       validate: validateAppEnv,
     }),
   ],
