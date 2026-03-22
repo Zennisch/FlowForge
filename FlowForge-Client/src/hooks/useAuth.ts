@@ -2,7 +2,14 @@ import { useMutation } from '@tanstack/react-query';
 
 import { authApi } from '@/lib/api/auth.api';
 import { useAuthStore } from '@/store/auth.store';
-import type { LoginRequest, RegisterRequest } from '@/types/auth.types';
+import type {
+	ForgotPasswordRequest,
+	LoginRequest,
+	RegisterRequest,
+	ResendVerificationRequest,
+	ResetPasswordRequest,
+	VerifyEmailRequest,
+} from '@/types/auth.types';
 
 export function useLogin() {
 	const setToken = useAuthStore((state) => state.setToken);
@@ -18,5 +25,29 @@ export function useLogin() {
 export function useRegister() {
 	return useMutation({
 		mutationFn: (payload: RegisterRequest) => authApi.register(payload),
+	});
+}
+
+export function useVerifyEmail() {
+	return useMutation({
+		mutationFn: (payload: VerifyEmailRequest) => authApi.verifyEmail(payload),
+	});
+}
+
+export function useResendVerification() {
+	return useMutation({
+		mutationFn: (payload: ResendVerificationRequest) => authApi.resendVerification(payload),
+	});
+}
+
+export function useForgotPassword() {
+	return useMutation({
+		mutationFn: (payload: ForgotPasswordRequest) => authApi.forgotPassword(payload),
+	});
+}
+
+export function useResetPassword() {
+	return useMutation({
+		mutationFn: (payload: ResetPasswordRequest) => authApi.resetPassword(payload),
 	});
 }

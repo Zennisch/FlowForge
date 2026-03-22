@@ -3,8 +3,8 @@ export interface User {
   email: string;
 }
 
-export interface AuthResponse {
-  access_token: string;
+export interface AuthMessageResponse {
+  message: string;
 }
 
 export interface LoginRequest {
@@ -14,5 +14,22 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   email: string;
+  password: string;
+}
+
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
   password: string;
 }

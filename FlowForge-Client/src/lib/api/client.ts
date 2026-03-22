@@ -2,6 +2,15 @@ import axios from 'axios';
 
 import { useAuthStore } from '@/store/auth.store';
 
+const PUBLIC_AUTH_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/verify-email',
+  '/auth/resend-verification',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
+
 export const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
@@ -24,9 +33,11 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const requestUrl = String(error.config?.url ?? '');
-      const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+      const isPublicAuthEndpoint = PUBLIC_AUTH_ENDPOINTS.some((endpoint) =>
+        requestUrl.includes(endpoint),
+      );
 
-      if (!isAuthEndpoint) {
+      if (!isPublicAuthEndpoint) {
         useAuthStore.getState().clearToken();
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
