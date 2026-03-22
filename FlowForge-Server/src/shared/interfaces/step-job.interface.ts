@@ -7,4 +7,3 @@ export interface StepJob {
   attempt: number;
   notBefore?: string;
 }
-

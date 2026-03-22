@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EventGovernanceService } from './event-governance.service';
-import { EventLegalHold, EventLegalHoldSchema } from './event-legal-hold.schema';
+import {
+  EventLegalHold,
+  EventLegalHoldSchema,
+} from './event-legal-hold.schema';
 import {
   ExecutionEventArchive,
   ExecutionEventArchiveSchema,
@@ -22,4 +25,3 @@ import { EventService } from './event.service';
   exports: [EventService, EventGovernanceService],
 })
 export class EventModule {}
-

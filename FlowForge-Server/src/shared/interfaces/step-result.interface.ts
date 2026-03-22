@@ -7,4 +7,3 @@ export interface StepResult {
   error?: string;
   attempt: number;
 }
-

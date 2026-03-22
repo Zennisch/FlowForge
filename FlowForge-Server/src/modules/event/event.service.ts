@@ -48,10 +48,14 @@ export class EventService {
     const retentionClass =
       options.retentionClass ?? this.resolveRetentionClassByType(type);
     const occurredAt = new Date();
-    const legalHold = await this.eventGovernanceService.isExecutionOnLegalHold(executionId);
+    const legalHold =
+      await this.eventGovernanceService.isExecutionOnLegalHold(executionId);
     const expiresAt = legalHold
       ? new Date('9999-12-31T00:00:00.000Z')
-      : this.eventGovernanceService.computeExpiresAt(occurredAt, retentionClass);
+      : this.eventGovernanceService.computeExpiresAt(
+          occurredAt,
+          retentionClass,
+        );
 
     const event = new this.eventModel({
       execution_id: new Types.ObjectId(executionId),
@@ -136,7 +140,8 @@ export class EventService {
       });
     }
 
-    const queryFilter = andClauses.length === 1 ? andClauses[0] : { $and: andClauses };
+    const queryFilter =
+      andClauses.length === 1 ? andClauses[0] : { $and: andClauses };
     const docs = await this.eventModel
       .find(queryFilter)
       .sort({ occurred_at: 1, _id: 1 })
@@ -173,7 +178,8 @@ export class EventService {
       typeof item.get === 'function'
         ? ((item.get('occurred_at') as Date | undefined) ?? undefined)
         : undefined;
-    const occurredAtFromObject = (item as unknown as { occurred_at?: Date }).occurred_at;
+    const occurredAtFromObject = (item as unknown as { occurred_at?: Date })
+      .occurred_at;
     const occurredAt = occurredAtFromDoc ?? occurredAtFromObject;
 
     if (!occurredAt || Number.isNaN(occurredAt.getTime())) {
@@ -188,12 +194,19 @@ export class EventService {
     return Buffer.from(payload).toString('base64url');
   }
 
-  private decodeCursor(cursor: string): { occurred_at: Date; id: Types.ObjectId } {
+  private decodeCursor(cursor: string): {
+    occurred_at: Date;
+    id: Types.ObjectId;
+  } {
     try {
       const raw = Buffer.from(cursor, 'base64url').toString('utf8');
       const parsed = JSON.parse(raw) as { occurred_at?: string; id?: string };
 
-      if (!parsed.occurred_at || !parsed.id || !Types.ObjectId.isValid(parsed.id)) {
+      if (
+        !parsed.occurred_at ||
+        !parsed.id ||
+        !Types.ObjectId.isValid(parsed.id)
+      ) {
         throw new BadRequestException('Invalid cursor');
       }
 
@@ -208,4 +221,3 @@ export class EventService {
     }
   }
 }
-

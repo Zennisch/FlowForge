@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
@@ -23,9 +27,7 @@ const mockWorkflowModel: any = jest
     save: mockSave,
   }));
 
-mockWorkflowModel.find = jest
-  .fn()
-  .mockReturnValue({ exec: mockFindExec });
+mockWorkflowModel.find = jest.fn().mockReturnValue({ exec: mockFindExec });
 mockWorkflowModel.findById = jest
   .fn()
   .mockReturnValue({ exec: mockFindByIdExec });
@@ -197,7 +199,10 @@ describe('WorkflowService', () => {
       try {
         await service.create(ownerId, {
           name: 'Too Many Edges',
-          steps: [{ id: 'a', type: 'store' }, { id: 'b', type: 'store' }],
+          steps: [
+            { id: 'a', type: 'store' },
+            { id: 'b', type: 'store' },
+          ],
           edges: [
             { from: 'a', to: 'b' },
             { from: 'b', to: 'a' },
@@ -233,9 +238,7 @@ describe('WorkflowService', () => {
 
     it('should throw HttpException when active schedule workflow quota is exceeded', async () => {
       process.env.WORKFLOW_MAX_ACTIVE_SCHEDULE_PER_TENANT = '1';
-      mockCountDocumentsExec
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(1);
+      mockCountDocumentsExec.mockResolvedValueOnce(0).mockResolvedValueOnce(1);
 
       try {
         await service.create(ownerId, {
@@ -257,9 +260,7 @@ describe('WorkflowService', () => {
 
     it('should throw HttpException when active webhook workflow quota is exceeded', async () => {
       process.env.WORKFLOW_MAX_ACTIVE_WEBHOOK_PER_TENANT = '1';
-      mockCountDocumentsExec
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(1);
+      mockCountDocumentsExec.mockResolvedValueOnce(0).mockResolvedValueOnce(1);
 
       try {
         await service.create(ownerId, {
@@ -615,7 +616,11 @@ describe('WorkflowService', () => {
       mockSave.mockResolvedValue(existingDoc);
 
       const newSteps = [
-        { id: 'x', type: 'http' as const, config: { url: 'https://example.com' } },
+        {
+          id: 'x',
+          type: 'http' as const,
+          config: { url: 'https://example.com' },
+        },
       ];
       const newEdges = [{ from: 'x', to: 'x' }];
 
@@ -660,9 +665,9 @@ describe('WorkflowService', () => {
       });
       mockFindByIdExec.mockResolvedValue(existingDoc);
 
-      await expect(service.update(workflowId, ownerId, { name: 'Updated' })).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.update(workflowId, ownerId, { name: 'Updated' }),
+      ).rejects.toThrow(BadRequestException);
 
       expect(mockSave).not.toHaveBeenCalled();
     });
@@ -832,7 +837,7 @@ describe('WorkflowService', () => {
       expect(mockWorkflowModel.findByIdAndDelete).not.toHaveBeenCalled();
     });
 
-    it('should throw ForbiddenException when attempting to remove another user\'s workflow', async () => {
+    it("should throw ForbiddenException when attempting to remove another user's workflow", async () => {
       const doc = makeWorkflowDoc();
       mockFindByIdExec.mockResolvedValue(doc);
 

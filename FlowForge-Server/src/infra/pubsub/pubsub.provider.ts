@@ -16,7 +16,9 @@ export class PubSubService implements OnModuleDestroy {
     });
     this.jobsTopicName = config.getOrThrow<string>('PUBSUB_JOBS_TOPIC');
     this.eventsTopicName = config.getOrThrow<string>('PUBSUB_EVENTS_TOPIC');
-    this.eventsSubName = config.getOrThrow<string>('PUBSUB_EVENTS_SUBSCRIPTION');
+    this.eventsSubName = config.getOrThrow<string>(
+      'PUBSUB_EVENTS_SUBSCRIPTION',
+    );
     this.jobsSubName = config.getOrThrow<string>('PUBSUB_JOBS_SUBSCRIPTION');
   }
 
@@ -48,4 +50,3 @@ export class PubSubService implements OnModuleDestroy {
   exports: [PubSubService],
 })
 export class PubSubModule {}
-

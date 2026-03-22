@@ -5,7 +5,12 @@ export type EventLegalHoldDocument = HydratedDocument<EventLegalHold>;
 
 @Schema({ collection: 'event_legal_holds' })
 export class EventLegalHold {
-  @Prop({ type: Types.ObjectId, ref: 'Execution', required: true, unique: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Execution',
+    required: true,
+    unique: true,
+  })
   execution_id: Types.ObjectId;
 
   @Prop({ required: true, default: true })
@@ -24,6 +29,7 @@ export class EventLegalHold {
   released_at: Date | null;
 }
 
-export const EventLegalHoldSchema = SchemaFactory.createForClass(EventLegalHold);
+export const EventLegalHoldSchema =
+  SchemaFactory.createForClass(EventLegalHold);
 
 EventLegalHoldSchema.index({ active: 1, created_at: -1 });

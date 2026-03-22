@@ -9,4 +9,3 @@ export class TriggerExecutionDto {
   @IsOptional()
   idempotency_key?: string;
 }
-

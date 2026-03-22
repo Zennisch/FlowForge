@@ -42,7 +42,10 @@ export class ConsumerService implements OnModuleInit, OnModuleDestroy {
     try {
       job = JSON.parse(message.data.toString()) as StepJob;
     } catch {
-      this.logger.error('Malformed job message; dropping', message.data.toString());
+      this.logger.error(
+        'Malformed job message; dropping',
+        message.data.toString(),
+      );
       message.ack();
       return;
     }
@@ -52,7 +55,10 @@ export class ConsumerService implements OnModuleInit, OnModuleDestroy {
       if (Number.isFinite(notBeforeMs)) {
         const remainingMs = notBeforeMs - Date.now();
         if (remainingMs > 0) {
-          const delaySeconds = Math.max(1, Math.min(600, Math.ceil(remainingMs / 1000)));
+          const delaySeconds = Math.max(
+            1,
+            Math.min(600, Math.ceil(remainingMs / 1000)),
+          );
           this.logger.log(
             `Deferring step "${job.stepId}" for execution ${job.executionId} ` +
               `for ${delaySeconds}s until ${job.notBefore}`,
@@ -71,7 +77,9 @@ export class ConsumerService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      const started = await this.stepStateService.markRunning(job.stepExecutionId);
+      const started = await this.stepStateService.markRunning(
+        job.stepExecutionId,
+      );
       if (!started) {
         this.logger.log(
           `Dropping stale job for step "${job.stepId}" in execution ${job.executionId}`,
@@ -107,7 +115,9 @@ export class ConsumerService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.pubSubService.publishResult(result);
       } catch (pubErr) {
-        this.logger.error(`Failed to publish failure result: ${String(pubErr)}`);
+        this.logger.error(
+          `Failed to publish failure result: ${String(pubErr)}`,
+        );
         message.nack();
         return;
       }
@@ -133,4 +143,3 @@ export class ConsumerService implements OnModuleInit, OnModuleDestroy {
     message.ack();
   }
 }
-

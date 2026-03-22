@@ -20,4 +20,3 @@ import { StepExecutorService } from './step-executor.service';
   ],
 })
 export class WorkerModule {}
-

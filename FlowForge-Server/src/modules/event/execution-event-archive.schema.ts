@@ -2,7 +2,8 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { EventType } from './execution-event.schema';
 
-export type ExecutionEventArchiveDocument = HydratedDocument<ExecutionEventArchive>;
+export type ExecutionEventArchiveDocument =
+  HydratedDocument<ExecutionEventArchive>;
 
 @Schema({ collection: 'execution_events_archive' })
 export class ExecutionEventArchive {
@@ -37,8 +38,9 @@ export class ExecutionEventArchive {
   archived_at: Date;
 }
 
-export const ExecutionEventArchiveSchema =
-  SchemaFactory.createForClass(ExecutionEventArchive);
+export const ExecutionEventArchiveSchema = SchemaFactory.createForClass(
+  ExecutionEventArchive,
+);
 
 ExecutionEventArchiveSchema.index({ execution_id: 1, occurred_at: 1, _id: 1 });
 ExecutionEventArchiveSchema.index({ archived_at: 1 });

@@ -59,4 +59,3 @@ export function validateAppEnv(config: AppEnv): AppEnv {
   ],
 })
 export class AppConfigModule {}
-

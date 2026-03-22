@@ -27,16 +27,21 @@ export class WebhookController {
     const sanitizedBody = this.removeSecretFromBody(normalizedBody);
     const security = this.buildSecurityContext(req, path, providedSecret);
 
-    return this.executionService.triggerByWebhook(userId, path, {
-      body: sanitizedBody,
-      query: req.query as Record<string, unknown>,
-      headers: req.headers as Record<string, unknown>,
-      webhook: {
-        user_id: userId,
-        path,
-        received_at: new Date().toISOString(),
+    return this.executionService.triggerByWebhook(
+      userId,
+      path,
+      {
+        body: sanitizedBody,
+        query: req.query as Record<string, unknown>,
+        headers: req.headers as Record<string, unknown>,
+        webhook: {
+          user_id: userId,
+          path,
+          received_at: new Date().toISOString(),
+        },
       },
-    }, security);
+      security,
+    );
   }
 
   private normalizeBody(body: unknown): Record<string, unknown> {

@@ -34,7 +34,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       const requestUrl = String(error.config?.url ?? '');
       const isPublicAuthEndpoint = PUBLIC_AUTH_ENDPOINTS.some((endpoint) =>
-        requestUrl.includes(endpoint),
+        requestUrl.includes(endpoint)
       );
 
       if (!isPublicAuthEndpoint) {
@@ -49,5 +49,5 @@ apiClient.interceptors.response.use(
     const message: string =
       error.response?.data?.message ?? error.message ?? 'An unexpected error occurred';
     return Promise.reject(new Error(message));
-  },
+  }
 );

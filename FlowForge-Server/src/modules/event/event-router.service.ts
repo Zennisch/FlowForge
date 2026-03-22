@@ -81,9 +81,13 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async onStepCompleted(result: StepResult): Promise<void> {
-    const execution = await this.executionModel.findById(result.executionId).exec();
+    const execution = await this.executionModel
+      .findById(result.executionId)
+      .exec();
     if (!execution) {
-      this.logger.warn(`Execution ${result.executionId} not found after step completion`);
+      this.logger.warn(
+        `Execution ${result.executionId} not found after step completion`,
+      );
       return;
     }
 
@@ -150,17 +154,29 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
 
       // Only dispatch if still queued (prevents double-publish in fan-in topologies)
       const stepExecution = await this.stepExecutionModel
-        .findOne({ execution_id: execution._id, step_id: nextStep.id, status: 'queued' })
+        .findOne({
+          execution_id: execution._id,
+          step_id: nextStep.id,
+          status: 'queued',
+        })
         .exec();
       if (!stepExecution) continue;
 
-      await this.eventService.append(result.executionId, 'step.queued', {}, nextStep.id);
+      await this.eventService.append(
+        result.executionId,
+        'step.queued',
+        {},
+        nextStep.id,
+      );
 
       const job: StepJob = {
         executionId: result.executionId,
         stepId: nextStep.id,
         stepExecutionId: String(stepExecution._id),
-        stepConfig: { type: nextStep.type, ...(nextStep.config as Record<string, unknown>) },
+        stepConfig: {
+          type: nextStep.type,
+          ...(nextStep.config as Record<string, unknown>),
+        },
         context: newContext,
         attempt: 0,
       };
@@ -174,7 +190,9 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
     edges: ReadonlyArray<{ from: string; to: string }>,
   ): Promise<boolean> {
     const parentStepIds = [
-      ...new Set(edges.filter((edge) => edge.to === stepId).map((edge) => edge.from)),
+      ...new Set(
+        edges.filter((edge) => edge.to === stepId).map((edge) => edge.from),
+      ),
     ];
 
     if (parentStepIds.length <= 1) {
@@ -193,9 +211,13 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async onStepFailed(result: StepResult): Promise<void> {
-    const execution = await this.executionModel.findById(result.executionId).exec();
+    const execution = await this.executionModel
+      .findById(result.executionId)
+      .exec();
     if (!execution) {
-      this.logger.warn(`Execution ${result.executionId} not found after step failure`);
+      this.logger.warn(
+        `Execution ${result.executionId} not found after step failure`,
+      );
       return;
     }
 
@@ -216,7 +238,10 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    if (stepExecution.attempt !== result.attempt || stepExecution.status !== 'running') {
+    if (
+      stepExecution.attempt !== result.attempt ||
+      stepExecution.status !== 'running'
+    ) {
       this.logger.log(
         `Ignoring stale/duplicate failed result for step "${result.stepId}" in execution ${result.executionId}`,
       );
@@ -265,7 +290,10 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
         executionId: result.executionId,
         stepId: result.stepId,
         stepExecutionId: result.stepExecutionId,
-        stepConfig: { type: step.type, ...(step.config as Record<string, unknown>) },
+        stepConfig: {
+          type: step.type,
+          ...(step.config as Record<string, unknown>),
+        },
         context: execution.context,
         attempt: result.attempt + 1,
         notBefore,
@@ -330,7 +358,10 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
                   : {}),
                 ...(step.compensation.config !== undefined
                   ? {
-                      config: step.compensation.config as Record<string, unknown>,
+                      config: step.compensation.config as Record<
+                        string,
+                        unknown
+                      >,
                     }
                   : {}),
                 ...(step.compensation.retry
@@ -357,4 +388,3 @@ export class EventRouterService implements OnModuleInit, OnModuleDestroy {
     };
   }
 }
-

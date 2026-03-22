@@ -236,16 +236,20 @@ describe('StepStateService', () => {
       mockStepFindOneAndUpdateExec.mockResolvedValue(null);
       mockStepFindByIdExec.mockResolvedValue(null);
 
-      await expect(
-        service.markCompleted(stepExecutionId, {}),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.markCompleted(stepExecutionId, {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('returns null when step is already terminal (duplicate completion)', async () => {
       mockStepFindOneAndUpdateExec.mockResolvedValue(null);
-      mockStepFindByIdExec.mockResolvedValue(makeStepDoc({ status: 'completed' }));
+      mockStepFindByIdExec.mockResolvedValue(
+        makeStepDoc({ status: 'completed' }),
+      );
 
-      const result = await service.markCompleted(stepExecutionId, { result: 'dup' });
+      const result = await service.markCompleted(stepExecutionId, {
+        result: 'dup',
+      });
 
       expect(result).toBeNull();
       expect(eventService.append).not.toHaveBeenCalled();

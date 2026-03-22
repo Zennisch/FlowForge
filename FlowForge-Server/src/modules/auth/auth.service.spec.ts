@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getModelToken } from '@nestjs/mongoose';
@@ -146,7 +150,10 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue(null);
 
       await expect(
-        service.login({ email: 'unknown@example.com', password: 'password123' }),
+        service.login({
+          email: 'unknown@example.com',
+          password: 'password123',
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -169,7 +176,9 @@ describe('AuthService', () => {
 
       const result = await service.verifyEmail({ token: 'raw-token' });
 
-      expect(usersService.markEmailVerified).toHaveBeenCalledWith('user-id-123');
+      expect(usersService.markEmailVerified).toHaveBeenCalledWith(
+        'user-id-123',
+      );
       expect(result).toEqual({ message: 'Email verified successfully' });
     });
 
@@ -186,7 +195,9 @@ describe('AuthService', () => {
     it('should return generic response when user does not exist', async () => {
       usersService.findByEmail.mockResolvedValue(null);
 
-      const result = await service.forgotPassword({ email: 'none@example.com' });
+      const result = await service.forgotPassword({
+        email: 'none@example.com',
+      });
 
       expect(mailService.sendMail).not.toHaveBeenCalled();
       expect(result).toEqual({

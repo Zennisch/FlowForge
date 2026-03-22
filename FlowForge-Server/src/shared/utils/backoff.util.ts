@@ -8,4 +8,3 @@ export function computeBackoffMs(
   if (strategy === 'fixed') return BASE_MS;
   return Math.min(BASE_MS * Math.pow(2, attempt), MAX_MS);
 }
-

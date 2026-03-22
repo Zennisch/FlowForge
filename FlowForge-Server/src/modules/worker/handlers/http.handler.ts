@@ -239,4 +239,3 @@ export class HttpHandler {
     return fallback;
   }
 }
-

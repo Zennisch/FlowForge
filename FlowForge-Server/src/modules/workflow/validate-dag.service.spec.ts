@@ -98,9 +98,9 @@ describe('ValidateDagService', () => {
 
   describe('duplicate step id validation', () => {
     it('should throw BadRequestException for duplicate step ids', () => {
-      expect(() =>
-        service.validate([{ id: 'a' }, { id: 'a' }], []),
-      ).toThrow(BadRequestException);
+      expect(() => service.validate([{ id: 'a' }, { id: 'a' }], [])).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should include the duplicate id in the error message', () => {

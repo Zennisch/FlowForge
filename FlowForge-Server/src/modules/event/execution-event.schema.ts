@@ -57,7 +57,11 @@ export class ExecutionEvent {
   @Prop({ type: Object, default: {} })
   payload: Record<string, unknown>;
 
-  @Prop({ required: true, enum: EVENT_RETENTION_CLASSES, default: 'operational' })
+  @Prop({
+    required: true,
+    enum: EVENT_RETENTION_CLASSES,
+    default: 'operational',
+  })
   retention_class: EventRetentionClass;
 
   @Prop({ required: true })
@@ -76,10 +80,10 @@ export class ExecutionEvent {
   occurred_at: Date;
 }
 
-export const ExecutionEventSchema = SchemaFactory.createForClass(ExecutionEvent);
+export const ExecutionEventSchema =
+  SchemaFactory.createForClass(ExecutionEvent);
 
 ExecutionEventSchema.index({ execution_id: 1, occurred_at: 1, _id: 1 });
 ExecutionEventSchema.index({ execution_id: 1, type: 1, occurred_at: 1 });
 ExecutionEventSchema.index({ legal_hold: 1, expires_at: 1 });
 ExecutionEventSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
-

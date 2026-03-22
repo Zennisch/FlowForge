@@ -120,4 +120,3 @@ export class CreateWorkflowDto {
   @Type(() => WorkflowEdgeDto)
   edges?: WorkflowEdgeDto[];
 }
-

@@ -104,7 +104,9 @@ export class EventArchiveService implements OnModuleInit, OnModuleDestroy {
 
       await this.archiveModel.bulkWrite(operations, { ordered: false });
 
-      const sourceIds = expiredEvents.map((event) => event._id as Types.ObjectId);
+      const sourceIds = expiredEvents.map(
+        (event) => event._id as Types.ObjectId,
+      );
       const deleteResult = await this.eventModel
         .deleteMany({ _id: { $in: sourceIds } })
         .exec();
@@ -116,7 +118,9 @@ export class EventArchiveService implements OnModuleInit, OnModuleDestroy {
 
       return deletedCount;
     } catch (error) {
-      this.logger.error(`Failed to archive expired execution events: ${String(error)}`);
+      this.logger.error(
+        `Failed to archive expired execution events: ${String(error)}`,
+      );
       return 0;
     } finally {
       this.running = false;

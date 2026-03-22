@@ -54,7 +54,14 @@ export class Execution {
   owner_id: Types.ObjectId;
 
   @Prop({
-    enum: ['pending', 'running', 'completed', 'failed', 'cancelled', 'compensating'],
+    enum: [
+      'pending',
+      'running',
+      'completed',
+      'failed',
+      'cancelled',
+      'compensating',
+    ],
     default: 'pending',
   })
   status: ExecutionStatus;
@@ -103,4 +110,3 @@ ExecutionSchema.index(
     },
   },
 );
-

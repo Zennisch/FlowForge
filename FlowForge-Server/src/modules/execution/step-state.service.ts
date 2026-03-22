@@ -17,8 +17,12 @@ export class StepStateService {
     private readonly eventService: EventService,
   ) {}
 
-  async markRunning(stepExecutionId: string): Promise<StepExecutionDocument | null> {
-    const stepExecution = await this.stepExecutionModel.findById(stepExecutionId).exec();
+  async markRunning(
+    stepExecutionId: string,
+  ): Promise<StepExecutionDocument | null> {
+    const stepExecution = await this.stepExecutionModel
+      .findById(stepExecutionId)
+      .exec();
     if (!stepExecution) throw new NotFoundException('StepExecution not found');
 
     const execution = await this.executionModel
@@ -31,7 +35,10 @@ export class StepStateService {
     }
 
     const startedAt = new Date();
-    const timeoutMs = this.resolveStepTimeoutMs(execution, stepExecution.step_id);
+    const timeoutMs = this.resolveStepTimeoutMs(
+      execution,
+      stepExecution.step_id,
+    );
     const timeoutAt = new Date(startedAt.getTime() + timeoutMs);
     const updated = await this.stepExecutionModel
       .findOneAndUpdate(
@@ -74,7 +81,9 @@ export class StepStateService {
       )
       .exec();
     if (!stepExecution) {
-      const existing = await this.stepExecutionModel.findById(stepExecutionId).exec();
+      const existing = await this.stepExecutionModel
+        .findById(stepExecutionId)
+        .exec();
       if (!existing) throw new NotFoundException('StepExecution not found');
       return null;
     }
@@ -102,7 +111,9 @@ export class StepStateService {
       )
       .exec();
     if (!stepExecution) {
-      const existing = await this.stepExecutionModel.findById(stepExecutionId).exec();
+      const existing = await this.stepExecutionModel
+        .findById(stepExecutionId)
+        .exec();
       if (!existing) throw new NotFoundException('StepExecution not found');
       return null;
     }
@@ -121,9 +132,10 @@ export class StepStateService {
     execution: ExecutionDocument,
     stepId: string,
   ): number {
-    const step = execution.workflow_snapshot?.steps?.find((item) => item.id === stepId);
-    const fromConfig =
-      step?.config?.timeoutMs ?? step?.config?.timeout_ms;
+    const step = execution.workflow_snapshot?.steps?.find(
+      (item) => item.id === stepId,
+    );
+    const fromConfig = step?.config?.timeoutMs ?? step?.config?.timeout_ms;
     return this.parsePositiveTimeoutMs(fromConfig) ?? DEFAULT_STEP_TIMEOUT_MS;
   }
 
@@ -140,4 +152,3 @@ export class StepStateService {
     return undefined;
   }
 }
-

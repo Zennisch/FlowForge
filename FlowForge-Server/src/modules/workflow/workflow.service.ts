@@ -158,9 +158,10 @@ export class WorkflowService {
     return workflow;
   }
 
-  private validateTriggerConfig(
-    trigger?: { type?: string; config?: Record<string, unknown> },
-  ): void {
+  private validateTriggerConfig(trigger?: {
+    type?: string;
+    config?: Record<string, unknown>;
+  }): void {
     if (!trigger?.type) {
       return;
     }
@@ -175,10 +176,9 @@ export class WorkflowService {
     }
   }
 
-  private validateScheduleTrigger(
-    trigger: { config?: Record<string, unknown> },
-  ): void {
-
+  private validateScheduleTrigger(trigger: {
+    config?: Record<string, unknown>;
+  }): void {
     const cronExpression =
       typeof trigger.config?.cron === 'string'
         ? trigger.config.cron.trim()
@@ -211,12 +211,11 @@ export class WorkflowService {
     }
   }
 
-  private validateWebhookTrigger(
-    trigger: { config?: Record<string, unknown> },
-  ): void {
+  private validateWebhookTrigger(trigger: {
+    config?: Record<string, unknown>;
+  }): void {
     const config = trigger.config ?? {};
-    const pathRaw =
-      typeof config.path === 'string' ? config.path : '';
+    const pathRaw = typeof config.path === 'string' ? config.path : '';
     const path = this.normalizeWebhookPath(pathRaw);
 
     if (!path) {
@@ -336,7 +335,9 @@ export class WorkflowService {
     return `{${pairs.join(',')}}`;
   }
 
-  private async enforceWorkflowCountQuota(ownerId: Types.ObjectId): Promise<void> {
+  private async enforceWorkflowCountQuota(
+    ownerId: Types.ObjectId,
+  ): Promise<void> {
     const maxWorkflows = this.getMaxWorkflowsPerTenant();
     const currentCount = await this.workflowModel
       .countDocuments({ owner_id: ownerId })
@@ -509,7 +510,11 @@ export class WorkflowService {
           }
 
           const normalizedMethod = method.trim().toUpperCase();
-          if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(normalizedMethod)) {
+          if (
+            !['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(
+              normalizedMethod,
+            )
+          ) {
             throw new BadRequestException(
               `Step '${step.id}' compensation http method is invalid`,
             );
@@ -529,4 +534,3 @@ export class WorkflowService {
     }
   }
 }
-

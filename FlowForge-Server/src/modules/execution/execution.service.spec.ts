@@ -110,9 +110,7 @@ const makeWorkflowDoc = (
   ...overrides,
 });
 
-const makeExecutionDoc = (
-  overrides: Record<string, unknown> = {},
-) => ({
+const makeExecutionDoc = (overrides: Record<string, unknown> = {}) => ({
   _id: executionId,
   owner_id: { toString: () => ownerId },
   status: 'running',
@@ -138,7 +136,10 @@ describe('ExecutionService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ExecutionService,
-        { provide: getModelToken(Execution.name), useValue: mockExecutionModel },
+        {
+          provide: getModelToken(Execution.name),
+          useValue: mockExecutionModel,
+        },
         {
           provide: getModelToken(StepExecution.name),
           useValue: mockStepExecutionModel,
@@ -157,11 +158,17 @@ describe('ExecutionService', () => {
         },
         {
           provide: WorkflowService,
-          useValue: { findOne: jest.fn(), findActiveWebhookWorkflow: jest.fn() },
+          useValue: {
+            findOne: jest.fn(),
+            findActiveWebhookWorkflow: jest.fn(),
+          },
         },
         {
           provide: EventService,
-          useValue: { append: jest.fn().mockResolvedValue({}), findByExecutionId: jest.fn() },
+          useValue: {
+            append: jest.fn().mockResolvedValue({}),
+            findByExecutionId: jest.fn(),
+          },
         },
         {
           provide: EventGovernanceService,
@@ -189,7 +196,9 @@ describe('ExecutionService', () => {
     service = module.get<ExecutionService>(ExecutionService);
     workflowService = module.get<WorkflowService>(WorkflowService);
     eventService = module.get<EventService>(EventService);
-    eventGovernanceService = module.get<EventGovernanceService>(EventGovernanceService);
+    eventGovernanceService = module.get<EventGovernanceService>(
+      EventGovernanceService,
+    );
   });
 
   // ── trigger ─────────────────────────────────────────────────────────────────
@@ -278,7 +287,9 @@ describe('ExecutionService', () => {
         fail('Expected trigger to throw');
       } catch (error) {
         expect(error).toBeInstanceOf(HttpException);
-        expect((error as HttpException).getStatus()).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
+        expect((error as HttpException).getStatus()).toBe(
+          HttpStatus.PAYLOAD_TOO_LARGE,
+        );
       } finally {
         delete process.env.TRIGGER_PAYLOAD_MAX_BYTES;
       }
@@ -297,7 +308,9 @@ describe('ExecutionService', () => {
         fail('Expected trigger to throw');
       } catch (error) {
         expect(error).toBeInstanceOf(HttpException);
-        expect((error as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+        expect((error as HttpException).getStatus()).toBe(
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
       } finally {
         delete process.env.TENANT_MAX_RUNNING_EXECUTIONS;
       }
@@ -316,7 +329,9 @@ describe('ExecutionService', () => {
         fail('Expected trigger to throw');
       } catch (error) {
         expect(error).toBeInstanceOf(HttpException);
-        expect((error as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+        expect((error as HttpException).getStatus()).toBe(
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
       } finally {
         delete process.env.TRIGGER_RATE_LIMIT_MAX_REQUESTS;
       }
@@ -416,9 +431,9 @@ describe('ExecutionService', () => {
         .spyOn(workflowService, 'findOne')
         .mockRejectedValue(new NotFoundException());
 
-      await expect(
-        service.trigger(workflowId, ownerId, {}),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.trigger(workflowId, ownerId, {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('propagates ForbiddenException from WorkflowService', async () => {
@@ -426,9 +441,9 @@ describe('ExecutionService', () => {
         .spyOn(workflowService, 'findOne')
         .mockRejectedValue(new ForbiddenException());
 
-      await expect(
-        service.trigger(workflowId, ownerId, {}),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.trigger(workflowId, ownerId, {})).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('creates execution with schedule trigger type when called by scheduler', async () => {
@@ -479,7 +494,10 @@ describe('ExecutionService', () => {
       expect(mockExecutionModel.find).toHaveBeenCalledWith({
         owner_id: expect.any(Types.ObjectId),
       });
-      expect(mockExecutionFindSort).toHaveBeenCalledWith({ created_at: -1, _id: -1 });
+      expect(mockExecutionFindSort).toHaveBeenCalledWith({
+        created_at: -1,
+        _id: -1,
+      });
       expect(mockExecutionFindLimit).toHaveBeenCalledWith(21);
       expect(result).toEqual({
         items: docs,
@@ -528,13 +546,22 @@ describe('ExecutionService', () => {
       const cursorSeedDate = new Date('2026-03-22T08:00:00.000Z');
       const cursorSeedId = new Types.ObjectId();
       const cursor = Buffer.from(
-        JSON.stringify({ created_at: cursorSeedDate.toISOString(), id: cursorSeedId.toHexString() }),
+        JSON.stringify({
+          created_at: cursorSeedDate.toISOString(),
+          id: cursorSeedId.toHexString(),
+        }),
       ).toString('base64url');
       const olderDoc = {
-        ...makeExecutionDoc({ _id: new Types.ObjectId(), created_at: new Date('2026-03-22T07:00:00.000Z') }),
+        ...makeExecutionDoc({
+          _id: new Types.ObjectId(),
+          created_at: new Date('2026-03-22T07:00:00.000Z'),
+        }),
       };
       const overflowDoc = {
-        ...makeExecutionDoc({ _id: new Types.ObjectId(), created_at: new Date('2026-03-22T06:00:00.000Z') }),
+        ...makeExecutionDoc({
+          _id: new Types.ObjectId(),
+          created_at: new Date('2026-03-22T06:00:00.000Z'),
+        }),
       };
       mockExecutionFindExec.mockResolvedValue([olderDoc, overflowDoc]);
 
@@ -571,9 +598,9 @@ describe('ExecutionService', () => {
     });
 
     it('rejects unfiltered list requests with oversized limits', async () => {
-      await expect(
-        service.findAll(ownerId, { limit: 80 }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.findAll(ownerId, { limit: 80 })).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('rejects invalid started_at date ranges', async () => {
@@ -680,18 +707,18 @@ describe('ExecutionService', () => {
     it('throws NotFoundException when execution does not exist', async () => {
       mockExecutionFindByIdExec.mockResolvedValue(null);
 
-      await expect(
-        service.findOne(executionId, ownerId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(executionId, ownerId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ForbiddenException when execution belongs to another owner', async () => {
       const doc = makeExecutionDoc();
       mockExecutionFindByIdExec.mockResolvedValue(doc);
 
-      await expect(
-        service.findOne(executionId, otherOwnerId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.findOne(executionId, otherOwnerId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -744,9 +771,9 @@ describe('ExecutionService', () => {
         makeExecutionDoc({ status: 'completed' }),
       );
 
-      await expect(
-        service.cancel(executionId, ownerId),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.cancel(executionId, ownerId)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('throws ConflictException when execution is already cancelled', async () => {
@@ -754,9 +781,9 @@ describe('ExecutionService', () => {
         makeExecutionDoc({ status: 'cancelled' }),
       );
 
-      await expect(
-        service.cancel(executionId, ownerId),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.cancel(executionId, ownerId)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('throws ConflictException when execution has failed', async () => {
@@ -764,17 +791,17 @@ describe('ExecutionService', () => {
         makeExecutionDoc({ status: 'failed' }),
       );
 
-      await expect(
-        service.cancel(executionId, ownerId),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.cancel(executionId, ownerId)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('propagates NotFoundException from findOne', async () => {
       mockExecutionFindByIdExec.mockResolvedValue(null);
 
-      await expect(
-        service.cancel(executionId, ownerId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.cancel(executionId, ownerId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -874,9 +901,9 @@ describe('ExecutionService', () => {
 
       const result = await service.getLegalHold(executionId, ownerId);
 
-      expect(eventGovernanceService.getExecutionLegalHoldState).toHaveBeenCalledWith(
-        executionId,
-      );
+      expect(
+        eventGovernanceService.getExecutionLegalHoldState,
+      ).toHaveBeenCalledWith(executionId);
       expect(result).toEqual({
         execution_id: executionId,
         legal_hold: {
@@ -892,13 +919,15 @@ describe('ExecutionService', () => {
     it('sets legal hold for owned execution', async () => {
       mockExecutionFindByIdExec.mockResolvedValue(makeExecutionDoc());
 
-      const result = await service.setLegalHold(executionId, ownerId, 'compliance hold');
-
-      expect(eventGovernanceService.placeExecutionLegalHold).toHaveBeenCalledWith(
+      const result = await service.setLegalHold(
         executionId,
         ownerId,
         'compliance hold',
       );
+
+      expect(
+        eventGovernanceService.placeExecutionLegalHold,
+      ).toHaveBeenCalledWith(executionId, ownerId, 'compliance hold');
       expect(result).toEqual({
         execution_id: executionId,
         legal_hold: true,
@@ -911,9 +940,9 @@ describe('ExecutionService', () => {
 
       const result = await service.releaseLegalHold(executionId, ownerId);
 
-      expect(eventGovernanceService.releaseExecutionLegalHold).toHaveBeenCalledWith(
-        executionId,
-      );
+      expect(
+        eventGovernanceService.releaseExecutionLegalHold,
+      ).toHaveBeenCalledWith(executionId);
       expect(result).toEqual({
         execution_id: executionId,
         legal_hold: false,
@@ -938,7 +967,12 @@ describe('ExecutionService', () => {
       const payload = { body: { foo: 'bar' } };
 
       jest
-        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .spyOn(
+          workflowService as WorkflowService & {
+            findActiveWebhookWorkflow: jest.Mock;
+          },
+          'findActiveWebhookWorkflow',
+        )
         .mockResolvedValue(webhookWorkflow as never);
       const triggerSpy = jest
         .spyOn(service, 'trigger')
@@ -952,7 +986,11 @@ describe('ExecutionService', () => {
       );
 
       expect(
-        (workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }).findActiveWebhookWorkflow,
+        (
+          workflowService as WorkflowService & {
+            findActiveWebhookWorkflow: jest.Mock;
+          }
+        ).findActiveWebhookWorkflow,
       ).toHaveBeenCalledWith(ownerId, 'orders-created');
       expect(triggerSpy).toHaveBeenCalledWith(
         workflowId,
@@ -967,7 +1005,12 @@ describe('ExecutionService', () => {
 
     it('throws UnauthorizedException when webhook secret is configured but missing', async () => {
       jest
-        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .spyOn(
+          workflowService as WorkflowService & {
+            findActiveWebhookWorkflow: jest.Mock;
+          },
+          'findActiveWebhookWorkflow',
+        )
         .mockResolvedValue({
           _id: workflowId,
           trigger: { config: { secret: 'top-secret' } },
@@ -985,7 +1028,12 @@ describe('ExecutionService', () => {
 
     it('throws UnauthorizedException when webhook signature is invalid', async () => {
       jest
-        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .spyOn(
+          workflowService as WorkflowService & {
+            findActiveWebhookWorkflow: jest.Mock;
+          },
+          'findActiveWebhookWorkflow',
+        )
         .mockResolvedValue({
           _id: workflowId,
           trigger: { config: { secret: 'top-secret' } },
@@ -1003,7 +1051,12 @@ describe('ExecutionService', () => {
 
     it('triggers execution when webhook signature matches', async () => {
       jest
-        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .spyOn(
+          workflowService as WorkflowService & {
+            findActiveWebhookWorkflow: jest.Mock;
+          },
+          'findActiveWebhookWorkflow',
+        )
         .mockResolvedValue({
           _id: workflowId,
           trigger: { config: { secret: 'top-secret' } },
@@ -1013,19 +1066,23 @@ describe('ExecutionService', () => {
         .mockResolvedValue(makeExecutionDoc() as never);
       const payload = { body: { ok: true } };
       const security = makeSecurityContext();
-      const bodyHash = (service as unknown as {
-        hashWebhookPayloadBody: (body: unknown) => string;
-      }).hashWebhookPayloadBody(payload.body);
-      const signature = (service as unknown as {
-        computeWebhookSignature: (
-          secret: string,
-          timestampMs: number,
-          nonce: string,
-          method: string,
-          path: string,
-          bodyHash: string,
-        ) => string;
-      }).computeWebhookSignature(
+      const bodyHash = (
+        service as unknown as {
+          hashWebhookPayloadBody: (body: unknown) => string;
+        }
+      ).hashWebhookPayloadBody(payload.body);
+      const signature = (
+        service as unknown as {
+          computeWebhookSignature: (
+            secret: string,
+            timestampMs: number,
+            nonce: string,
+            method: string,
+            path: string,
+            bodyHash: string,
+          ) => string;
+        }
+      ).computeWebhookSignature(
         'top-secret',
         Number(security.timestamp) * 1000,
         String(security.nonce),
@@ -1034,12 +1091,10 @@ describe('ExecutionService', () => {
         bodyHash,
       );
 
-      await service.triggerByWebhook(
-        ownerId,
-        'orders-created',
-        payload,
-        { ...security, signature: `sha256=${signature}` },
-      );
+      await service.triggerByWebhook(ownerId, 'orders-created', payload, {
+        ...security,
+        signature: `sha256=${signature}`,
+      });
 
       expect(triggerSpy).toHaveBeenCalledWith(
         workflowId,
@@ -1054,7 +1109,12 @@ describe('ExecutionService', () => {
 
     it('throws UnauthorizedException when webhook timestamp is stale', async () => {
       jest
-        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .spyOn(
+          workflowService as WorkflowService & {
+            findActiveWebhookWorkflow: jest.Mock;
+          },
+          'findActiveWebhookWorkflow',
+        )
         .mockResolvedValue({ _id: workflowId } as never);
 
       await expect(
@@ -1062,14 +1122,21 @@ describe('ExecutionService', () => {
           ownerId,
           'orders-created',
           { body: {} },
-          makeSecurityContext({ timestamp: String(Math.floor(Date.now() / 1000) - 3600) }),
+          makeSecurityContext({
+            timestamp: String(Math.floor(Date.now() / 1000) - 3600),
+          }),
         ),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it('throws UnauthorizedException when webhook nonce is replayed', async () => {
       jest
-        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .spyOn(
+          workflowService as WorkflowService & {
+            findActiveWebhookWorkflow: jest.Mock;
+          },
+          'findActiveWebhookWorkflow',
+        )
         .mockResolvedValue({ _id: workflowId } as never);
       mockWebhookNonceCreate.mockRejectedValueOnce({ code: 11000 });
 
@@ -1085,9 +1152,16 @@ describe('ExecutionService', () => {
 
     it('throws HttpException 429 when webhook rate limit is exceeded', async () => {
       jest
-        .spyOn(workflowService as WorkflowService & { findActiveWebhookWorkflow: jest.Mock }, 'findActiveWebhookWorkflow')
+        .spyOn(
+          workflowService as WorkflowService & {
+            findActiveWebhookWorkflow: jest.Mock;
+          },
+          'findActiveWebhookWorkflow',
+        )
         .mockResolvedValue({ _id: workflowId } as never);
-      mockWebhookRateLimitFindOneAndUpdate.mockResolvedValueOnce({ count: 999 });
+      mockWebhookRateLimitFindOneAndUpdate.mockResolvedValueOnce({
+        count: 999,
+      });
 
       try {
         await service.triggerByWebhook(

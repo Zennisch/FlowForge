@@ -1,35 +1,35 @@
-'use client'
+'use client';
 
-import { ForwardedRef, forwardRef, KeyboardEvent, MouseEvent, ReactNode } from "react"
-import { AnimatePresence, motion } from "framer-motion"
-import { theme } from "./themeConfig"
-import { cn } from "./utils"
-import { ChevronDownIcon, XMarkIcon } from "./icon"
+import { ForwardedRef, forwardRef, KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { theme } from './themeConfig';
+import { cn } from './utils';
+import { ChevronDownIcon, XMarkIcon } from './icon';
 
-type Size = "sm" | "md" | "lg" | "xl"
-type Shadow = "none" | "sm" | "md" | "lg" | "xl"
+type Size = 'sm' | 'md' | 'lg' | 'xl';
+type Shadow = 'none' | 'sm' | 'md' | 'lg' | 'xl';
 
 interface TriggerSizeConfig {
-  height: string
-  py: string
-  text: string
-  padding: string
+  height: string;
+  py: string;
+  text: string;
+  padding: string;
 }
 
 const SIZES: Record<Size, TriggerSizeConfig> = {
-  sm: { height: "min-h-9", py: "py-1", text: "text-sm", padding: "pl-3 pr-8" },
-  md: { height: "min-h-10", py: "py-2", text: "text-sm", padding: "pl-3 pr-10" },
-  lg: { height: "min-h-11", py: "py-2", text: "text-base", padding: "pl-3 pr-10" },
-  xl: { height: "min-h-12", py: "py-3", text: "text-lg", padding: "pl-3 pr-12" }
-}
+  sm: { height: 'min-h-9', py: 'py-1', text: 'text-sm', padding: 'pl-3 pr-8' },
+  md: { height: 'min-h-10', py: 'py-2', text: 'text-sm', padding: 'pl-3 pr-10' },
+  lg: { height: 'min-h-11', py: 'py-2', text: 'text-base', padding: 'pl-3 pr-10' },
+  xl: { height: 'min-h-12', py: 'py-3', text: 'text-lg', padding: 'pl-3 pr-12' },
+};
 
 const SHADOWS: Record<Shadow, string> = {
-  none: "shadow-none",
-  sm: "shadow-sm",
-  md: "shadow",
-  lg: "shadow-lg",
-  xl: "shadow-xl"
-}
+  none: 'shadow-none',
+  sm: 'shadow-sm',
+  md: 'shadow',
+  lg: 'shadow-lg',
+  xl: 'shadow-xl',
+};
 
 const ANIMATION = {
   tag: {
@@ -37,65 +37,68 @@ const ANIMATION = {
     scale: {
       initial: 0.8,
       exit: 0.5,
-      normal: 1
-    }
+      normal: 1,
+    },
   },
   icon: {
-    duration: 0.2
-  }
-} as const
+    duration: 0.2,
+  },
+} as const;
 
 const LAYOUT = {
   trigger: {
     padding: {
-      iconStart: "pl-10",
-      chevron: "pr-2"
+      iconStart: 'pl-10',
+      chevron: 'pr-2',
     },
-    gap: "gap-1.5"
+    gap: 'gap-1.5',
   },
   tag: {
-    padding: "px-2 py-0.5",
-    gap: "gap-1",
-    marginLeft: "-ml-1"
+    padding: 'px-2 py-0.5',
+    gap: 'gap-1',
+    marginLeft: '-ml-1',
   },
   icon: {
-    chevron: "h-5 w-5",
-    remove: "h-3 w-3",
-    start: "pl-3"
+    chevron: 'h-5 w-5',
+    remove: 'h-3 w-3',
+    start: 'pl-3',
   },
   placeholder: {
-    marginLeft: "ml-1"
-  }
-} as const
+    marginLeft: 'ml-1',
+  },
+} as const;
 
 export interface ZSelectTriggerProps<T extends string | number> {
-  id?: string
-  isOpen: boolean
-  disabled?: boolean
-  isError?: boolean
-  size?: Size
-  shadow?: Shadow
-  iconStart?: ReactNode
-  multiple?: boolean
-  placeholder?: string
-  className?: string
+  id?: string;
+  isOpen: boolean;
+  disabled?: boolean;
+  isError?: boolean;
+  size?: Size;
+  shadow?: Shadow;
+  iconStart?: ReactNode;
+  multiple?: boolean;
+  placeholder?: string;
+  className?: string;
 
-  selectedValues: T[]
-  getLabel: (val: T) => string
+  selectedValues: T[];
+  getLabel: (val: T) => string;
 
-  onToggle: () => void
-  onRemove: (value: T, e: MouseEvent) => void
-  onKeyDown: (e: KeyboardEvent) => void
+  onToggle: () => void;
+  onRemove: (value: T, e: MouseEvent) => void;
+  onKeyDown: (e: KeyboardEvent) => void;
 }
 
-const ZSelectTriggerInner = <T extends string | number>(props: ZSelectTriggerProps<T>, ref: ForwardedRef<HTMLDivElement>) => {
+const ZSelectTriggerInner = <T extends string | number>(
+  props: ZSelectTriggerProps<T>,
+  ref: ForwardedRef<HTMLDivElement>
+) => {
   const {
     id,
     isOpen,
     disabled,
     isError,
-    size = "md",
-    shadow = "none",
+    size = 'md',
+    shadow = 'none',
     iconStart,
     multiple,
     placeholder,
@@ -104,37 +107,42 @@ const ZSelectTriggerInner = <T extends string | number>(props: ZSelectTriggerPro
     getLabel,
     onToggle,
     onRemove,
-    onKeyDown
-  } = props
+    onKeyDown,
+  } = props;
 
-  const config = SIZES[size]
+  const config = SIZES[size];
 
   const triggerClasses = cn(
-    "relative w-full cursor-default rounded-md border text-left transition-all",
-    "focus:outline-none focus:ring-2 focus:ring-offset-0",
+    'relative w-full cursor-default rounded-md border text-left transition-all',
+    'focus:outline-none focus:ring-2 focus:ring-offset-0',
     theme.selectBg,
     disabled
-      ? cn("cursor-not-allowed", theme.selectDisabledBg, theme.selectDisabledText, theme.selectDisabledBorder)
-      : "cursor-pointer",
+      ? cn(
+          'cursor-not-allowed',
+          theme.selectDisabledBg,
+          theme.selectDisabledText,
+          theme.selectDisabledBorder
+        )
+      : 'cursor-pointer',
     isError
-      ? "border-red-300 ring-red-300 focus:ring-red-500 text-red-900"
-      : "border-pink-200 dark:border-pink-900 ring-pink-200 dark:ring-pink-900 focus:ring-pink-500 hover:border-pink-300 dark:hover:border-pink-700",
-    isOpen && !isError && "ring-2 ring-pink-500 border-pink-500",
+      ? 'border-red-300 ring-red-300 focus:ring-red-500 text-red-900'
+      : 'border-pink-200 dark:border-pink-900 ring-pink-200 dark:ring-pink-900 focus:ring-pink-500 hover:border-pink-300 dark:hover:border-pink-700',
+    isOpen && !isError && 'ring-2 ring-pink-500 border-pink-500',
 
     config.height,
     config.py,
     config.text,
     config.padding,
     SHADOWS[shadow],
-    iconStart && !multiple ? LAYOUT.trigger.padding.iconStart : "",
-    multiple ? cn("h-auto flex flex-wrap items-center", LAYOUT.trigger.gap) : "",
+    iconStart && !multiple ? LAYOUT.trigger.padding.iconStart : '',
+    multiple ? cn('h-auto flex flex-wrap items-center', LAYOUT.trigger.gap) : '',
     className
-  )
+  );
 
   const renderTriggerContent = () => {
     if (multiple) {
       return (
-        <div className={cn("flex flex-wrap w-full", LAYOUT.tag.marginLeft, LAYOUT.trigger.gap)}>
+        <div className={cn('flex flex-wrap w-full', LAYOUT.tag.marginLeft, LAYOUT.trigger.gap)}>
           <AnimatePresence mode="popLayout">
             {selectedValues.map((val) => (
               <motion.span
@@ -145,7 +153,7 @@ const ZSelectTriggerInner = <T extends string | number>(props: ZSelectTriggerPro
                 transition={{ duration: ANIMATION.tag.duration }}
                 key={val}
                 className={cn(
-                  "inline-flex items-center rounded text-xs font-medium",
+                  'inline-flex items-center rounded text-xs font-medium',
                   theme.selectTag,
                   LAYOUT.tag.gap,
                   LAYOUT.tag.padding
@@ -164,19 +172,21 @@ const ZSelectTriggerInner = <T extends string | number>(props: ZSelectTriggerPro
             ))}
           </AnimatePresence>
           {selectedValues.length === 0 && (
-            <span className={cn(theme.selectPlaceholder, LAYOUT.placeholder.marginLeft)}>{placeholder}</span>
+            <span className={cn(theme.selectPlaceholder, LAYOUT.placeholder.marginLeft)}>
+              {placeholder}
+            </span>
           )}
         </div>
-      )
+      );
     }
 
-    const hasValue = selectedValues.length > 0
+    const hasValue = selectedValues.length > 0;
     return (
-      <span className={cn("block truncate", !hasValue && theme.selectPlaceholder)}>
+      <span className={cn('block truncate', !hasValue && theme.selectPlaceholder)}>
         {hasValue ? getLabel(selectedValues[0]) : placeholder}
       </span>
-    )
-  }
+    );
+  };
 
   return (
     <div
@@ -194,7 +204,7 @@ const ZSelectTriggerInner = <T extends string | number>(props: ZSelectTriggerPro
       {iconStart && !multiple && (
         <span
           className={cn(
-            "absolute inset-y-0 left-0 flex items-center pointer-events-none",
+            'absolute inset-y-0 left-0 flex items-center pointer-events-none',
             theme.selectIconColor,
             LAYOUT.icon.start
           )}
@@ -205,21 +215,26 @@ const ZSelectTriggerInner = <T extends string | number>(props: ZSelectTriggerPro
 
       {renderTriggerContent()}
 
-      <span className={cn("absolute inset-y-0 right-0 flex items-center pointer-events-none", LAYOUT.trigger.padding.chevron)}>
+      <span
+        className={cn(
+          'absolute inset-y-0 right-0 flex items-center pointer-events-none',
+          LAYOUT.trigger.padding.chevron
+        )}
+      >
         <ChevronDownIcon
           className={cn(
             theme.selectIconColor,
-            "transition-transform",
+            'transition-transform',
             LAYOUT.icon.chevron,
             `duration-${Math.round(ANIMATION.icon.duration * 1000)}`,
-            isOpen && "transform rotate-180"
+            isOpen && 'transform rotate-180'
           )}
         />
       </span>
     </div>
-  )
-}
+  );
+};
 
 export const ZSelectTrigger = forwardRef(ZSelectTriggerInner) as <T extends string | number>(
   props: ZSelectTriggerProps<T> & { ref?: ForwardedRef<HTMLDivElement> }
-) => ReturnType<typeof ZSelectTriggerInner>
+) => ReturnType<typeof ZSelectTriggerInner>;
