@@ -46,6 +46,30 @@ function formatDateTime(value?: string): string {
 	}).format(date);
 }
 
+function getLegalHoldBadge(
+	legalHoldState: { active: boolean } | undefined,
+	isLoading: boolean,
+): { label: string; className: string } {
+	if (isLoading) {
+		return {
+			label: 'Legal hold: loading',
+			className: 'border-(--color-border) bg-slate-100 text-(--color-text-secondary)',
+		};
+	}
+
+	if (legalHoldState?.active) {
+		return {
+			label: 'Legal hold: enabled',
+			className: 'border-amber-300 bg-amber-50 text-amber-800',
+		};
+	}
+
+	return {
+		label: 'Legal hold: disabled',
+		className: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+	};
+}
+
 function isCancellable(status: ExecutionStatus): boolean {
 	return status === 'pending' || status === 'running';
 }
@@ -137,6 +161,7 @@ export default function ExecutionDetailPage() {
 
 	const execution = executionQuery.data;
 	const legalHold = legalHoldQuery.data?.legalHold;
+	const legalHoldBadge = getLegalHoldBadge(legalHold, legalHoldQuery.isPending);
 	const stepsFromExecution = execution?.stepExecutions ?? [];
 	const events = eventsQuery.data?.items ?? [];
 	const stepsFromEvents = deriveStepExecutionsFromEvents(executionId, events);
@@ -172,7 +197,17 @@ export default function ExecutionDetailPage() {
 			<section className="rounded-2xl border border-(--color-border) bg-white p-6 shadow-[0_16px_44px_-28px_rgba(37,99,235,0.55)]">
 				<div className="flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<h1 className="text-2xl font-semibold text-(--color-text-primary)">Execution details</h1>
+						<div className="flex flex-wrap items-center gap-2">
+							<h1 className="text-2xl font-semibold text-(--color-text-primary)">Execution details</h1>
+							<span
+								className={[
+									'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
+									legalHoldBadge.className,
+								].join(' ')}
+							>
+								{legalHoldBadge.label}
+							</span>
+						</div>
 						<p className="mt-1 text-sm text-(--color-text-secondary)">
 							Detailed execution monitor with live polling and step-level state.
 						</p>
