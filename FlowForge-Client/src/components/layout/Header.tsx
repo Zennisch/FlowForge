@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 import ZButton from '@/components/primary/ZButton';
 import ZTextInput from '@/components/primary/ZTextInput';
@@ -323,23 +324,38 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
         </div>
       </header>
 
-      {isPaletteOpen ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-sm" role="dialog" aria-modal>
-          <button
-            type="button"
-            className="absolute inset-0"
-            aria-label="Close command palette"
-            onClick={closePalette}
-          />
+      <AnimatePresence>
+        {isPaletteOpen ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+            className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-sm"
+            role="dialog"
+            aria-modal
+          >
+            <button
+              type="button"
+              className="absolute inset-0"
+              aria-label="Close command palette"
+              onClick={closePalette}
+            />
 
-          <div className="relative mx-auto mt-20 w-[min(880px,92vw)] rounded-2xl border border-(--shell-border) bg-(--shell-panel-bg) p-4 shadow-2xl">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-(--shell-text)">Command Palette</p>
-              <div className="flex items-center gap-1 text-xs text-(--shell-muted)">
-                <Command className="h-3.5 w-3.5" />
-                <span>{shortcutLabel}</span>
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.985 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative mx-auto mt-20 w-[min(880px,92vw)] rounded-2xl border border-(--shell-border) bg-(--shell-panel-bg) p-4 shadow-2xl"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold text-(--shell-text)">Command Palette</p>
+                <div className="flex items-center gap-1 text-xs text-(--shell-muted)">
+                  <Command className="h-3.5 w-3.5" />
+                  <span>{shortcutLabel}</span>
+                </div>
               </div>
-            </div>
 
             <ZTextInput
               fullWidth
@@ -421,9 +437,10 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
                 </p>
               ) : null}
             </div>
-          </div>
-        </div>
-      ) : null}
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

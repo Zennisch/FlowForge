@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 import appTileTrans from '@/assets/app-tile-trans.png';
 import appTileTransDark from '@/assets/app-tile-trans-dark.png';
@@ -123,11 +124,15 @@ export function Sidebar({
   }, [isProfileMenuOpen]);
 
   return (
-    <aside
+    <motion.aside
+      initial={false}
+      animate={{
+        width: collapsed ? 80 : 288,
+      }}
+      transition={{ duration: 0.22, ease: 'easeInOut' }}
       className={cn(
         'fixed inset-y-0 left-0 z-40 border-r border-(--shell-border) bg-(--shell-sidebar-bg) text-(--shell-text)',
-        collapsed ? 'w-20' : 'w-72',
-        'transition-[width,transform] duration-200 md:translate-x-0',
+        'md:translate-x-0',
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
       )}
     >
@@ -273,44 +278,50 @@ export function Sidebar({
               ) : null}
             </button>
 
-            {isProfileMenuOpen ? (
-              <div
-                className={cn(
-                  'absolute bottom-16 z-20 w-52 rounded-lg border border-(--shell-border) bg-(--shell-panel-bg) p-1 shadow-xl',
-                  collapsed ? 'left-full ml-2' : 'right-0',
-                )}
-              >
-                <button
-                  type="button"
-                  className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
+            <AnimatePresence>
+              {isProfileMenuOpen ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  className={cn(
+                    'absolute bottom-16 z-20 w-52 rounded-lg border border-(--shell-border) bg-(--shell-panel-bg) p-1 shadow-xl',
+                    collapsed ? 'left-full ml-2 origin-bottom-left' : 'right-0 origin-bottom-right',
+                  )}
                 >
-                  Settings
-                </button>
-                <button
-                  type="button"
-                  className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
-                >
-                  API Keys
-                </button>
-                <button
-                  type="button"
-                  onClick={onToggleTheme}
-                  className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
-                >
-                  {isDarkMode ? 'Switch to Light' : 'Switch to Dark'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full rounded-md px-2 py-2 text-left text-sm font-medium text-(--color-error) transition-colors hover:bg-(--shell-hover) hover:text-(--color-error)"
-                >
-                  Sign out
-                </button>
-              </div>
-            ) : null}
+                  <button
+                    type="button"
+                    className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
+                  >
+                    Settings
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
+                  >
+                    API Keys
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onToggleTheme}
+                    className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
+                  >
+                    {isDarkMode ? 'Switch to Light' : 'Switch to Dark'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full rounded-md px-2 py-2 text-left text-sm font-medium text-(--color-error) transition-colors hover:bg-(--shell-hover) hover:text-(--color-error)"
+                  >
+                    Sign out
+                  </button>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </div>
         </div>
       </div>
-    </aside>
+    </motion.aside>
   );
 }
