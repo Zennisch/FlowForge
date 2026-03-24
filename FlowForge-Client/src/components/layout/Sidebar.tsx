@@ -292,13 +292,13 @@ export function Sidebar({
             <AnimatePresence>
               {isProfileMenuOpen ? (
                 <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  initial={{ opacity: 0, x: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -6, scale: 0.98 }}
                   transition={{ duration: 0.16, ease: 'easeOut' }}
                   className={cn(
-                    'absolute bottom-16 z-20 w-52 rounded-lg border border-(--shell-border) bg-(--shell-panel-bg) p-1 shadow-xl',
-                    collapsed ? 'left-full ml-2 origin-bottom-left' : 'right-0 origin-bottom-right'
+                    'absolute bottom-0 z-20 w-52 rounded-lg border border-(--shell-border) bg-(--shell-panel-bg) p-1 shadow-xl',
+                    collapsed ? 'left-full ml-2 origin-bottom-left' : 'left-72 origin-bottom-right'
                   )}
                 >
                   <button
