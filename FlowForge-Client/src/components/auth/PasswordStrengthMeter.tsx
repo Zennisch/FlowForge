@@ -69,7 +69,9 @@ export function PasswordStrengthMeter({ password }: PasswordStrengthMeterProps) 
           style={{ width: `${strength.value}%` }}
         />
       </div>
-      <p className={cn('mt-1 text-xs font-medium', strength.textClass)}>Password strength: {strength.label}</p>
+      <p className={cn('mt-1 text-xs font-medium', strength.textClass)}>
+        Password strength: {strength.label}
+      </p>
     </div>
   );
 }

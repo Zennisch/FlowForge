@@ -133,14 +133,14 @@ export function Sidebar({
       className={cn(
         'fixed inset-y-0 left-0 z-40 border-r border-(--shell-border) bg-(--shell-sidebar-bg) text-(--shell-text)',
         'md:translate-x-0',
-        mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full'
       )}
     >
       <div className="flex h-full flex-col">
         <div
           className={cn(
             'relative border-b border-(--shell-border) px-3 py-3',
-            collapsed ? 'h-20' : 'h-24',
+            collapsed ? 'h-20' : 'h-24'
           )}
         >
           <ZButton
@@ -152,28 +152,28 @@ export function Sidebar({
             onClick={onToggleCollapse}
             className="absolute -right-3 top-1/2 hidden h-6 w-6 -translate-y-1/2 border border-(--shell-border) bg-(--shell-panel-bg) text-(--shell-muted) hover:border-(--shell-accent) hover:text-(--shell-accent) md:inline-flex"
             iconStart={
-              collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />
+              collapsed ? (
+                <ChevronRight className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronLeft className="h-3.5 w-3.5" />
+              )
             }
           />
 
           <div
             className={cn(
               'flex h-full items-center',
-              collapsed ? 'justify-center' : 'justify-center gap-3 px-2',
+              collapsed ? 'justify-center' : 'justify-center gap-3 px-2'
             )}
           >
             <Image
               src={collapsed ? appIcon : isDarkMode ? appTileTransDark : appTileTrans}
               alt="FlowForge"
               priority
-              className={cn(
-                collapsed ? 'h-9 w-9 rounded-lg object-cover' : 'h-auto full',
-              )}
+              className={cn(collapsed ? 'h-9 w-9 rounded-lg object-cover' : 'h-auto full')}
             />
 
-            {!collapsed ? (
-              <span className="sr-only">FlowForge</span>
-            ) : null}
+            {!collapsed ? <span className="sr-only">FlowForge</span> : null}
           </div>
         </div>
 
@@ -193,7 +193,7 @@ export function Sidebar({
                     collapsed ? 'justify-center' : 'gap-3',
                     isActive
                       ? 'bg-(--shell-hover) text-(--shell-text)'
-                      : 'text-(--shell-muted) hover:bg-(--shell-hover) hover:text-(--shell-text)',
+                      : 'text-(--shell-muted) hover:bg-(--shell-hover) hover:text-(--shell-text)'
                   )}
                 >
                   {isActive ? (
@@ -237,11 +237,17 @@ export function Sidebar({
               disabled
               className={cn(
                 'w-full rounded-lg border border-(--shell-border) text-(--shell-muted)',
-                collapsed ? 'px-3 py-2.5' : 'px-3 py-2 text-left text-sm',
+                collapsed ? 'px-3 py-2.5' : 'px-3 py-2 text-left text-sm'
               )}
               title="Schedules / Triggers (coming soon)"
             >
-              <span className={collapsed ? 'inline-flex items-center justify-center' : 'inline-flex items-center gap-2'}>
+              <span
+                className={
+                  collapsed
+                    ? 'inline-flex items-center justify-center'
+                    : 'inline-flex items-center gap-2'
+                }
+              >
                 <Clock3 className="h-4 w-4" />
                 {!collapsed ? 'Schedules / Triggers' : null}
               </span>
@@ -251,7 +257,10 @@ export function Sidebar({
 
         <div className="border-t border-(--shell-border) px-2 py-3">
           <div className={collapsed ? 'flex justify-center' : 'px-2'}>
-            <div className={collapsed ? '' : 'flex items-center gap-2'} title="All systems operational">
+            <div
+              className={collapsed ? '' : 'flex items-center gap-2'}
+              title="All systems operational"
+            >
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
               {!collapsed ? (
                 <span className="text-xs text-(--shell-muted)">All systems operational</span>
@@ -265,7 +274,7 @@ export function Sidebar({
               onClick={() => setIsProfileMenuOpen((previous) => !previous)}
               className={cn(
                 'flex w-full items-center rounded-lg border border-(--shell-border) bg-(--shell-panel-bg) transition-colors hover:bg-(--shell-hover)',
-                collapsed ? 'justify-center px-2 py-2.5' : 'gap-2 px-2 py-2',
+                collapsed ? 'justify-center px-2 py-2.5' : 'gap-2 px-2 py-2'
               )}
               title={collapsed ? profileLabel : undefined}
             >
@@ -274,7 +283,9 @@ export function Sidebar({
               </span>
 
               {!collapsed ? (
-                <span className="truncate text-left text-xs text-(--shell-text)">{profileLabel}</span>
+                <span className="truncate text-left text-xs text-(--shell-text)">
+                  {profileLabel}
+                </span>
               ) : null}
             </button>
 
@@ -287,7 +298,7 @@ export function Sidebar({
                   transition={{ duration: 0.16, ease: 'easeOut' }}
                   className={cn(
                     'absolute bottom-16 z-20 w-52 rounded-lg border border-(--shell-border) bg-(--shell-panel-bg) p-1 shadow-xl',
-                    collapsed ? 'left-full ml-2 origin-bottom-left' : 'right-0 origin-bottom-right',
+                    collapsed ? 'left-full ml-2 origin-bottom-left' : 'right-0 origin-bottom-right'
                   )}
                 >
                   <button

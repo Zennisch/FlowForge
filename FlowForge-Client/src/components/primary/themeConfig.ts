@@ -84,8 +84,7 @@ export const theme = {
   selectOptionDefault: 'text-slate-900 dark:text-slate-100',
   selectOptionHover:
     'hover:bg-sky-50 dark:hover:bg-sky-950/50 hover:text-sky-900 dark:hover:text-sky-300',
-  selectOptionSelected:
-    'bg-sky-50 dark:bg-sky-950/40 text-sky-900 dark:text-sky-300 font-medium',
+  selectOptionSelected: 'bg-sky-50 dark:bg-sky-950/40 text-sky-900 dark:text-sky-300 font-medium',
   selectOptionSelectedMulti: 'bg-sky-50/50 dark:bg-sky-950/30',
   selectOptionFocused: 'bg-sky-50 dark:bg-sky-950/50 text-sky-900 dark:text-sky-300',
   selectOptionCheckboxUnchecked:

@@ -54,7 +54,10 @@ function normalizeQueryValue(value: string): string {
 
 function createBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (pathname === '/workflows') {
-    return [{ label: 'FlowForge', href: '/workflows' }, { label: 'Workflows', isCurrent: true }];
+    return [
+      { label: 'FlowForge', href: '/workflows' },
+      { label: 'Workflows', isCurrent: true },
+    ];
   }
 
   if (pathname === '/workflows/new') {
@@ -85,7 +88,10 @@ function createBreadcrumbs(pathname: string): BreadcrumbItem[] {
   }
 
   if (pathname === '/executions') {
-    return [{ label: 'FlowForge', href: '/workflows' }, { label: 'Executions', isCurrent: true }];
+    return [
+      { label: 'FlowForge', href: '/workflows' },
+      { label: 'Executions', isCurrent: true },
+    ];
   }
 
   if (/^\/executions\/[^/]+$/.test(pathname)) {
@@ -97,7 +103,10 @@ function createBreadcrumbs(pathname: string): BreadcrumbItem[] {
     ];
   }
 
-  return [{ label: 'FlowForge', href: '/workflows' }, { label: 'Dashboard', isCurrent: true }];
+  return [
+    { label: 'FlowForge', href: '/workflows' },
+    { label: 'Dashboard', isCurrent: true },
+  ];
 }
 
 function buildWorkflowResults(workflows: Workflow[], query: string): PaletteResult[] {
@@ -216,7 +225,9 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
     router.push(href);
   };
 
-  const handlePaletteKeyDown = (event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handlePaletteKeyDown = (
+    event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       const firstResult = executionResults[0] || workflowResults[0];
@@ -357,86 +368,86 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
                 </div>
               </div>
 
-            <ZTextInput
-              fullWidth
-              autoFocus
-              size="sm"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(String(event.target.value))}
-              onKeyDown={handlePaletteKeyDown}
-              iconStart={<Search className="h-4 w-4" />}
-              placeholder="Search by workflow name, execution id, or idempotency key"
-            />
+              <ZTextInput
+                fullWidth
+                autoFocus
+                size="sm"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(String(event.target.value))}
+                onKeyDown={handlePaletteKeyDown}
+                iconStart={<Search className="h-4 w-4" />}
+                placeholder="Search by workflow name, execution id, or idempotency key"
+              />
 
-            <div className="mt-4 max-h-[58vh] space-y-4 overflow-y-auto pr-1">
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--shell-muted)">
-                  Workflows
-                </p>
-                <div className="space-y-1">
-                  {workflowResults.map((result) => (
-                    <button
-                      key={`${result.kind}-${result.id}`}
-                      type="button"
-                      onClick={() => navigateFromPalette(result.href)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-(--shell-hover)"
-                    >
-                      <WorkflowIcon className="h-4 w-4 text-sky-500" />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm text-(--shell-text)">{result.label}</p>
-                        <p className="truncate text-xs text-(--shell-muted)">{result.hint}</p>
-                      </div>
-                    </button>
-                  ))}
+              <div className="mt-4 max-h-[58vh] space-y-4 overflow-y-auto pr-1">
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--shell-muted)">
+                    Workflows
+                  </p>
+                  <div className="space-y-1">
+                    {workflowResults.map((result) => (
+                      <button
+                        key={`${result.kind}-${result.id}`}
+                        type="button"
+                        onClick={() => navigateFromPalette(result.href)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-(--shell-hover)"
+                      >
+                        <WorkflowIcon className="h-4 w-4 text-sky-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-(--shell-text)">{result.label}</p>
+                          <p className="truncate text-xs text-(--shell-muted)">{result.hint}</p>
+                        </div>
+                      </button>
+                    ))}
 
-                  {workflowResults.length === 0 ? (
-                    <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
-                      No workflows matched this query.
-                    </p>
-                  ) : null}
+                    {workflowResults.length === 0 ? (
+                      <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
+                        No workflows matched this query.
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--shell-muted)">
-                  Executions
-                </p>
-                <div className="space-y-1">
-                  {executionResults.map((result) => (
-                    <button
-                      key={`${result.kind}-${result.id}`}
-                      type="button"
-                      onClick={() => navigateFromPalette(result.href)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-(--shell-hover)"
-                    >
-                      <Zap className="h-4 w-4 text-amber-500" />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm text-(--shell-text)">{result.label}</p>
-                        <p className="truncate text-xs text-(--shell-muted)">{result.hint}</p>
-                      </div>
-                    </button>
-                  ))}
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--shell-muted)">
+                    Executions
+                  </p>
+                  <div className="space-y-1">
+                    {executionResults.map((result) => (
+                      <button
+                        key={`${result.kind}-${result.id}`}
+                        type="button"
+                        onClick={() => navigateFromPalette(result.href)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-(--shell-hover)"
+                      >
+                        <Zap className="h-4 w-4 text-amber-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-(--shell-text)">{result.label}</p>
+                          <p className="truncate text-xs text-(--shell-muted)">{result.hint}</p>
+                        </div>
+                      </button>
+                    ))}
 
-                  {!hasQuery ? (
-                    <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
-                      Enter a query to search executions by id, workflow id, or idempotency key.
-                    </p>
-                  ) : null}
+                    {!hasQuery ? (
+                      <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
+                        Enter a query to search executions by id, workflow id, or idempotency key.
+                      </p>
+                    ) : null}
 
-                  {hasQuery && executionResults.length === 0 && !isSearchLoading ? (
-                    <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
-                      No executions matched this query.
-                    </p>
-                  ) : null}
+                    {hasQuery && executionResults.length === 0 && !isSearchLoading ? (
+                      <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
+                        No executions matched this query.
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
 
-              {isSearchLoading ? (
-                <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
-                  Searching...
-                </p>
-              ) : null}
-            </div>
+                {isSearchLoading ? (
+                  <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
+                    Searching...
+                  </p>
+                ) : null}
+              </div>
             </motion.div>
           </motion.div>
         ) : null}

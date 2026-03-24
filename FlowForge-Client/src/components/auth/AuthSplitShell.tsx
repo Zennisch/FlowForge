@@ -28,8 +28,8 @@ export function AuthSplitShell({ children }: AuthSplitShellProps) {
                 Automate at the speed of thought.
               </h1>
               <p className="mt-5 max-w-lg text-base text-slate-300">
-                Build resilient workflows, orchestrate asynchronous events, and monitor every step in
-                real time.
+                Build resilient workflows, orchestrate asynchronous events, and monitor every step
+                in real time.
               </p>
             </div>
 

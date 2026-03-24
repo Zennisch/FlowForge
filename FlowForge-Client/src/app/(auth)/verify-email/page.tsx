@@ -57,7 +57,14 @@ export default function VerifyEmailPage() {
     }
 
     return 'Verification link detected. Continue to confirm your email.';
-  }, [token, verifyEmailMutation.data?.message, verifyEmailMutation.error, verifyEmailMutation.isError, verifyEmailMutation.isPending, verifyEmailMutation.isSuccess]);
+  }, [
+    token,
+    verifyEmailMutation.data?.message,
+    verifyEmailMutation.error,
+    verifyEmailMutation.isError,
+    verifyEmailMutation.isPending,
+    verifyEmailMutation.isSuccess,
+  ]);
 
   const handleResend = async () => {
     if (!email) {
@@ -121,7 +128,16 @@ export default function VerifyEmailPage() {
             Resend email
           </ZButton>
 
-          <ZButton as={Link} href={email ? `/resend-verification?email=${encodeURIComponent(email)}` : '/resend-verification'} variant="ghost" fullWidth>
+          <ZButton
+            as={Link}
+            href={
+              email
+                ? `/resend-verification?email=${encodeURIComponent(email)}`
+                : '/resend-verification'
+            }
+            variant="ghost"
+            fullWidth
+          >
             Use another email
           </ZButton>
         </div>
