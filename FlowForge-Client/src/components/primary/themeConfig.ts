@@ -37,16 +37,17 @@ export const theme = {
   modalFooterBg: 'bg-slate-50/50 dark:bg-slate-900/50',
   modalLoading: 'bg-white/60 dark:bg-slate-800/60 backdrop-blur-[2px]',
   modalCloseButton:
-    'bg-transparent text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors',
+    'bg-transparent text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-(--color-primary) focus:ring-offset-2 transition-colors',
 
   // ── ZButton ───────────────────────────────────────────────────────────────
-  buttonPrimary: 'bg-pink-500 text-white hover:bg-pink-600 focus-visible:ring-pink-500',
+  buttonPrimary:
+    'bg-(--color-primary) text-white hover:bg-(--color-primary-hover) focus-visible:ring-(--color-primary)',
   buttonSecondary:
-    'bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-900/70 hover:bg-pink-50 dark:hover:bg-pink-950/40 focus-visible:ring-pink-500',
+    'bg-white dark:bg-slate-800 text-(--color-primary) border border-(--color-border) hover:bg-sky-50/70 dark:hover:bg-sky-950/25 focus-visible:ring-(--color-primary)',
   buttonTertiary:
-    'bg-pink-100 dark:bg-pink-950/40 text-pink-900 dark:text-pink-300 hover:bg-pink-200 dark:hover:bg-pink-950/60 focus-visible:ring-pink-500',
+    'bg-sky-100 dark:bg-sky-950/35 text-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-950/55 focus-visible:ring-(--color-primary)',
   buttonGhost:
-    'bg-transparent text-pink-600 dark:text-pink-400 hover:bg-pink-50/50 dark:hover:bg-pink-950/30 focus-visible:ring-pink-500',
+    'bg-transparent text-(--color-primary) hover:bg-sky-50/60 dark:hover:bg-sky-950/25 focus-visible:ring-(--color-primary)',
 
   // ── ZTextInput ────────────────────────────────────────────────────────────
   inputBg: 'bg-white dark:bg-slate-800',
@@ -73,38 +74,38 @@ export const theme = {
   selectDisabledBorder: 'ring-slate-200 dark:ring-slate-700 border-slate-200 dark:border-slate-700',
   selectLabelColor: 'text-slate-900 dark:text-slate-100',
   selectTag:
-    'bg-pink-100/80 dark:bg-pink-950/50 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-900/70',
+    'bg-sky-100/80 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-900/70',
   selectPlaceholder: 'text-slate-400 dark:text-slate-500',
   selectIconColor: 'text-slate-400 dark:text-slate-500',
   selectSearchBorder: 'border-b border-slate-100 dark:border-slate-700',
   selectSearchInput:
-    'text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-600 bg-transparent dark:bg-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500',
+    'text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-600 bg-transparent dark:bg-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-(--color-primary) focus:border-(--color-primary)',
   selectEmptyText: 'text-slate-500 dark:text-slate-400',
   selectOptionDefault: 'text-slate-900 dark:text-slate-100',
   selectOptionHover:
-    'hover:bg-pink-50 dark:hover:bg-pink-950/50 hover:text-pink-900 dark:hover:text-pink-300',
+    'hover:bg-sky-50 dark:hover:bg-sky-950/50 hover:text-sky-900 dark:hover:text-sky-300',
   selectOptionSelected:
-    'bg-pink-50 dark:bg-pink-950/40 text-pink-900 dark:text-pink-300 font-medium',
-  selectOptionSelectedMulti: 'bg-pink-50/50 dark:bg-pink-950/30',
-  selectOptionFocused: 'bg-pink-50 dark:bg-pink-950/50 text-pink-900 dark:text-pink-300',
+    'bg-sky-50 dark:bg-sky-950/40 text-sky-900 dark:text-sky-300 font-medium',
+  selectOptionSelectedMulti: 'bg-sky-50/50 dark:bg-sky-950/30',
+  selectOptionFocused: 'bg-sky-50 dark:bg-sky-950/50 text-sky-900 dark:text-sky-300',
   selectOptionCheckboxUnchecked:
     'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700',
   selectScrollbar:
-    'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-pink-200 dark:scrollbar-thumb-pink-900/70 hover:scrollbar-thumb-pink-300 dark:hover:scrollbar-thumb-pink-800',
+    'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sky-200 dark:scrollbar-thumb-sky-900/70 hover:scrollbar-thumb-sky-300 dark:hover:scrollbar-thumb-sky-800',
 
   // ── Danbooru shared ────────────────────────────────────────────────────────
-  radioGroupBg: 'bg-pink-100/80 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-900/70',
-  sectionLabel: 'text-xs font-medium text-pink-400 uppercase tracking-wider',
+  radioGroupBg: 'bg-sky-100/80 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900/70',
+  sectionLabel: 'text-xs font-medium text-sky-400 uppercase tracking-wider',
   sectionTitle:
-    'text-xs font-semibold text-pink-400 uppercase tracking-wider border-b border-pink-100 dark:border-pink-900/70',
+    'text-xs font-semibold text-sky-400 uppercase tracking-wider border-b border-sky-100 dark:border-sky-900/70',
   sidebarBg: 'bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700',
 
   // ── PostModal ──────────────────────────────────────────────────────────────
   postHeaderBg:
-    'bg-linear-to-r from-pink-50 via-rose-50 to-pink-50 dark:from-pink-950/40 dark:via-rose-950/30 dark:to-pink-950/40',
-  postHeaderBorder: 'border-b border-pink-100/80 dark:border-pink-900/50',
+    'bg-linear-to-r from-sky-50 via-cyan-50 to-blue-50 dark:from-sky-950/40 dark:via-cyan-950/30 dark:to-blue-950/40',
+  postHeaderBorder: 'border-b border-sky-100/80 dark:border-sky-900/50',
   postInfoPanelBg: 'bg-white dark:bg-slate-800',
-  metaRowBorder: 'border-b border-pink-50 dark:border-pink-900/40 last:border-0',
+  metaRowBorder: 'border-b border-sky-50 dark:border-sky-900/40 last:border-0',
   metaValue: 'text-gray-700 dark:text-slate-300',
 
   // ── TagSection ─────────────────────────────────────────────────────────────

@@ -2,19 +2,26 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
-import { useVerifyEmail } from '@/hooks/useAuth';
+import { AuthFormCard } from '@/components/auth/AuthFormCard';
+import { MailIcon } from '@/components/auth/MailIcon';
+import ZButton from '@/components/primary/ZButton';
+import ZText from '@/components/primary/ZText';
+import { useResendVerification, useVerifyEmail } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/auth.store';
 
 export default function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authToken = useAuthStore((state) => state.token);
-  const verifyEmailMutation = useVerifyEmail();
 
-  const [token, setToken] = useState('');
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const verifyEmailMutation = useVerifyEmail();
+  const resendVerificationMutation = useResendVerification();
+
+  const token = searchParams.get('token') ?? '';
+  const email = searchParams.get('email') ?? '';
+  const verifiedTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (authToken) {
@@ -23,74 +30,102 @@ export default function VerifyEmailPage() {
   }, [authToken, router]);
 
   useEffect(() => {
-    const queryToken = searchParams.get('token') ?? '';
-    if (queryToken) {
-      setToken(queryToken);
+    const canAutoVerify = token.length > 0 && verifiedTokenRef.current !== token;
+    if (!canAutoVerify) {
+      return;
     }
-  }, [searchParams]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSuccessMessage(null);
+    verifiedTokenRef.current = token;
+    verifyEmailMutation.mutate({ token });
+  }, [token, verifyEmailMutation]);
 
-    try {
-      const response = await verifyEmailMutation.mutateAsync({ token });
-      setSuccessMessage(response.message);
-    } catch {
-      // Error is already exposed through verifyEmailMutation.error.
+  const statusMessage = useMemo(() => {
+    if (!token) {
+      return 'We sent a temporary link to your inbox. Open your email and tap the verification link to activate your account.';
     }
+
+    if (verifyEmailMutation.isPending) {
+      return 'We are verifying your email now. This usually takes a few seconds.';
+    }
+
+    if (verifyEmailMutation.isSuccess) {
+      return verifyEmailMutation.data.message;
+    }
+
+    if (verifyEmailMutation.isError) {
+      return verifyEmailMutation.error.message;
+    }
+
+    return 'Verification link detected. Continue to confirm your email.';
+  }, [token, verifyEmailMutation.data?.message, verifyEmailMutation.error, verifyEmailMutation.isError, verifyEmailMutation.isPending, verifyEmailMutation.isSuccess]);
+
+  const handleResend = async () => {
+    if (!email) {
+      return;
+    }
+
+    await resendVerificationMutation.mutateAsync({ email });
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#dbeafe,transparent_42%),var(--zui-surface)] px-4">
-      <section className="w-full max-w-md rounded-2xl border border-(--color-border) bg-(--zui-surface) p-6 shadow-[0_18px_50px_-20px_rgba(29,78,216,0.28)]">
-        <h1 className="text-2xl font-semibold text-(--color-text-primary)">Verify email</h1>
-        <p className="mt-1 text-sm text-(--color-text-secondary)">
-          Enter the verification token from your email.
-        </p>
+    <AuthFormCard
+      title="Check your inbox"
+      subtitle={
+        email
+          ? `We've sent a temporary link to ${email}. Please check your email to verify your account.`
+          : "We've sent a temporary link. Please check your email to verify your account."
+      }
+      footerLinks={[{ text: 'Already verified?', linkText: 'Sign in', href: '/login' }]}
+    >
+      <div className="space-y-4">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10">
+          <MailIcon className="h-14 w-14" />
+        </div>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <label className="block">
-            <span className="mb-1 block text-sm text-(--color-text-secondary)">
-              Verification token
-            </span>
-            <input
-              type="text"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              required
-              className="w-full rounded-xl border border-(--color-border) bg-white px-3 py-2 text-sm text-(--color-text-primary) outline-none transition-colors focus:border-(--color-primary)"
-            />
-          </label>
+        <ZText as="p" size="sm" color="secondary" align="center" className="text-slate-300">
+          {statusMessage}
+        </ZText>
 
-          {verifyEmailMutation.isError ? (
-            <p className="rounded-md bg-(--color-error-light) px-3 py-2 text-sm text-(--color-error)">
-              {verifyEmailMutation.error.message}
-            </p>
-          ) : null}
+        {verifyEmailMutation.isError ? (
+          <p className="rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+            Verification failed. Please request a new link.
+          </p>
+        ) : null}
 
-          {successMessage ? (
-            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              {successMessage}
-            </p>
-          ) : null}
+        {resendVerificationMutation.isSuccess ? (
+          <p className="rounded-md border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+            {resendVerificationMutation.data.message}
+          </p>
+        ) : null}
 
-          <button
-            type="submit"
-            disabled={verifyEmailMutation.isPending}
-            className="w-full rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-(--color-primary-hover) disabled:cursor-not-allowed disabled:bg-(--color-bg-disabled)"
+        {resendVerificationMutation.isError ? (
+          <p className="rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+            {resendVerificationMutation.error.message}
+          </p>
+        ) : null}
+
+        <div className="space-y-2 pt-1">
+          <ZButton as="a" href={email ? `mailto:${email}` : 'mailto:'} fullWidth>
+            Open email app
+          </ZButton>
+
+          <ZButton
+            type="button"
+            variant="secondary"
+            fullWidth
+            disabled={!email}
+            loading={resendVerificationMutation.isPending}
+            loadingText="Resending email..."
+            onClick={handleResend}
           >
-            {verifyEmailMutation.isPending ? 'Verifying...' : 'Verify email'}
-          </button>
-        </form>
+            Resend email
+          </ZButton>
 
-        <p className="mt-5 text-center text-sm text-(--color-text-secondary)">
-          Back to{' '}
-          <Link className="font-medium text-(--color-primary) hover:underline" href="/login">
-            login
-          </Link>
-        </p>
-      </section>
-    </main>
+          <ZButton as={Link} href={email ? `/resend-verification?email=${encodeURIComponent(email)}` : '/resend-verification'} variant="ghost" fullWidth>
+            Use another email
+          </ZButton>
+        </div>
+      </div>
+    </AuthFormCard>
   );
 }
