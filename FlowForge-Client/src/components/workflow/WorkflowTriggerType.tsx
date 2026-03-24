@@ -2,6 +2,7 @@
 
 import { Clock3, Hand, Zap } from 'lucide-react';
 
+import { cn } from '@/components/primary/utils';
 import { TriggerType } from '@/types/workflow.types';
 
 interface WorkflowTriggerTypeProps {
@@ -35,7 +36,7 @@ export function WorkflowTriggerType({ triggerType }: WorkflowTriggerTypeProps) {
 
   return (
     <span className="inline-flex items-center justify-center gap-1 rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-      <Icon className={[config.className, 'h-3 w-3'].join(' ')} aria-hidden="true" />
+      <Icon className={cn(config.className, 'h-3 w-3')} aria-hidden="true" />
       {config.label}
     </span>
   );

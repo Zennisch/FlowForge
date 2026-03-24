@@ -119,7 +119,7 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
         className="absolute inset-0 bg-(--color-overlay-modal)"
       />
 
-      <aside className="absolute right-0 top-0 h-full w-full overflow-y-auto border-l border-(--color-border) bg-white shadow-xl sm:w-[44rem]">
+      <aside className="absolute right-0 top-0 h-full w-full overflow-y-auto border-l border-(--color-border) bg-white shadow-xl sm:w-176">
         <div className="sticky top-0 flex items-center justify-between border-b border-(--color-border) bg-white px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-(--color-text-primary)">{title}</h2>

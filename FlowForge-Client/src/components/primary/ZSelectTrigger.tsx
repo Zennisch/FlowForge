@@ -1,6 +1,13 @@
 'use client';
 
-import { ForwardedRef, RefAttributes, forwardRef, KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import {
+  ForwardedRef,
+  RefAttributes,
+  forwardRef,
+  KeyboardEvent,
+  MouseEvent,
+  ReactNode,
+} from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { theme } from './themeConfig';
 import { cn } from './utils';
@@ -113,7 +120,7 @@ const ZSelectTriggerInner = <T extends string | number>(
   const config = SIZES[size];
 
   const triggerClasses = cn(
-    'relative w-full cursor-default rounded-md border text-left transition-all',
+    'relative flex items-center w-full cursor-default rounded-md border text-left transition-all',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
     theme.selectBg,
     disabled
