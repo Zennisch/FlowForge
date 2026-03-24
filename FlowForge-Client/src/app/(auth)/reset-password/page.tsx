@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 
+import { AuthFormCard } from '@/components/auth/AuthFormCard';
+import { AuthPasswordField } from '@/components/auth/AuthPasswordField';
+import { PasswordStrengthMeter } from '@/components/auth/PasswordStrengthMeter';
+import ZButton from '@/components/primary/ZButton';
+import ZTextInput from '@/components/primary/ZTextInput';
 import { useResetPassword } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -44,65 +49,60 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_bottom,#dbeafe,transparent_38%),var(--zui-surface)] px-4">
-      <section className="w-full max-w-md rounded-2xl border border-(--color-border) bg-(--zui-surface) p-6 shadow-[0_18px_50px_-20px_rgba(29,78,216,0.28)]">
-        <h1 className="text-2xl font-semibold text-(--color-text-primary)">Reset password</h1>
-        <p className="mt-1 text-sm text-(--color-text-secondary)">
-          Set a new password using your reset token.
-        </p>
+    <AuthFormCard
+      title="Set a new password"
+      subtitle="Use the reset token from your email and choose a new secure password."
+    >
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <ZTextInput
+          id="reset-token"
+          type="text"
+          value={token}
+          onChange={(event) => setToken(event.target.value)}
+          required
+          fullWidth
+          label="Reset token"
+          placeholder="Paste your reset token"
+          className="text-slate-100"
+        />
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <label className="block">
-            <span className="mb-1 block text-sm text-(--color-text-secondary)">Reset token</span>
-            <input
-              type="text"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              required
-              className="w-full rounded-xl border border-(--color-border) bg-white px-3 py-2 text-sm text-(--color-text-primary) outline-none transition-colors focus:border-(--color-primary)"
-            />
-          </label>
+        <div>
+          <AuthPasswordField
+            id="new-password"
+            label="New password"
+            value={password}
+            onChange={setPassword}
+            placeholder="Create your new password"
+            minLength={8}
+          />
+          <PasswordStrengthMeter password={password} />
+        </div>
 
-          <label className="block">
-            <span className="mb-1 block text-sm text-(--color-text-secondary)">New password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              minLength={8}
-              required
-              className="w-full rounded-xl border border-(--color-border) bg-white px-3 py-2 text-sm text-(--color-text-primary) outline-none transition-colors focus:border-(--color-primary)"
-            />
-          </label>
+        {resetPasswordMutation.isError ? (
+          <p className="rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+            {resetPasswordMutation.error.message}
+          </p>
+        ) : null}
 
-          {resetPasswordMutation.isError ? (
-            <p className="rounded-md bg-(--color-error-light) px-3 py-2 text-sm text-(--color-error)">
-              {resetPasswordMutation.error.message}
-            </p>
-          ) : null}
+        {successMessage ? (
+          <p className="rounded-md border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+            {successMessage}
+          </p>
+        ) : null}
 
-          {successMessage ? (
-            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              {successMessage}
-            </p>
-          ) : null}
+        <ZButton
+          type="submit"
+          fullWidth
+          loading={resetPasswordMutation.isPending}
+          loadingText="Resetting password..."
+        >
+          Reset password
+        </ZButton>
 
-          <button
-            type="submit"
-            disabled={resetPasswordMutation.isPending}
-            className="w-full rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-(--color-primary-hover) disabled:cursor-not-allowed disabled:bg-(--color-bg-disabled)"
-          >
-            {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset password'}
-          </button>
-        </form>
-
-        <p className="mt-5 text-center text-sm text-(--color-text-secondary)">
-          Back to{' '}
-          <Link className="font-medium text-(--color-primary) hover:underline" href="/login">
-            login
-          </Link>
-        </p>
-      </section>
-    </main>
+        <ZButton as={Link} href="/login" variant="ghost" fullWidth>
+          Back to sign in
+        </ZButton>
+      </form>
+    </AuthFormCard>
   );
 }

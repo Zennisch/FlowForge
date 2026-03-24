@@ -53,3 +53,93 @@ body {
   background-color: var(--zui-surface);
   color: var(--color-text-primary);
 }
+
+@keyframes ff-auth-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ff-auth-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ff-auth-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.42;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 0.65;
+  }
+}
+
+.ff-auth-fade-in {
+  animation: ff-auth-fade-in 420ms ease-out both;
+}
+
+.ff-auth-slide-in-right {
+  animation: ff-auth-slide-in-right 300ms ease-out 140ms both;
+}
+
+.ff-auth-brand-panel {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(56, 189, 248, 0.2), transparent 35%),
+    radial-gradient(circle at 82% 72%, rgba(59, 130, 246, 0.22), transparent 40%),
+    #020617;
+}
+
+.ff-auth-form-panel {
+  background:
+    radial-gradient(circle at 8% 10%, rgba(14, 165, 233, 0.12), transparent 36%),
+    #18181b;
+}
+
+.ff-auth-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(circle at center, black 28%, transparent 96%);
+}
+
+.ff-auth-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(4px);
+  animation: ff-auth-pulse 3.4s ease-in-out infinite;
+}
+
+.ff-auth-glow-one {
+  left: 22%;
+  top: 27%;
+  width: 10px;
+  height: 10px;
+  background-color: rgba(34, 211, 238, 0.9);
+}
+
+.ff-auth-glow-two {
+  right: 24%;
+  bottom: 29%;
+  width: 14px;
+  height: 14px;
+  background-color: rgba(59, 130, 246, 0.85);
+  animation-delay: 900ms;
+}
