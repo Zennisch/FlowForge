@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { EventTimeline } from '@/components/execution/EventTimeline';
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
@@ -151,12 +151,22 @@ export default function ExecutionDetailPage() {
   const executionId = getExecutionId(params.id);
   const [legalHoldReason, setLegalHoldReason] = useState('');
   const [legalHoldMessage, setLegalHoldMessage] = useState<string | null>(null);
+  const [eventsCursor, setEventsCursor] = useState<string | undefined>(undefined);
+  const [eventsCursorStack, setEventsCursorStack] = useState<string[]>([]);
 
   const executionQuery = useExecution(executionId);
   const legalHoldQuery = useExecutionLegalHold(executionId);
   const executionStatus = executionQuery.data?.status;
   const isExecutionActive = Boolean(executionStatus && ACTIVE_STATUSES.includes(executionStatus));
-  const eventsQuery = useExecutionEvents(executionId, { limit: 200 }, isExecutionActive);
+  const eventsQueryInput = useMemo(
+    () => ({
+      limit: 200,
+      cursor: eventsCursor,
+    }),
+    [eventsCursor]
+  );
+  const shouldPollEvents = isExecutionActive && !eventsCursor;
+  const eventsQuery = useExecutionEvents(executionId, eventsQueryInput, shouldPollEvents);
   const cancelExecutionMutation = useCancelExecution();
   const setLegalHoldMutation = useSetExecutionLegalHold();
   const releaseLegalHoldMutation = useReleaseExecutionLegalHold();
@@ -166,9 +176,15 @@ export default function ExecutionDetailPage() {
   const legalHoldBadge = getLegalHoldBadge(legalHold, legalHoldQuery.isPending);
   const stepsFromExecution = execution?.stepExecutions ?? [];
   const events = eventsQuery.data?.items ?? [];
+  const eventsPageInfo = eventsQuery.data?.pageInfo;
   const stepsFromEvents = deriveStepExecutionsFromEvents(executionId, events);
   const stepExecutions = stepsFromExecution.length > 0 ? stepsFromExecution : stepsFromEvents;
   const isLegalHoldMutating = setLegalHoldMutation.isPending || releaseLegalHoldMutation.isPending;
+
+  useEffect(() => {
+    setEventsCursor(undefined);
+    setEventsCursorStack([]);
+  }, [executionId]);
 
   async function handlePlaceLegalHold(): Promise<void> {
     if (!executionId) {
@@ -192,6 +208,30 @@ export default function ExecutionDetailPage() {
     const result = await releaseLegalHoldMutation.mutateAsync(executionId);
     setLegalHoldReason(result.legalHold.reason ?? '');
     setLegalHoldMessage('Legal hold has been released for this execution.');
+  }
+
+  function goToNextEventsPage(): void {
+    if (!eventsPageInfo?.nextCursor) {
+      return;
+    }
+
+    setEventsCursorStack((previous) => [...previous, eventsPageInfo.cursor ?? '']);
+    setEventsCursor(eventsPageInfo.nextCursor);
+  }
+
+  function goToPreviousEventsPage(): void {
+    if (eventsCursorStack.length === 0) {
+      return;
+    }
+
+    const previousCursor = eventsCursorStack[eventsCursorStack.length - 1] || undefined;
+    setEventsCursorStack((previous) => previous.slice(0, previous.length - 1));
+    setEventsCursor(previousCursor);
+  }
+
+  function jumpToLatestEventsPage(): void {
+    setEventsCursor(undefined);
+    setEventsCursorStack([]);
   }
 
   return (
@@ -442,10 +482,49 @@ export default function ExecutionDetailPage() {
                   ) : null}
                   <p className="text-xs text-(--color-text-secondary)">
                     Loaded {events.length} events
-                    {eventsQuery.data?.pageInfo.hasNextPage ? ' (more available)' : ''}
+                    {eventsPageInfo?.hasNextPage ? ' (more available)' : ''}
                   </p>
                 </div>
               </div>
+
+              {!eventsQuery.isError ? (
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-(--color-text-secondary)">
+                    Page size: {eventsPageInfo?.limit ?? 200}
+                    {shouldPollEvents ? ' • Live polling enabled' : ' • Live polling paused'}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={goToPreviousEventsPage}
+                      disabled={eventsCursorStack.length === 0 || eventsQuery.isFetching}
+                      className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goToNextEventsPage}
+                      disabled={
+                        !eventsPageInfo?.hasNextPage ||
+                        !eventsPageInfo?.nextCursor ||
+                        eventsQuery.isFetching
+                      }
+                      className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Next
+                    </button>
+                    <button
+                      type="button"
+                      onClick={jumpToLatestEventsPage}
+                      disabled={!eventsCursor && eventsCursorStack.length === 0}
+                      className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Latest page
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               {eventsQuery.isError ? (
                 <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4">
