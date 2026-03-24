@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
 
 html,
 body {
@@ -7,6 +8,15 @@ body {
 
 :root {
   --zui-surface: #ffffff;
+  --shell-canvas-bg: #eef3ff;
+  --shell-sidebar-bg: #f8fbff;
+  --shell-header-bg: #f8fbff;
+  --shell-panel-bg: #ffffff;
+  --shell-border: #d9e4f6;
+  --shell-hover: #edf3ff;
+  --shell-muted: #64748b;
+  --shell-text: #0f172a;
+  --shell-accent: #0ea5e9;
 
   --color-primary: #2563eb;
   --color-primary-hover: #1d4ed8;
@@ -29,6 +39,15 @@ body {
 
 .dark {
   --zui-surface: #0b1220;
+  --shell-canvas-bg: #0f172a;
+  --shell-sidebar-bg: #111827;
+  --shell-header-bg: #0b1220;
+  --shell-panel-bg: #0f172a;
+  --shell-border: #1f2937;
+  --shell-hover: #1f2937;
+  --shell-muted: #94a3b8;
+  --shell-text: #e2e8f0;
+  --shell-accent: #38bdf8;
 
   --color-primary: #60a5fa;
   --color-primary-hover: #3b82f6;

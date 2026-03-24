@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 
 import { authApi } from '@/lib/api/auth.api';
+import { extractUserFromAccessToken } from '@/lib/utils/auth-token';
 import { useAuthStore } from '@/store/auth.store';
 import type {
   ForgotPasswordRequest,
@@ -13,11 +14,17 @@ import type {
 
 export function useLogin() {
   const setToken = useAuthStore((state) => state.setToken);
+  const setUser = useAuthStore((state) => state.setUser);
 
   return useMutation({
     mutationFn: (payload: LoginRequest) => authApi.login(payload),
     onSuccess: (data) => {
       setToken(data.accessToken);
+
+      const user = extractUserFromAccessToken(data.accessToken);
+      if (user) {
+        setUser(user);
+      }
     },
   });
 }
