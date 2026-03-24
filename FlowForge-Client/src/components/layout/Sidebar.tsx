@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import appTile from '@/assets/app-tile.png';
+import appTileTrans from '@/assets/app-tile-trans.png';
+import appTileTransDark from '@/assets/app-tile-trans-dark.png';
 import appIcon from '@/assets/icon.png';
 import ZButton from '@/components/primary/ZButton';
 import { cn } from '@/components/primary/utils';
@@ -157,11 +158,11 @@ export function Sidebar({
             )}
           >
             <Image
-              src={collapsed ? appIcon : appTile}
+              src={collapsed ? appIcon : isDarkMode ? appTileTransDark : appTileTrans}
               alt="FlowForge"
               priority
               className={cn(
-                collapsed ? 'h-9 w-9 rounded-lg object-cover' : 'h-auto w-3/4',
+                collapsed ? 'h-9 w-9 rounded-lg object-cover' : 'h-auto full',
               )}
             />
 
