@@ -17,10 +17,15 @@ export const executionQueryKeys = {
   events: (id: string, query: ExecutionEventsQuery) => ['executions', id, 'events', query] as const,
 };
 
-export function useExecutions(query: ExecutionListQuery = {}) {
+interface QueryOptions {
+  enabled?: boolean;
+}
+
+export function useExecutions(query: ExecutionListQuery = {}, options: QueryOptions = {}) {
   return useQuery({
     queryKey: executionQueryKeys.list(query),
     queryFn: () => executionsApi.list(query),
+    enabled: options.enabled ?? true,
   });
 }
 

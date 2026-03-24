@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
 import { useCancelExecution, useExecutionSummary, useExecutions } from '@/hooks/useExecutions';
@@ -74,7 +75,13 @@ function isCancellable(status: ExecutionStatus): boolean {
 }
 
 export default function ExecutionsPage() {
-  const [statusFilter, setStatusFilter] = useState<'all' | ExecutionStatus>('all');
+  const searchParams = useSearchParams();
+  const initialFilter = searchParams.get('status');
+  const initialStatus =
+    initialFilter && STATUS_FILTERS.includes(initialFilter as 'all' | ExecutionStatus)
+      ? (initialFilter as 'all' | ExecutionStatus)
+      : 'all';
+  const [statusFilter, setStatusFilter] = useState<'all' | ExecutionStatus>(initialStatus);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<string[]>([]);
 
