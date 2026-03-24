@@ -42,7 +42,7 @@ export function DeleteWorkflowModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-(--color-overlay-modal) px-4">
-      <div className="w-full rounded-2xl border border-(--color-border) bg-white p-6 shadow-xl sm:w-[28rem]">
+      <div className="w-full rounded-2xl border border-(--color-border) bg-white p-6 shadow-xl sm:w-md">
         <h2 className="text-lg font-semibold text-(--color-text-primary)">Delete workflow</h2>
         <p className="mt-2 text-sm text-(--color-text-secondary)">
           This action cannot be undone. Confirm deleting

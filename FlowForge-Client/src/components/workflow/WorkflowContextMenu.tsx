@@ -103,7 +103,7 @@ export function WorkflowContextMenu({ workflow, onDelete, onCopyId }: WorkflowCo
             <div
               id={`workflow-menu-${workflow.id}`}
               ref={menuRef}
-              className="fixed z-[120] min-w-52 overflow-hidden rounded-md border border-zinc-200 bg-white p-1 shadow-xl dark:border-zinc-700 dark:bg-zinc-950"
+              className="fixed z-120 min-w-52 overflow-hidden rounded-md border border-zinc-200 bg-white p-1 shadow-xl dark:border-zinc-700 dark:bg-zinc-950"
               style={{ top: position.top, left: position.left }}
             >
               <Link

@@ -85,11 +85,15 @@ export default function WorkflowsPage() {
           </div>
         ) : null}
 
-        <div className="flex min-h-0 flex-1 gap-3">
-          <aside className="h-full w-1/5 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
-            <p className="mb-2 text-sm font-semibold text-(--color-text-primary)">Filters</p>
-            <WorkflowListFilters value={statusFilter} onChange={setStatusFilter} />
-          </aside>
+        <div className="min-h-0 flex flex-1 flex-col gap-2">
+          <div className="flex items-center justify-end rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-2 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <WorkflowListFilters
+              value={statusFilter}
+              onChange={setStatusFilter}
+              label="Status"
+              compact
+            />
+          </div>
 
           <div className="min-h-0 flex-1">
             {workflowsQuery.isPending ? (
@@ -113,7 +117,9 @@ export default function WorkflowsPage() {
               </div>
             ) : null}
 
-            {!workflowsQuery.isPending && !workflowsQuery.isError && filteredWorkflows.length === 0 ? (
+            {!workflowsQuery.isPending &&
+            !workflowsQuery.isError &&
+            filteredWorkflows.length === 0 ? (
               <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center dark:border-zinc-700 dark:bg-zinc-900/50">
                 <div>
                   <DatabaseZap className="mx-auto h-5 w-5 text-zinc-400" aria-hidden="true" />
@@ -127,7 +133,9 @@ export default function WorkflowsPage() {
               </div>
             ) : null}
 
-            {!workflowsQuery.isPending && !workflowsQuery.isError && filteredWorkflows.length > 0 ? (
+            {!workflowsQuery.isPending &&
+            !workflowsQuery.isError &&
+            filteredWorkflows.length > 0 ? (
               <WorkflowListTable
                 workflows={filteredWorkflows}
                 onDelete={handleDeleteClick}

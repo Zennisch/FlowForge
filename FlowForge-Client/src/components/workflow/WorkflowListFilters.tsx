@@ -8,6 +8,8 @@ export type WorkflowFilter = 'all' | WorkflowStatus;
 interface WorkflowListFiltersProps {
   value: WorkflowFilter;
   onChange: (nextValue: WorkflowFilter) => void;
+  label?: string;
+  compact?: boolean;
 }
 
 const FILTER_OPTIONS: ZSelectItem<WorkflowFilter>[] = [
@@ -16,12 +18,20 @@ const FILTER_OPTIONS: ZSelectItem<WorkflowFilter>[] = [
   { label: 'Inactive', value: 'inactive' },
 ];
 
-export function WorkflowListFilters({ value, onChange }: WorkflowListFiltersProps) {
+export function WorkflowListFilters({
+  value,
+  onChange,
+  label = 'Active status',
+  compact = false,
+}: WorkflowListFiltersProps) {
   return (
-    <div className="flex w-full justify-start">
-      <div className="w-full">
+    <div className={compact ? 'flex w-auto justify-start' : 'flex w-full justify-start'}>
+      <div className={compact ? 'w-80 max-w-full' : 'w-full'}>
         <ZSelect<WorkflowFilter>
-          label="Active status"
+          label={label}
+          labelPlacement={compact ? 'left' : 'top'}
+          leftLabelMinWidthClass={compact ? 'min-w-0 whitespace-nowrap' : undefined}
+          leftHelperTextOffsetClass={compact ? 'ml-0' : undefined}
           value={value}
           options={FILTER_OPTIONS}
           onChange={(nextValue) => {

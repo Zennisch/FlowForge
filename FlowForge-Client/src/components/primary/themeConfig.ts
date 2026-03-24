@@ -72,8 +72,7 @@ export const theme = {
   selectDisabledText: 'text-(--color-text-disabled)',
   selectDisabledBorder: 'ring-(--color-border-subtle) border-(--color-border-subtle)',
   selectLabelColor: 'text-(--color-text-primary)',
-  selectTag:
-    'bg-(--color-surface-hover) text-(--color-primary) border border-(--color-border)',
+  selectTag: 'bg-(--color-surface-hover) text-(--color-primary) border border-(--color-border)',
   selectPlaceholder: 'text-(--color-text-placeholder)',
   selectIconColor: 'text-(--color-text-secondary)',
   selectSearchBorder: 'border-b border-(--color-border-subtle)',
@@ -81,8 +80,7 @@ export const theme = {
     'text-(--color-text-primary) border-(--color-border) bg-transparent placeholder:text-(--color-text-placeholder) focus:outline-none focus:ring-1 focus:ring-(--color-primary) focus:border-(--color-primary)',
   selectEmptyText: 'text-(--color-text-secondary)',
   selectOptionDefault: 'text-(--color-text-primary)',
-  selectOptionHover:
-    'hover:bg-(--color-surface-hover) hover:text-(--color-text-primary)',
+  selectOptionHover: 'hover:bg-(--color-surface-hover) hover:text-(--color-text-primary)',
   selectOptionSelected: 'bg-(--color-surface-active) text-(--color-primary) font-medium',
   selectOptionSelectedMulti: 'bg-(--color-surface-hover)',
   selectOptionFocused: 'bg-(--color-surface-hover) text-(--color-text-primary)',

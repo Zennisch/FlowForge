@@ -64,6 +64,8 @@ interface ZSelectProps<T extends string | number> extends Omit<
 > {
   label?: string;
   labelPlacement?: LabelPlacement;
+  leftLabelMinWidthClass?: string;
+  leftHelperTextOffsetClass?: string;
 
   options?: ZSelectItem<T>[];
   value?: T | T[];
@@ -97,6 +99,8 @@ const ZSelectComponent = <T extends string | number>(
   const {
     label,
     labelPlacement = 'top',
+    leftLabelMinWidthClass = LAYOUT.dropdown.labelMinWidth,
+    leftHelperTextOffsetClass = LAYOUT.dropdown.helperMarginLeft,
 
     options = [],
     value,
@@ -300,7 +304,7 @@ const ZSelectComponent = <T extends string | number>(
     'block text-sm font-medium leading-6',
     getLabelTextColor(isError, disabled || false),
     disabled && 'opacity-50 cursor-not-allowed',
-    labelPlacement === 'left' && LAYOUT.dropdown.labelMinWidth
+    labelPlacement === 'left' && leftLabelMinWidthClass
   );
 
   const wrapperClasses = cn(
@@ -363,7 +367,7 @@ const ZSelectComponent = <T extends string | number>(
         helpText={helpText}
         errorId={errorId}
         helpId={helpId}
-        className={cn(labelPlacement === 'left' && LAYOUT.dropdown.helperMarginLeft)}
+        className={cn(labelPlacement === 'left' && leftHelperTextOffsetClass)}
       />
     </motion.div>
   );
