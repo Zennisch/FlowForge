@@ -1,6 +1,6 @@
 'use client';
 
-import { ForwardedRef, forwardRef, KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import { ForwardedRef, RefAttributes, forwardRef, KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { theme } from './themeConfig';
 import { cn } from './utils';
@@ -236,5 +236,5 @@ const ZSelectTriggerInner = <T extends string | number>(
 };
 
 export const ZSelectTrigger = forwardRef(ZSelectTriggerInner) as <T extends string | number>(
-  props: ZSelectTriggerProps<T> & { ref?: ForwardedRef<HTMLDivElement> }
+  props: ZSelectTriggerProps<T> & RefAttributes<HTMLDivElement>
 ) => ReturnType<typeof ZSelectTriggerInner>;

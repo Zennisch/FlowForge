@@ -3,6 +3,7 @@
 import { HTMLMotionProps, motion } from 'framer-motion';
 import {
   ForwardedRef,
+  RefAttributes,
   forwardRef,
   KeyboardEvent,
   MouseEvent,
@@ -371,7 +372,7 @@ const ZSelectComponent = <T extends string | number>(
 ZSelectComponent.displayName = 'ZSelect';
 
 const ZSelect = forwardRef(ZSelectComponent) as <T extends string | number>(
-  props: ZSelectProps<T> & { ref?: ForwardedRef<HTMLDivElement> }
+  props: ZSelectProps<T> & RefAttributes<HTMLDivElement>
 ) => ReturnType<typeof ZSelectComponent>;
 
 export default ZSelect;
