@@ -15,80 +15,78 @@ export const theme = {
   },
 
   // ── Surfaces & Backgrounds ──────────────────────────────────────────────
-  surface: 'bg-white dark:bg-slate-800',
-  surfaceSubtle: 'bg-slate-50/50 dark:bg-slate-900/50',
-  pageBg: 'bg-gray-50/50 dark:bg-slate-950',
+  surface: 'bg-(--color-surface-base)',
+  surfaceSubtle: 'bg-(--color-surface-muted)',
+  pageBg: 'bg-(--shell-canvas-bg)',
 
   // ── Borders ──────────────────────────────────────────────────────────────
-  borderSubtle: 'border-slate-100 dark:border-slate-700',
+  borderSubtle: 'border-(--color-border-subtle)',
 
   // ── Text ─────────────────────────────────────────────────────────────────
-  textPrimary: 'text-slate-900 dark:text-slate-100',
-  textSecondary: 'text-slate-600 dark:text-slate-400',
-  textMuted: 'text-slate-500 dark:text-slate-400',
-  textDisabled: 'text-slate-400 dark:text-slate-500',
+  textPrimary: 'text-(--color-text-primary)',
+  textSecondary: 'text-(--color-text-secondary)',
+  textMuted: 'text-(--color-text-placeholder)',
+  textDisabled: 'text-(--color-text-disabled)',
 
   // ── ZModal ────────────────────────────────────────────────────────────────
-  modalContainer:
-    'bg-white dark:bg-slate-800 ring-1 ring-slate-900/5 dark:ring-slate-700/30 shadow-2xl',
-  modalHeaderBorder: 'border-b border-slate-100 dark:border-slate-700',
-  modalHeaderText: 'text-slate-900 dark:text-slate-100',
-  modalFooterBorder: 'border-t border-slate-100 dark:border-slate-700',
-  modalFooterBg: 'bg-slate-50/50 dark:bg-slate-900/50',
-  modalLoading: 'bg-white/60 dark:bg-slate-800/60 backdrop-blur-[2px]',
+  modalContainer: 'bg-(--color-surface-raised) ring-1 ring-(--color-border-subtle) shadow-2xl',
+  modalHeaderBorder: 'border-b border-(--color-border-subtle)',
+  modalHeaderText: 'text-(--color-text-primary)',
+  modalFooterBorder: 'border-t border-(--color-border-subtle)',
+  modalFooterBg: 'bg-(--color-surface-muted)',
+  modalLoading: 'bg-(--color-surface-base)/70 backdrop-blur-[2px]',
   modalCloseButton:
-    'bg-transparent text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-(--color-primary) focus:ring-offset-2 transition-colors',
+    'bg-transparent text-(--color-text-secondary) hover:bg-(--color-surface-hover) hover:text-(--color-text-primary) focus:outline-none focus:ring-2 focus:ring-(--color-primary) focus:ring-offset-2 focus:ring-offset-(--color-surface-raised) transition-colors',
 
   // ── ZButton ───────────────────────────────────────────────────────────────
   buttonPrimary:
     'bg-(--color-primary) text-white hover:bg-(--color-primary-hover) focus-visible:ring-(--color-primary)',
   buttonSecondary:
-    'bg-white dark:bg-slate-800 text-(--color-primary) border border-(--color-border) hover:bg-sky-50/70 dark:hover:bg-sky-950/25 focus-visible:ring-(--color-primary)',
+    'bg-(--color-surface-raised) text-(--color-primary) border border-(--color-border) hover:bg-(--color-surface-hover) focus-visible:ring-(--color-primary)',
   buttonTertiary:
-    'bg-sky-100 dark:bg-sky-950/35 text-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-950/55 focus-visible:ring-(--color-primary)',
+    'bg-(--color-surface-hover) text-(--color-text-primary) hover:bg-(--color-surface-active) focus-visible:ring-(--color-primary)',
   buttonGhost:
-    'bg-transparent text-(--color-primary) hover:bg-sky-50/60 dark:hover:bg-sky-950/25 focus-visible:ring-(--color-primary)',
+    'bg-transparent text-(--color-primary) hover:bg-(--color-surface-hover) focus-visible:ring-(--color-primary)',
 
   // ── ZTextInput ────────────────────────────────────────────────────────────
-  inputBg: 'bg-white dark:bg-slate-800',
-  inputDisabledBg: 'bg-slate-50 dark:bg-slate-900',
-  inputText: 'text-slate-900 dark:text-slate-100',
-  inputDisabledText: 'text-slate-400 dark:text-slate-500',
-  inputIconColor: 'text-slate-500 dark:text-slate-400',
-  inputIconColorDisabled: 'text-slate-400 dark:text-slate-600',
+  inputBg: 'bg-(--color-surface-raised)',
+  inputDisabledBg: 'bg-(--color-bg-disabled)',
+  inputText: 'text-(--color-text-primary)',
+  inputDisabledText: 'text-(--color-text-disabled)',
+  inputIconColor: 'text-(--color-text-secondary)',
+  inputIconColorDisabled: 'text-(--color-text-disabled)',
 
   // ── ZRadio / ZCheckbox / ZSwitch labels & boxes ───────────────────────────
-  controlLabelColor: 'text-slate-700 dark:text-slate-300',
-  controlLabelError: 'text-red-900 dark:text-red-400',
-  controlLabelColorSwitch: 'text-slate-900 dark:text-slate-100',
-  controlBg: 'bg-white dark:bg-slate-800',
-  controlDisabledBg: 'bg-slate-100 dark:bg-slate-700',
+  controlLabelColor: 'text-(--color-text-secondary)',
+  controlLabelError: 'text-(--color-error)',
+  controlLabelColorSwitch: 'text-(--color-text-primary)',
+  controlBg: 'bg-(--color-surface-raised)',
+  controlDisabledBg: 'bg-(--color-bg-disabled)',
 
   // ── ZHelperText ───────────────────────────────────────────────────────────
-  helperDefault: 'font-normal text-slate-500 dark:text-slate-400',
+  helperDefault: 'font-normal text-(--color-text-secondary)',
 
   // ── ZSelect ───────────────────────────────────────────────────────────────
-  selectBg: 'bg-white dark:bg-slate-800',
-  selectDisabledBg: 'bg-slate-50 dark:bg-slate-900',
-  selectDisabledText: 'text-slate-500 dark:text-slate-400',
-  selectDisabledBorder: 'ring-slate-200 dark:ring-slate-700 border-slate-200 dark:border-slate-700',
-  selectLabelColor: 'text-slate-900 dark:text-slate-100',
+  selectBg: 'bg-(--color-surface-raised)',
+  selectDisabledBg: 'bg-(--color-bg-disabled)',
+  selectDisabledText: 'text-(--color-text-disabled)',
+  selectDisabledBorder: 'ring-(--color-border-subtle) border-(--color-border-subtle)',
+  selectLabelColor: 'text-(--color-text-primary)',
   selectTag:
-    'bg-sky-100/80 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-900/70',
-  selectPlaceholder: 'text-slate-400 dark:text-slate-500',
-  selectIconColor: 'text-slate-400 dark:text-slate-500',
-  selectSearchBorder: 'border-b border-slate-100 dark:border-slate-700',
+    'bg-(--color-surface-hover) text-(--color-primary) border border-(--color-border)',
+  selectPlaceholder: 'text-(--color-text-placeholder)',
+  selectIconColor: 'text-(--color-text-secondary)',
+  selectSearchBorder: 'border-b border-(--color-border-subtle)',
   selectSearchInput:
-    'text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-600 bg-transparent dark:bg-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-(--color-primary) focus:border-(--color-primary)',
-  selectEmptyText: 'text-slate-500 dark:text-slate-400',
-  selectOptionDefault: 'text-slate-900 dark:text-slate-100',
+    'text-(--color-text-primary) border-(--color-border) bg-transparent placeholder:text-(--color-text-placeholder) focus:outline-none focus:ring-1 focus:ring-(--color-primary) focus:border-(--color-primary)',
+  selectEmptyText: 'text-(--color-text-secondary)',
+  selectOptionDefault: 'text-(--color-text-primary)',
   selectOptionHover:
-    'hover:bg-sky-50 dark:hover:bg-sky-950/50 hover:text-sky-900 dark:hover:text-sky-300',
-  selectOptionSelected: 'bg-sky-50 dark:bg-sky-950/40 text-sky-900 dark:text-sky-300 font-medium',
-  selectOptionSelectedMulti: 'bg-sky-50/50 dark:bg-sky-950/30',
-  selectOptionFocused: 'bg-sky-50 dark:bg-sky-950/50 text-sky-900 dark:text-sky-300',
-  selectOptionCheckboxUnchecked:
-    'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700',
+    'hover:bg-(--color-surface-hover) hover:text-(--color-text-primary)',
+  selectOptionSelected: 'bg-(--color-surface-active) text-(--color-primary) font-medium',
+  selectOptionSelectedMulti: 'bg-(--color-surface-hover)',
+  selectOptionFocused: 'bg-(--color-surface-hover) text-(--color-text-primary)',
+  selectOptionCheckboxUnchecked: 'border-(--color-border) bg-(--color-surface-raised)',
   selectScrollbar:
     'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sky-200 dark:scrollbar-thumb-sky-900/70 hover:scrollbar-thumb-sky-300 dark:hover:scrollbar-thumb-sky-800',
 

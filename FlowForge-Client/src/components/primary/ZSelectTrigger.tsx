@@ -125,7 +125,7 @@ const ZSelectTriggerInner = <T extends string | number>(
         )
       : 'cursor-pointer',
     isError
-      ? 'border-red-300 ring-red-300 focus:ring-red-500 text-red-900'
+      ? 'border-(--color-error) ring-(--color-error) focus:ring-(--color-error) text-(--color-error)'
       : 'border-(--color-border) ring-(--color-border) focus:ring-(--color-primary) hover:border-(--color-border-hover)',
     isOpen && !isError && 'ring-2 ring-(--color-primary) border-(--color-primary)',
 

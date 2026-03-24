@@ -58,14 +58,14 @@ export const ZSelectOption = <T extends string | number>({
               LAYOUT.icons.checkboxBox,
               isSelected
                 ? 'bg-(--color-primary) border-(--color-primary) text-white'
-                : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700'
+                : theme.selectOptionCheckboxUnchecked
             )}
           >
             {isSelected && <AnimatedCheckIcon className={LAYOUT.icons.checkboxCheck} />}
           </div>
         )}
 
-        {option.icon && <span className="text-slate-400 dark:text-slate-500">{option.icon}</span>}
+        {option.icon && <span className={theme.selectIconColor}>{option.icon}</span>}
         <span className="block truncate">{option.label}</span>
       </div>
 

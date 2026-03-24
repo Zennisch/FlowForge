@@ -145,7 +145,7 @@ export const ZSelectList = <T extends string | number>({
             zIndex: LAYOUT.list.zIndex,
           }}
           className={cn(
-            'overflow-auto rounded-md text-base shadow-lg ring-1 ring-black/10 dark:ring-slate-600/50 focus:outline-none sm:text-sm origin-top',
+            'overflow-auto rounded-md text-base shadow-lg ring-1 ring-(--color-border-subtle) focus:outline-none sm:text-sm origin-top',
             theme.selectBg,
             theme.selectScrollbar,
             LAYOUT.list.padding,
