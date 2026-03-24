@@ -1,7 +1,7 @@
 'use client';
 
-import { AnimatePresence, motion, Variants } from 'framer-motion';
-import { KeyboardEvent, RefObject, useEffect, useRef } from 'react';
+import { motion, Variants } from 'framer-motion';
+import { KeyboardEvent, RefObject, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { theme } from './themeConfig';
 import { cn } from './utils';
@@ -25,6 +25,8 @@ const ANIMATION = {
     },
   },
 } as const;
+
+const EXIT_DURATION_MS = Math.round(ANIMATION.dropdown.duration.exit * 1000);
 
 const LAYOUT = {
   list: {
@@ -101,6 +103,36 @@ export const ZSelectList = <T extends string | number>({
   onSelect,
 }: ZSelectListProps<T>) => {
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [shouldRender, setShouldRender] = useState(isOpen && !disabled);
+  const [presenceState, setPresenceState] = useState<'hidden' | 'visible'>(
+    isOpen && !disabled ? 'visible' : 'hidden'
+  );
+
+  useEffect(() => {
+    if (disabled) {
+      setPresenceState('hidden');
+      setShouldRender(false);
+      return;
+    }
+
+    if (isOpen) {
+      setShouldRender(true);
+      const frameId = requestAnimationFrame(() => {
+        setPresenceState('visible');
+      });
+
+      return () => cancelAnimationFrame(frameId);
+    }
+
+    setPresenceState('hidden');
+    const timeoutId = window.setTimeout(() => {
+      setShouldRender(false);
+    }, EXIT_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [disabled, isOpen]);
 
   useEffect(() => {
     if (isOpen && searchable) {
@@ -128,106 +160,101 @@ export const ZSelectList = <T extends string | number>({
 
   const isSelected = (val: T) => selectedValues.includes(val);
 
-  return createPortal(
-    <AnimatePresence>
-      {!disabled && isOpen && (
-        <motion.ul
-          ref={listRef}
-          initial="hidden"
-          animate="visible"
-          exit="hidden"
-          variants={dropdownVariants}
-          style={{
-            position: 'fixed',
-            left: coords.left,
-            top: coords.top,
-            width: coords.width,
-            zIndex: LAYOUT.list.zIndex,
-          }}
-          className={cn(
-            'overflow-auto rounded-md text-base shadow-lg ring-1 ring-(--color-border-subtle) focus:outline-none sm:text-sm origin-top',
-            theme.selectBg,
-            theme.selectScrollbar,
-            LAYOUT.list.padding,
-            LAYOUT.list.maxHeight
-          )}
-          role="listbox"
-          tabIndex={-1}
-        >
-          {searchable && (
-            <li
-              className={cn(
-                'sticky top-0 z-10',
-                theme.selectBg,
-                theme.selectSearchBorder,
-                LAYOUT.search.container
-              )}
-            >
-              <div className="relative">
-                <span
-                  className={cn(
-                    'absolute inset-y-0 left-0 flex items-center',
-                    theme.selectIconColor,
-                    LAYOUT.search.iconLeft
-                  )}
-                >
-                  <SearchIcon className={LAYOUT.icon.search} />
-                </span>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  className={cn(
-                    'w-full rounded border text-sm',
-                    theme.selectSearchInput,
-                    LAYOUT.search.input
-                  )}
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onKeyDown={onKeyDown}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            </li>
-          )}
+  if (disabled || !shouldRender) {
+    return null;
+  }
 
-          {isLoading ? (
-            <div
-              className={cn(
-                theme.selectEmptyText,
-                'text-sm text-center flex justify-center items-center',
-                LAYOUT.emptyState.padding,
-                LAYOUT.loading.gap
-              )}
-            >
-              <SpinnerIcon className={cn('animate-spin', LAYOUT.icon.loading)} />
-              <span>Loading...</span>
-            </div>
-          ) : options.length === 0 ? (
-            <div
-              className={cn(
-                theme.selectEmptyText,
-                'text-sm text-center',
-                LAYOUT.emptyState.padding
-              )}
-            >
-              No options found
-            </div>
-          ) : (
-            options.map((option, index) => (
-              <ZSelectOption
-                key={option.value}
-                option={option}
-                isSelected={isSelected(option.value)}
-                isFocused={index === focusedIndex}
-                multiple={multiple}
-                onSelect={onSelect}
-              />
-            ))
-          )}
-        </motion.ul>
+  return createPortal(
+    <motion.ul
+      ref={listRef}
+      initial="hidden"
+      animate={presenceState}
+      variants={dropdownVariants}
+      style={{
+        position: 'fixed',
+        left: coords.left,
+        top: coords.top,
+        width: coords.width,
+        zIndex: LAYOUT.list.zIndex,
+      }}
+      className={cn(
+        'overflow-auto rounded-md text-base shadow-lg ring-1 ring-(--color-border-subtle) focus:outline-none sm:text-sm origin-top',
+        theme.selectBg,
+        theme.selectScrollbar,
+        LAYOUT.list.padding,
+        LAYOUT.list.maxHeight
       )}
-    </AnimatePresence>,
+      role="listbox"
+      tabIndex={-1}
+    >
+      {searchable && (
+        <li
+          className={cn(
+            'sticky top-0 z-10',
+            theme.selectBg,
+            theme.selectSearchBorder,
+            LAYOUT.search.container
+          )}
+        >
+          <div className="relative">
+            <span
+              className={cn(
+                'absolute inset-y-0 left-0 flex items-center',
+                theme.selectIconColor,
+                LAYOUT.search.iconLeft
+              )}
+            >
+              <SearchIcon className={LAYOUT.icon.search} />
+            </span>
+            <input
+              ref={searchInputRef}
+              type="text"
+              className={cn(
+                'w-full rounded border text-sm',
+                theme.selectSearchInput,
+                LAYOUT.search.input
+              )}
+              placeholder="Search..."
+              value={searchQuery}
+              onKeyDown={onKeyDown}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </li>
+      )}
+
+      {isLoading ? (
+        <div
+          className={cn(
+            theme.selectEmptyText,
+            'text-sm text-center flex justify-center items-center',
+            LAYOUT.emptyState.padding,
+            LAYOUT.loading.gap
+          )}
+        >
+          <SpinnerIcon className={cn('animate-spin', LAYOUT.icon.loading)} />
+          <span>Loading...</span>
+        </div>
+      ) : options.length === 0 ? (
+        <div
+          className={cn(theme.selectEmptyText, 'text-sm text-center', LAYOUT.emptyState.padding)}
+        >
+          No options found
+        </div>
+      ) : (
+        options.map((option, index) => (
+          <ZSelectOption
+            key={option.value}
+            option={option}
+            isSelected={isSelected(option.value)}
+            isFocused={index === focusedIndex}
+            multiple={multiple}
+            onSelect={onSelect}
+          />
+        ))
+      )}
+    </motion.ul>,
     document.body
   );
 };

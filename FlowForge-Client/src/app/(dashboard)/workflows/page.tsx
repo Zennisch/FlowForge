@@ -1,10 +1,15 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { DatabaseZap } from 'lucide-react';
 
 import { DeleteWorkflowModal } from '@/components/workflow/DeleteWorkflowModal';
-import { WorkflowCard } from '@/components/workflow/WorkflowCard';
+import { TriggerExecutionPanel } from '@/components/workflow/TriggerExecutionPanel';
+import {
+  WorkflowListFilters,
+  type WorkflowFilter,
+} from '@/components/workflow/WorkflowListFilters';
+import { WorkflowListTable } from '@/components/workflow/WorkflowListTable';
 import { useDeleteWorkflow, useWorkflows } from '@/hooks/useWorkflows';
 import type { Workflow } from '@/types/workflow.types';
 
@@ -20,6 +25,9 @@ export default function WorkflowsPage() {
   const workflowsQuery = useWorkflows();
   const deleteWorkflowMutation = useDeleteWorkflow();
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [triggerWorkflow, setTriggerWorkflow] = useState<Workflow | null>(null);
+  const [statusFilter, setStatusFilter] = useState<WorkflowFilter>('all');
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const deleteErrorMessage = useMemo(
     () =>
@@ -30,6 +38,20 @@ export default function WorkflowsPage() {
   const handleDeleteClick = (workflow: Workflow) => {
     setSelectedWorkflow(workflow);
     deleteWorkflowMutation.reset();
+  };
+
+  const handleCopyId = async (workflowId: string) => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      setInfoMessage('Clipboard is not available in this browser context.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(workflowId);
+      setInfoMessage(`Copied ID: ${workflowId}`);
+    } catch {
+      setInfoMessage('Unable to copy workflow ID.');
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -45,77 +67,76 @@ export default function WorkflowsPage() {
     }
   };
 
-  const workflows = workflowsQuery.data ?? [];
+  const filteredWorkflows = useMemo(() => {
+    const workflows = workflowsQuery.data ?? [];
+    if (statusFilter === 'all') {
+      return workflows;
+    }
+
+    return workflows.filter((workflow) => workflow.status === statusFilter);
+  }, [statusFilter, workflowsQuery.data]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <section className="rounded-2xl border border-(--color-border) bg-white p-5 shadow-[0_16px_44px_-28px_rgba(37,99,235,0.55)] sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-(--color-text-primary)">Workflow list</h1>
-            <p className="mt-1 text-sm text-(--color-text-secondary)">
-              Manage DAG workflows for your account and jump into each execution stream.
-            </p>
-          </div>
-
-          <Link
-            href="/workflows/new"
-            className="inline-flex rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-(--color-primary-hover)"
-          >
-            Create workflow
-          </Link>
-        </div>
-
-        {workflowsQuery.isPending ? (
-          <div className="mt-8 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-8 text-center">
-            <p className="text-sm text-(--color-text-secondary)">Loading workflows...</p>
+    <main className="mx-auto h-screen w-full px-3 py-3 sm:px-4 sm:py-4">
+      <section className="flex h-full flex-col rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        {infoMessage ? (
+          <div className="mb-2 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+            {infoMessage}
           </div>
         ) : null}
 
-        {workflowsQuery.isError ? (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{getErrorMessage(workflowsQuery.error)}</p>
-            <button
-              type="button"
-              onClick={() => {
-                void workflowsQuery.refetch();
-              }}
-              className="mt-3 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
-            >
-              Retry
-            </button>
-          </div>
-        ) : null}
+        <div className="flex min-h-0 flex-1 gap-3">
+          <aside className="h-full w-1/5 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
+            <p className="mb-2 text-sm font-semibold text-(--color-text-primary)">Filters</p>
+            <WorkflowListFilters value={statusFilter} onChange={setStatusFilter} />
+          </aside>
 
-        {!workflowsQuery.isPending && !workflowsQuery.isError && workflows.length === 0 ? (
-          <div className="mt-8 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-8 text-center">
-            <p className="text-base font-medium text-(--color-text-primary)">No workflows yet</p>
-            <p className="mt-2 text-sm text-(--color-text-secondary)">
-              Create your first workflow to start running automation pipelines.
-            </p>
-            <Link
-              href="/workflows/new"
-              className="mt-4 inline-flex rounded-lg border border-(--color-primary) px-4 py-2 text-sm font-semibold text-(--color-primary) transition-colors hover:bg-blue-100"
-            >
-              Create now
-            </Link>
-          </div>
-        ) : null}
+          <div className="min-h-0 flex-1">
+            {workflowsQuery.isPending ? (
+              <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-center dark:border-zinc-700 dark:bg-zinc-900/50">
+                <p className="text-sm text-(--color-text-secondary)">Loading workflows...</p>
+              </div>
+            ) : null}
 
-        {!workflowsQuery.isPending && !workflowsQuery.isError && workflows.length > 0 ? (
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {workflows.map((workflow) => (
-              <WorkflowCard
-                key={workflow.id}
-                workflow={workflow}
+            {workflowsQuery.isError ? (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3">
+                <p className="text-sm text-red-700">{getErrorMessage(workflowsQuery.error)}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void workflowsQuery.refetch();
+                  }}
+                  className="mt-2 rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : null}
+
+            {!workflowsQuery.isPending && !workflowsQuery.isError && filteredWorkflows.length === 0 ? (
+              <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center dark:border-zinc-700 dark:bg-zinc-900/50">
+                <div>
+                  <DatabaseZap className="mx-auto h-5 w-5 text-zinc-400" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
+                    No workflow data
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    Zero rows match current filter.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {!workflowsQuery.isPending && !workflowsQuery.isError && filteredWorkflows.length > 0 ? (
+              <WorkflowListTable
+                workflows={filteredWorkflows}
                 onDelete={handleDeleteClick}
-                isDeleting={
-                  deleteWorkflowMutation.isPending && selectedWorkflow?.id === workflow.id
-                }
+                onTrigger={setTriggerWorkflow}
+                onCopyId={handleCopyId}
               />
-            ))}
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </section>
 
       <DeleteWorkflowModal
@@ -129,6 +150,14 @@ export default function WorkflowsPage() {
           }
         }}
         onConfirm={handleConfirmDelete}
+      />
+
+      <TriggerExecutionPanel
+        open={Boolean(triggerWorkflow)}
+        workflow={triggerWorkflow}
+        onClose={() => {
+          setTriggerWorkflow(null);
+        }}
       />
     </main>
   );
