@@ -3,7 +3,7 @@
 import Image from 'next/image';
 
 import { cn } from '@/components/primary/utils';
-import appTile from '@/assets/app-tile.png';
+import appTile from '@/assets/app-tile-trans-dark.png';
 import iconTile from '@/assets/icon.png';
 
 type FlowForgeLogoProps = {
