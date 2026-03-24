@@ -15,19 +15,9 @@ export function FlowForgeLogo({ compact = false, className }: FlowForgeLogoProps
   return (
     <div className={cn('inline-flex items-center', className)} aria-label="FlowForge">
       {compact ? (
-        <Image
-          src={iconTile}
-          alt="FlowForge"
-          priority
-          className="h-10 w-auto"
-        />
+        <Image src={iconTile} alt="FlowForge" priority className="h-10 w-auto" />
       ) : (
-        <Image
-          src={appTile}
-          alt="FlowForge"
-          priority
-          className="h-18 w-auto"
-        />
+        <Image src={appTile} alt="FlowForge" priority className="h-18 w-auto" />
       )}
     </div>
   );

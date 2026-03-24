@@ -119,14 +119,11 @@ body {
 .ff-auth-brand-panel {
   background:
     radial-gradient(circle at 14% 18%, rgba(56, 189, 248, 0.2), transparent 35%),
-    radial-gradient(circle at 82% 72%, rgba(59, 130, 246, 0.22), transparent 40%),
-    #020617;
+    radial-gradient(circle at 82% 72%, rgba(59, 130, 246, 0.22), transparent 40%), #020617;
 }
 
 .ff-auth-form-panel {
-  background:
-    radial-gradient(circle at 8% 10%, rgba(14, 165, 233, 0.12), transparent 36%),
-    #18181b;
+  background: radial-gradient(circle at 8% 10%, rgba(14, 165, 233, 0.12), transparent 36%), #18181b;
 }
 
 .ff-auth-grid {

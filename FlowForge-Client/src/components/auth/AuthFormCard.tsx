@@ -22,7 +22,13 @@ export function AuthFormCard({ title, subtitle, children, footerLinks = [] }: Au
   return (
     <section className="rounded-2xl border border-white/10 bg-[#18181B]/90 p-6 shadow-[0_24px_60px_-28px_rgba(2,132,199,0.46)] backdrop-blur sm:p-7">
       <header>
-        <ZText as="h1" variant="heading" size="sm" weight="semibold" className="tracking-tight text-slate-50">
+        <ZText
+          as="h1"
+          variant="heading"
+          size="sm"
+          weight="semibold"
+          className="tracking-tight text-slate-50"
+        >
           {title}
         </ZText>
         <ZText as="p" size="sm" color="secondary" className="mt-2 text-slate-400">

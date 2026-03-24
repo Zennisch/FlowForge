@@ -84,7 +84,12 @@ export default function LoginPage() {
           </p>
         ) : null}
 
-        <ZButton type="submit" fullWidth loading={loginMutation.isPending} loadingText="Signing in...">
+        <ZButton
+          type="submit"
+          fullWidth
+          loading={loginMutation.isPending}
+          loadingText="Signing in..."
+        >
           Sign in
         </ZButton>
       </form>
