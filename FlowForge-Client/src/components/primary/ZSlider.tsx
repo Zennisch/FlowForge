@@ -98,7 +98,7 @@ const getTrackFillColor = (hasError: boolean): string => {
 };
 
 const getThumbBorderColor = (hasError: boolean): string => {
-  return hasError ? 'border-red-600' : 'border-pink-600';
+  return hasError ? 'border-red-600' : 'border-(--color-primary)';
 };
 
 const getThumbScale = (isPressed: boolean, isFocused: boolean): number => {

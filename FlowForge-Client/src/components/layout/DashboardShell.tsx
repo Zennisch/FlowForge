@@ -3,13 +3,18 @@
 import { useEffect, useState } from 'react';
 
 import { AuthGuard } from '@/components/layout/AuthGuard';
-import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { extractUserFromAccessToken } from '@/lib/utils/auth-token';
+import { useAuthStore } from '@/store/auth.store';
+import { Header } from './Header';
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
     const savedMode = window.localStorage.getItem('flowforge-theme-mode');
@@ -18,6 +23,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     setIsDarkMode(nextIsDark);
     document.documentElement.classList.toggle('dark', nextIsDark);
   }, []);
+
+  useEffect(() => {
+    if (!token || user) {
+      return;
+    }
+
+    const decodedUser = extractUserFromAccessToken(token);
+    if (decodedUser) {
+      setUser(decodedUser);
+    }
+  }, [setUser, token, user]);
 
   const toggleTheme = () => {
     setIsDarkMode((previous) => {
@@ -36,7 +52,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard>
-      <div className="h-screen overflow-hidden bg-linear-to-b from-white to-blue-50/40 text-(--color-text-primary) dark:from-slate-950 dark:to-slate-900/70">
+      <div className="h-screen overflow-hidden bg-(--shell-canvas-bg) text-(--color-text-primary)">
         <Sidebar
           mobileOpen={isSidebarOpen}
           collapsed={isSidebarCollapsed}

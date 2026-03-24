@@ -126,8 +126,8 @@ const ZSelectTriggerInner = <T extends string | number>(
       : 'cursor-pointer',
     isError
       ? 'border-red-300 ring-red-300 focus:ring-red-500 text-red-900'
-      : 'border-pink-200 dark:border-pink-900 ring-pink-200 dark:ring-pink-900 focus:ring-pink-500 hover:border-pink-300 dark:hover:border-pink-700',
-    isOpen && !isError && 'ring-2 ring-pink-500 border-pink-500',
+      : 'border-(--color-border) ring-(--color-border) focus:ring-(--color-primary) hover:border-(--color-border-hover)',
+    isOpen && !isError && 'ring-2 ring-(--color-primary) border-(--color-primary)',
 
     config.height,
     config.py,
@@ -164,7 +164,7 @@ const ZSelectTriggerInner = <T extends string | number>(
                   type="button"
                   onClick={(e) => onRemove(val, e)}
                   disabled={disabled}
-                  className="hover:text-pink-900 focus:outline-none"
+                  className="hover:text-(--color-text-primary) focus:outline-none"
                 >
                   <XMarkIcon className={LAYOUT.icon.remove} />
                 </button>

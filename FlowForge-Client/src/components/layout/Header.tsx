@@ -227,7 +227,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
 
   return (
     <>
-      <header className="z-20 border-b border-zinc-200/80 bg-white/85 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/75">
+      <header className="z-20 border-b border-(--shell-border) bg-(--shell-header-bg) backdrop-blur">
         <div className="grid h-16 grid-cols-1 items-center gap-3 px-4 sm:grid-cols-[auto_1fr_auto] sm:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -245,7 +245,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
                   {item.href && !item.isCurrent ? (
                     <Link
                       href={item.href}
-                      className="rounded px-1.5 py-0.5 text-zinc-500 transition-colors hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+                      className="rounded px-1.5 py-0.5 text-(--shell-muted) transition-colors hover:text-(--shell-text)"
                     >
                       {item.label}
                     </Link>
@@ -253,8 +253,8 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
                     <span
                       className={
                         item.isCurrent
-                          ? 'rounded px-1.5 py-0.5 font-medium text-sky-600 dark:text-sky-400'
-                          : 'rounded px-1.5 py-0.5 text-zinc-500'
+                          ? 'rounded px-1.5 py-0.5 font-medium text-(--shell-accent)'
+                          : 'rounded px-1.5 py-0.5 text-(--shell-muted)'
                       }
                     >
                       {item.label}
@@ -262,7 +262,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
                   )}
 
                   {index < breadcrumbs.length - 1 ? (
-                    <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
+                    <ChevronRight className="h-3.5 w-3.5 text-(--shell-muted)" />
                   ) : null}
                 </div>
               ))}
@@ -272,12 +272,12 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
           <button
             type="button"
             onClick={() => setIsPaletteOpen(true)}
-            className="mx-auto hidden h-10 w-full max-w-xl items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50/90 px-3 text-left text-sm text-zinc-500 transition-colors hover:border-zinc-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-700 sm:flex"
+            className="mx-auto hidden h-10 w-full max-w-xl items-center gap-2 rounded-xl border border-(--shell-border) bg-(--shell-panel-bg) px-3 text-left text-sm text-(--shell-muted) transition-colors hover:bg-(--shell-hover) sm:flex"
             aria-label="Open global search"
           >
             <Search className="h-4 w-4" />
             <span className="truncate">Search workflows, executions, or events...</span>
-            <span className="ml-auto rounded-md border border-zinc-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
+            <span className="ml-auto rounded-md border border-(--shell-border) bg-(--shell-panel-bg) px-1.5 py-0.5 text-[11px] font-medium text-(--shell-text)">
               {shortcutLabel}
             </span>
           </button>
@@ -289,7 +289,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
                 size="sm"
                 iconOnly
                 aria-label="Notifications"
-                className="h-9 w-9 border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-700"
+                className="h-9 w-9 border border-(--shell-border) bg-(--shell-panel-bg) text-(--shell-muted) hover:bg-(--shell-hover) hover:text-(--shell-text)"
                 iconStart={<Bell className="h-4 w-4" />}
               />
               {notificationCount > 0 ? (
@@ -303,7 +303,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
               iconOnly
               aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               onClick={onToggleTheme}
-              className="h-9 w-9 border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-700"
+              className="h-9 w-9 border border-(--shell-border) bg-(--shell-panel-bg) text-(--shell-muted) hover:bg-(--shell-hover) hover:text-(--shell-text)"
               iconStart={isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             />
 
@@ -324,7 +324,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
       </header>
 
       {isPaletteOpen ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-sm" role="dialog" aria-modal>
+        <div className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-sm" role="dialog" aria-modal>
           <button
             type="button"
             className="absolute inset-0"
@@ -332,10 +332,10 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
             onClick={closePalette}
           />
 
-          <div className="relative mx-auto mt-20 w-[min(880px,92vw)] rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="relative mx-auto mt-20 w-[min(880px,92vw)] rounded-2xl border border-(--shell-border) bg-(--shell-panel-bg) p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Command Palette</p>
-              <div className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-sm font-semibold text-(--shell-text)">Command Palette</p>
+              <div className="flex items-center gap-1 text-xs text-(--shell-muted)">
                 <Command className="h-3.5 w-3.5" />
                 <span>{shortcutLabel}</span>
               </div>
@@ -354,7 +354,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
 
             <div className="mt-4 max-h-[58vh] space-y-4 overflow-y-auto pr-1">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--shell-muted)">
                   Workflows
                 </p>
                 <div className="space-y-1">
@@ -363,18 +363,18 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
                       key={`${result.kind}-${result.id}`}
                       type="button"
                       onClick={() => navigateFromPalette(result.href)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-(--shell-hover)"
                     >
                       <WorkflowIcon className="h-4 w-4 text-sky-500" />
                       <div className="min-w-0">
-                        <p className="truncate text-sm text-zinc-800 dark:text-zinc-200">{result.label}</p>
-                        <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{result.hint}</p>
+                        <p className="truncate text-sm text-(--shell-text)">{result.label}</p>
+                        <p className="truncate text-xs text-(--shell-muted)">{result.hint}</p>
                       </div>
                     </button>
                   ))}
 
                   {workflowResults.length === 0 ? (
-                    <p className="rounded-lg border border-dashed border-zinc-200 px-3 py-2 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                    <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
                       No workflows matched this query.
                     </p>
                   ) : null}
@@ -382,7 +382,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--shell-muted)">
                   Executions
                 </p>
                 <div className="space-y-1">
@@ -391,24 +391,24 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
                       key={`${result.kind}-${result.id}`}
                       type="button"
                       onClick={() => navigateFromPalette(result.href)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-(--shell-hover)"
                     >
                       <Zap className="h-4 w-4 text-amber-500" />
                       <div className="min-w-0">
-                        <p className="truncate text-sm text-zinc-800 dark:text-zinc-200">{result.label}</p>
-                        <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{result.hint}</p>
+                        <p className="truncate text-sm text-(--shell-text)">{result.label}</p>
+                        <p className="truncate text-xs text-(--shell-muted)">{result.hint}</p>
                       </div>
                     </button>
                   ))}
 
                   {!hasQuery ? (
-                    <p className="rounded-lg border border-dashed border-zinc-200 px-3 py-2 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                    <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
                       Enter a query to search executions by id, workflow id, or idempotency key.
                     </p>
                   ) : null}
 
                   {hasQuery && executionResults.length === 0 && !isSearchLoading ? (
-                    <p className="rounded-lg border border-dashed border-zinc-200 px-3 py-2 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                    <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
                       No executions matched this query.
                     </p>
                   ) : null}
@@ -416,7 +416,7 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
               </div>
 
               {isSearchLoading ? (
-                <p className="rounded-lg border border-dashed border-zinc-200 px-3 py-2 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                <p className="rounded-lg border border-dashed border-(--shell-border) px-3 py-2 text-sm text-(--shell-muted)">
                   Searching...
                 </p>
               ) : null}
