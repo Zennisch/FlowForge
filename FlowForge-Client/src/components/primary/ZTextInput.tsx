@@ -163,7 +163,7 @@ const getInputTextColor = (disabled: boolean): string => {
 };
 
 const getPlaceholderColor = (): string => {
-  return 'placeholder:text-slate-400 dark:placeholder:text-slate-500';
+  return 'placeholder:text-(--color-text-placeholder)';
 };
 
 type BaseProps = {

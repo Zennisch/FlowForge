@@ -178,7 +178,7 @@ const ZButton = forwardRef<HTMLElement, ZButtonProps>((props, ref) => {
     'whitespace-nowrap select-none',
     'font-medium',
     'outline-none focus-visible:outline-none',
-    'focus-visible:ring-2 focus-visible:ring-offset-2 ring-offset-white',
+    'focus-visible:ring-2 focus-visible:ring-offset-2 ring-offset-(--color-surface-base)',
     'transition-colors',
     'disabled:pointer-events-none disabled:opacity-70'
   );

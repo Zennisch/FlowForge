@@ -14,13 +14,13 @@ import {
 import { cn } from './utils';
 
 const TEXT_COLORS = {
-  default: 'text-[var(--color-text-primary)]',
-  primary: 'text-[var(--color-primary)]',
-  secondary: 'text-[var(--color-text-secondary)]',
-  success: 'text-[var(--color-success)]',
-  warning: 'text-[var(--color-warning)]',
-  error: 'text-[var(--color-error)]',
-  muted: 'text-[var(--color-text-disabled)]',
+  default: 'text-(--color-text-primary)',
+  primary: 'text-(--color-primary)',
+  secondary: 'text-(--color-text-secondary)',
+  success: 'text-(--color-success)',
+  warning: 'text-(--color-warning)',
+  error: 'text-(--color-error)',
+  muted: 'text-(--color-text-disabled)',
 } as const;
 
 interface SizeConfig {

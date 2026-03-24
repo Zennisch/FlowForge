@@ -98,7 +98,7 @@ const getTrackFillColor = (hasError: boolean): string => {
 };
 
 const getThumbBorderColor = (hasError: boolean): string => {
-  return hasError ? 'border-red-600' : 'border-(--color-primary)';
+  return hasError ? 'border-(--color-error)' : 'border-(--color-primary)';
 };
 
 const getThumbScale = (isPressed: boolean, isFocused: boolean): number => {
@@ -113,11 +113,11 @@ const getThumbShadow = (isFocused: boolean, hasError: boolean): string => {
 };
 
 const getTextColor = (hasError: boolean): string => {
-  return hasError ? 'text-red-600' : 'text-slate-900';
+  return hasError ? 'text-(--color-error)' : theme.textPrimary;
 };
 
 const getValueTextColor = (hasError: boolean): string => {
-  return hasError ? 'text-red-600' : 'text-slate-700 dark:text-slate-300';
+  return hasError ? 'text-(--color-error)' : theme.textSecondary;
 };
 
 const getHelperTextAlignment = (labelPlacement: LabelPlacement): string => {
@@ -217,7 +217,7 @@ const ZSlider = forwardRef<HTMLInputElement, ZSliderProps>((props, ref) => {
   const labelClasses = cn('block font-medium leading-6', sizeConfig.text, getTextColor(hasError));
 
   const trackClasses = cn(
-    'absolute w-full rounded-full bg-slate-200 overflow-hidden',
+    'absolute w-full rounded-full bg-(--color-track-bg) overflow-hidden',
     sizeConfig.trackHeight
   );
 
