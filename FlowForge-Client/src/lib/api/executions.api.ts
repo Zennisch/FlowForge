@@ -75,6 +75,8 @@ interface RawExecutionEvent {
   payload?: Record<string, unknown>;
   step_id?: string;
   stepId?: string;
+  occurred_at?: string;
+  occurredAt?: string;
   created_at?: string;
   createdAt?: string;
 }
@@ -272,7 +274,13 @@ function normalizeExecutionEvent(raw: RawExecutionEvent): ExecutionEvent {
     type: raw.type,
     payload: raw.payload ?? {},
     stepId: raw.stepId ?? raw.step_id,
-    createdAt: raw.createdAt ?? raw.created_at ?? new Date().toISOString(),
+    // Backend event governance uses occurred_at as the event-time source of truth.
+    createdAt:
+      raw.occurredAt ??
+      raw.occurred_at ??
+      raw.createdAt ??
+      raw.created_at ??
+      new Date().toISOString(),
   };
 }
 
