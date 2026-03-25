@@ -44,6 +44,20 @@ body {
 
   --color-overlay-modal: rgba(0, 0, 0, 0.5);
   --color-bg-disabled: #f3f4f6;
+
+  --json-bg: #f8fbff;
+  --json-gutter-bg: #f1f6ff;
+  --json-gutter-text: #5b6f8f;
+  --json-border: #c7d7f3;
+  --json-caret: #1d4ed8;
+  --json-selection: rgba(37, 99, 235, 0.16);
+  --json-active-line: rgba(59, 130, 246, 0.08);
+  --json-keyword: #0f4acb;
+  --json-string: #0f766e;
+  --json-number: #b45309;
+  --json-boolean: #be185d;
+  --json-null: #7c3aed;
+  --json-brace: #334155;
 }
 
 .dark {
@@ -84,6 +98,20 @@ body {
 
   --color-overlay-modal: rgba(0, 0, 0, 0.75);
   --color-bg-disabled: #1f2c44;
+
+  --json-bg: #09162f;
+  --json-gutter-bg: #0c1d3a;
+  --json-gutter-text: #7f9bc4;
+  --json-border: #2a4a78;
+  --json-caret: #7dd3fc;
+  --json-selection: rgba(56, 189, 248, 0.24);
+  --json-active-line: rgba(59, 130, 246, 0.14);
+  --json-keyword: #93c5fd;
+  --json-string: #5eead4;
+  --json-number: #fbbf24;
+  --json-boolean: #f9a8d4;
+  --json-null: #c4b5fd;
+  --json-brace: #d6e1f0;
 }
 
 body {

@@ -18,7 +18,7 @@ export default function NewWorkflowPage() {
 
   return (
     <main className="h-full w-full p-3 sm:p-4">
-      <section className="flex h-full min-h-0 flex-col rounded-2xl border border-(--color-border) bg-white p-4">
+      <section className="flex h-full min-h-0 flex-col rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-semibold text-(--color-text-primary)">Create workflow</h1>
           <p className="text-sm text-(--color-text-secondary)">
