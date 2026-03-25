@@ -166,14 +166,16 @@ export function Sidebar({
               collapsed ? 'justify-center' : 'justify-center gap-3 px-2'
             )}
           >
-            <Image
-              src={collapsed ? appIcon : isDarkMode ? appTileTransDark : appTileTrans}
-              alt="FlowForge"
-              priority
-              className={cn(collapsed ? 'h-9 w-9 rounded-lg object-cover' : 'h-auto full')}
-            />
+            <Link href="/" onClick={onNavigate} aria-label="Go to home" className="inline-flex">
+              <Image
+                src={collapsed ? appIcon : isDarkMode ? appTileTransDark : appTileTrans}
+                alt="FlowForge"
+                priority
+                className={cn(collapsed ? 'h-9 w-9 rounded-lg object-cover' : 'h-auto full')}
+              />
 
-            {!collapsed ? <span className="sr-only">FlowForge</span> : null}
+              {!collapsed ? <span className="sr-only">FlowForge</span> : null}
+            </Link>
           </div>
         </div>
 
