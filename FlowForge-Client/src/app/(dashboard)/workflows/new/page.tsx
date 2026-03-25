@@ -17,12 +17,14 @@ export default function NewWorkflowPage() {
   };
 
   return (
-    <main className="w-full px-4 py-6 sm:px-6 sm:py-8">
-      <section className="rounded-2xl border border-(--color-border) bg-white p-6">
-        <h1 className="text-xl font-semibold text-(--color-text-primary)">Create workflow</h1>
-        <p className="mt-2 text-sm text-(--color-text-secondary)">
-          Build your workflow directly on canvas and configure nodes in the contextual inspector.
-        </p>
+    <main className="h-full w-full p-3 sm:p-4">
+      <section className="flex h-full min-h-0 flex-col rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-lg font-semibold text-(--color-text-primary)">Create workflow</h1>
+          <p className="text-sm text-(--color-text-secondary)">
+            Build your workflow directly on canvas and configure nodes in the contextual inspector.
+          </p>
+        </div>
 
         {successMessage ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
@@ -36,7 +38,7 @@ export default function NewWorkflowPage() {
           </div>
         ) : null}
 
-        <div className="mt-6">
+        <div className="mt-3 min-h-0 flex-1">
           <WorkflowBuilderEditor
             mode="create"
             isPending={createWorkflowMutation.isPending}

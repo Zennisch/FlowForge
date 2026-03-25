@@ -6,13 +6,11 @@ import { PanelBottomClose, PanelBottomOpen, X } from 'lucide-react';
 import { buildCreateWorkflowPayload } from '@/lib/workflow-builder/payload';
 import type { WorkflowBuilderEditorProps } from '@/lib/workflow-builder/types';
 import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
-import type { StepType } from '@/types/workflow.types';
 import ZButton from '@/components/primary/ZButton';
 
 import { StepInspectorPanel } from './inspector/StepInspectorPanel';
 import { TriggerInspectorPanel } from './inspector/TriggerInspectorPanel';
 import { WorkflowMetaInspectorPanel } from './inspector/WorkflowMetaInspectorPanel';
-import { WorkflowBuilderToolbar } from './WorkflowBuilderToolbar';
 import { WorkflowGraphCanvas } from './WorkflowGraphCanvas';
 import { useWorkflowBuilderState } from './useWorkflowBuilderState';
 
@@ -74,20 +72,6 @@ export function WorkflowBuilderEditor({
     setMobileInspectorOpen(true);
   }, [selection]);
 
-  const handleStepIdChange = useCallback(
-    (stepKey: string, nextId: string) => {
-      updateStep(stepKey, (current) => ({ ...current, id: nextId }));
-    },
-    [updateStep]
-  );
-
-  const handleStepTypeChange = useCallback(
-    (stepKey: string, nextType: StepType) => {
-      updateStep(stepKey, (current) => ({ ...current, type: nextType }));
-    },
-    [updateStep]
-  );
-
   const handleStepPanelChange = useCallback(
     (stepKey: string, panel: StepInspectorPanelKind) => {
       setSelection({ kind: 'step', stepKey, panel });
@@ -96,17 +80,7 @@ export function WorkflowBuilderEditor({
   );
 
   return (
-    <div className="space-y-4">
-      <WorkflowBuilderToolbar
-        mode={mode}
-        draft={draft}
-        pending={isPending}
-        onUpdate={updateDraft}
-        onSave={() => {
-          void saveWorkflow();
-        }}
-      />
-
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-x-hidden">
       {fieldErrors.name ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {fieldErrors.name}
@@ -125,8 +99,8 @@ export function WorkflowBuilderEditor({
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:h-[calc(100vh-260px)] lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="h-full">
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="h-full min-h-0 min-w-0">
           <WorkflowGraphCanvas
             draft={draft}
             selection={selection}
@@ -134,21 +108,22 @@ export function WorkflowBuilderEditor({
             onAddStep={addStep}
             onAddEdge={addEdge}
             onStepPositionChange={updateStepPosition}
-            onStepIdChange={handleStepIdChange}
-            onStepTypeChange={handleStepTypeChange}
-            onStepPanelChange={handleStepPanelChange}
           />
         </section>
 
-        <aside className="hidden h-full rounded-2xl border border-(--color-border) bg-(--color-surface-muted) p-4 lg:block">
-          <div className="mb-3">
-            <h2 className="text-sm font-semibold text-(--color-text-primary)">{inspectorTitle}</h2>
-            <p className="mt-1 text-xs text-(--color-text-secondary)">
-              Sidebar changes based on current canvas selection.
-            </p>
-          </div>
+        <aside className="hidden h-full min-h-0 min-w-0 rounded-2xl border border-(--color-border) bg-(--color-surface-muted) p-3 lg:block">
+          <div className="h-full space-y-3 overflow-y-auto pr-1">
+            {selection.kind === 'canvas' ? (
+              <WorkflowMetaInspectorPanel
+                draft={draft}
+                pending={isPending}
+                onUpdate={updateDraft}
+                onSave={() => {
+                  void saveWorkflow();
+                }}
+              />
+            ) : null}
 
-          <div className="h-[calc(100%-50px)] overflow-y-auto pr-1">
             {selection.kind === 'trigger' ? (
               <TriggerInspectorPanel draft={draft} fieldErrors={fieldErrors} onUpdate={updateDraft} />
             ) : null}
@@ -157,16 +132,17 @@ export function WorkflowBuilderEditor({
               <StepInspectorPanel
                 draft={draft}
                 step={selectedStep}
-                activePanel={selection.kind === 'step' ? selection.panel : 'retry'}
+                activePanel={selection.kind === 'step' ? selection.panel : 'config'}
                 fieldErrors={fieldErrors}
+                onChangePanel={(panel) => {
+                  handleStepPanelChange(selectedStep.key, panel);
+                }}
                 onUpdateStep={updateStep}
                 onUpdateEdgeCondition={updateEdgeCondition}
                 onRemoveEdge={removeEdge}
                 onDeleteStep={deleteStep}
               />
             ) : null}
-
-            {selection.kind === 'canvas' ? <WorkflowMetaInspectorPanel draft={draft} /> : null}
           </div>
         </aside>
       </div>
@@ -211,7 +187,18 @@ export function WorkflowBuilderEditor({
                 </button>
               </div>
 
-              <div className="max-h-[68vh] overflow-y-auto pr-1">
+              <div className="max-h-[68vh] space-y-4 overflow-y-auto pr-1">
+                {selection.kind === 'canvas' ? (
+                  <WorkflowMetaInspectorPanel
+                    draft={draft}
+                    pending={isPending}
+                    onUpdate={updateDraft}
+                    onSave={() => {
+                      void saveWorkflow();
+                    }}
+                  />
+                ) : null}
+
                 {selection.kind === 'trigger' ? (
                   <TriggerInspectorPanel
                     draft={draft}
@@ -224,16 +211,17 @@ export function WorkflowBuilderEditor({
                   <StepInspectorPanel
                     draft={draft}
                     step={selectedStep}
-                    activePanel={selection.kind === 'step' ? selection.panel : 'retry'}
+                    activePanel={selection.kind === 'step' ? selection.panel : 'config'}
                     fieldErrors={fieldErrors}
+                    onChangePanel={(panel) => {
+                      handleStepPanelChange(selectedStep.key, panel);
+                    }}
                     onUpdateStep={updateStep}
                     onUpdateEdgeCondition={updateEdgeCondition}
                     onRemoveEdge={removeEdge}
                     onDeleteStep={deleteStep}
                   />
                 ) : null}
-
-                {selection.kind === 'canvas' ? <WorkflowMetaInspectorPanel draft={draft} /> : null}
               </div>
             </div>
           </div>

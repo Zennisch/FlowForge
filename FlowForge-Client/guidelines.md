@@ -168,8 +168,6 @@ src/
 │   │
 │   ├── workflow/                      # Workflow-domain components
 │   │   ├── WorkflowCard.tsx
-│   │   ├── WorkflowForm.tsx           # Create / edit form (React Hook Form)
-│   │   ├── StepList.tsx               # Ordered step editor
 │   │   └── DeleteWorkflowModal.tsx
 │   │
 │   └── execution/                     # Execution-domain components
