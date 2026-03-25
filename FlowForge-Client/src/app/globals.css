@@ -214,3 +214,28 @@ body {
 .dark .ff-workflow-minimap svg .react-flow__minimap-node {
   fill: #3f3f46 !important;
 }
+
+.dark .ff-workflow-controls {
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.dark .ff-workflow-controls button {
+  background-color: #18181b;
+  border-bottom: 1px solid #27272a;
+  color: #e4e4e7;
+}
+
+.dark .ff-workflow-controls button:last-child {
+  border-bottom: 0;
+}
+
+.dark .ff-workflow-controls button:hover {
+  background-color: #27272a;
+}
+
+.dark .ff-workflow-controls button svg {
+  fill: #e4e4e7;
+}

@@ -231,7 +231,7 @@ export function WorkflowGraphCanvas({
           nodeColor="var(--color-primary)"
           maskColor="color-mix(in srgb, var(--color-surface-base), transparent 35%)"
         />
-        <Controls showInteractive={false} />
+        <Controls className="ff-workflow-controls" showInteractive={false} />
       </ReactFlow>
     </div>
   );
