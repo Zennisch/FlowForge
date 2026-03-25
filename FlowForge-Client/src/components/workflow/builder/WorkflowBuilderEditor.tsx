@@ -132,7 +132,7 @@ export function WorkflowBuilderEditor({
               <StepInspectorPanel
                 draft={draft}
                 step={selectedStep}
-                activePanel={selection.kind === 'step' ? selection.panel : 'retry'}
+                activePanel={selection.kind === 'step' ? selection.panel : 'config'}
                 fieldErrors={fieldErrors}
                 onChangePanel={(panel) => {
                   handleStepPanelChange(selectedStep.key, panel);
@@ -211,7 +211,7 @@ export function WorkflowBuilderEditor({
                   <StepInspectorPanel
                     draft={draft}
                     step={selectedStep}
-                    activePanel={selection.kind === 'step' ? selection.panel : 'retry'}
+                    activePanel={selection.kind === 'step' ? selection.panel : 'config'}
                     fieldErrors={fieldErrors}
                     onChangePanel={(panel) => {
                       handleStepPanelChange(selectedStep.key, panel);

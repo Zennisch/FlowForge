@@ -89,7 +89,7 @@ export function useWorkflowBuilderState({ workflow }: UseWorkflowBuilderStatePar
       });
 
       if (nextStepKey) {
-        setSelection({ kind: 'step', stepKey: nextStepKey, panel: 'retry' });
+        setSelection({ kind: 'step', stepKey: nextStepKey, panel: 'config' });
       }
     },
     []

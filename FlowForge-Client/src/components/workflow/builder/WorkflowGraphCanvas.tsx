@@ -214,7 +214,7 @@ export function WorkflowGraphCanvas({
               panel:
                 selection.kind === 'step' && selection.stepKey === stepKey
                   ? selection.panel
-                  : 'retry',
+                  : 'config',
             });
           }
         }}

@@ -78,21 +78,21 @@ export function StepInspectorPanel({
         <div className="mt-4 grid grid-cols-2 gap-2">
           <ZButton
             size="xs"
-            variant={activePanel === 'retry' ? 'primary' : 'secondary'}
-            onClick={() => {
-              onChangePanel('retry');
-            }}
-          >
-            Retry & Error
-          </ZButton>
-          <ZButton
-            size="xs"
             variant={activePanel === 'config' ? 'primary' : 'secondary'}
             onClick={() => {
               onChangePanel('config');
             }}
           >
             Step Config
+          </ZButton>
+          <ZButton
+            size="xs"
+            variant={activePanel === 'retry' ? 'primary' : 'secondary'}
+            onClick={() => {
+              onChangePanel('retry');
+            }}
+          >
+            Retry & Error
           </ZButton>
         </div>
       </section>
