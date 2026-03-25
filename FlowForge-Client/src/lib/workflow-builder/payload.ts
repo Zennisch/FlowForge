@@ -19,8 +19,79 @@ import type { Workflow } from '@/types/workflow.types';
 function createDefaultStepPosition(index: number): { x: number; y: number } {
   return {
     x: 520,
-    y: 40 + index * 178,
+    y: 40 + index * 250,
   };
+}
+
+function computeStepLayout(
+  stepIds: string[],
+  edges: Array<{ from: string; to: string }>
+): Map<string, { x: number; y: number }> {
+  const incoming = new Map<string, number>();
+  const outgoing = new Map<string, string[]>();
+
+  stepIds.forEach((id) => {
+    incoming.set(id, 0);
+    outgoing.set(id, []);
+  });
+
+  edges.forEach((edge) => {
+    if (!incoming.has(edge.to) || !outgoing.has(edge.from)) {
+      return;
+    }
+
+    incoming.set(edge.to, (incoming.get(edge.to) ?? 0) + 1);
+    outgoing.get(edge.from)?.push(edge.to);
+  });
+
+  const queue: string[] = stepIds.filter((id) => (incoming.get(id) ?? 0) === 0);
+  const level = new Map<string, number>();
+  queue.forEach((id) => level.set(id, 0));
+
+  let cursor = 0;
+  while (cursor < queue.length) {
+    const current = queue[cursor];
+    cursor += 1;
+
+    const currentLevel = level.get(current) ?? 0;
+    const children = outgoing.get(current) ?? [];
+
+    children.forEach((child) => {
+      const nextLevel = Math.max(level.get(child) ?? 0, currentLevel + 1);
+      level.set(child, nextLevel);
+
+      const nextIncoming = (incoming.get(child) ?? 0) - 1;
+      incoming.set(child, nextIncoming);
+      if (nextIncoming === 0) {
+        queue.push(child);
+      }
+    });
+  }
+
+  const groups = new Map<number, string[]>();
+  stepIds.forEach((id) => {
+    const nodeLevel = level.get(id) ?? 0;
+    const list = groups.get(nodeLevel) ?? [];
+    list.push(id);
+    groups.set(nodeLevel, list);
+  });
+
+  const positions = new Map<string, { x: number; y: number }>();
+  const sortedLevels = [...groups.keys()].sort((a, b) => a - b);
+
+  sortedLevels.forEach((nodeLevel) => {
+    const ids = groups.get(nodeLevel) ?? [];
+    ids.sort((a, b) => a.localeCompare(b));
+
+    ids.forEach((id, index) => {
+      positions.set(id, {
+        x: 420 + nodeLevel * 350,
+        y: 40 + index * 250,
+      });
+    });
+  });
+
+  return positions;
 }
 
 function readStringFromConfig(config: Record<string, unknown>, keys: string[]): string {
@@ -259,6 +330,12 @@ export function workflowToBuilderDraft(workflow?: Workflow): WorkflowBuilderDraf
         : triggerConfig;
 
   const stepKeyById = new Map<string, string>();
+  const stepIds = workflow.steps.map((step) => step.id);
+  const layout = computeStepLayout(
+    stepIds,
+    workflow.edges.map((edge) => ({ from: edge.from, to: edge.to }))
+  );
+
   const steps = workflow.steps.map((step, index) => {
     const key = `step-${step.id}-${Math.random().toString(36).slice(2, 7)}`;
     stepKeyById.set(step.id, key);
@@ -267,7 +344,7 @@ export function workflowToBuilderDraft(workflow?: Workflow): WorkflowBuilderDraf
       key,
       id: step.id,
       type: step.type,
-      position: createDefaultStepPosition(index),
+      position: layout.get(step.id) ?? createDefaultStepPosition(index),
       maxAttempts: step.retry?.maxAttempts ?? 3,
       backoff: step.retry?.backoff ?? 'exponential',
       configText: JSON.stringify(step.config ?? {}, null, 2),

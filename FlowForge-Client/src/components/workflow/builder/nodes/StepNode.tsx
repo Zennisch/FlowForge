@@ -5,6 +5,7 @@ import { Database, GitBranch, Globe, Plus, Shuffle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import ZButton from '@/components/primary/ZButton';
+import ZSelect from '@/components/primary/ZSelect';
 import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
 import type { StepType } from '@/types/workflow.types';
 
@@ -55,18 +56,20 @@ export function StepNode({ data, selected }: NodeProps<StepNodeData>) {
 
       <div className="flex items-start justify-between gap-2.5">
         <div className="nodrag nowheel flex min-w-0 flex-1 flex-col gap-2" data-node-control="true">
-          <select
+          <ZSelect
+            size="sm"
+            fullWidth
             value={data.stepType}
-            onChange={(event) => {
-              data.onStepTypeChange(data.stepKey, event.target.value as StepType);
+            options={[
+              { label: 'HTTP', value: 'http' },
+              { label: 'TRANSFORM', value: 'transform' },
+              { label: 'STORE', value: 'store' },
+              { label: 'BRANCH', value: 'branch' },
+            ]}
+            onChange={(value) => {
+              data.onStepTypeChange(data.stepKey, value as StepType);
             }}
-            className="w-full rounded-lg border border-(--color-border) bg-(--color-surface-base) px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-(--color-text-secondary) outline-none transition-colors focus:border-(--color-primary)"
-          >
-            <option value="http">HTTP</option>
-            <option value="transform">Transform</option>
-            <option value="store">Store</option>
-            <option value="branch">Branch</option>
-          </select>
+          />
 
           <input
             type="text"
@@ -141,33 +144,7 @@ export function StepNode({ data, selected }: NodeProps<StepNodeData>) {
         </div>
       ) : null}
 
-      {data.stepType === 'branch' ? (
-        <>
-          <Handle
-            type="source"
-            id="branch-left"
-            position={Position.Bottom}
-            style={{ left: '25%' }}
-            className="!h-3 !w-3 !bg-(--color-primary)"
-          />
-          <Handle
-            type="source"
-            id="branch-center"
-            position={Position.Bottom}
-            style={{ left: '50%' }}
-            className="!h-3 !w-3 !bg-(--color-primary)"
-          />
-          <Handle
-            type="source"
-            id="branch-right"
-            position={Position.Bottom}
-            style={{ left: '75%' }}
-            className="!h-3 !w-3 !bg-(--color-primary)"
-          />
-        </>
-      ) : (
-        <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !bg-(--color-primary)" />
-      )}
+      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !bg-(--color-primary)" />
     </div>
   );
 }

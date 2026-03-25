@@ -12,7 +12,6 @@ import ZButton from '@/components/primary/ZButton';
 import { StepInspectorPanel } from './inspector/StepInspectorPanel';
 import { TriggerInspectorPanel } from './inspector/TriggerInspectorPanel';
 import { WorkflowMetaInspectorPanel } from './inspector/WorkflowMetaInspectorPanel';
-import { WorkflowBuilderToolbar } from './WorkflowBuilderToolbar';
 import { WorkflowGraphCanvas } from './WorkflowGraphCanvas';
 import { useWorkflowBuilderState } from './useWorkflowBuilderState';
 
@@ -97,16 +96,6 @@ export function WorkflowBuilderEditor({
 
   return (
     <div className="space-y-4">
-      <WorkflowBuilderToolbar
-        mode={mode}
-        draft={draft}
-        pending={isPending}
-        onUpdate={updateDraft}
-        onSave={() => {
-          void saveWorkflow();
-        }}
-      />
-
       {fieldErrors.name ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {fieldErrors.name}
@@ -125,7 +114,7 @@ export function WorkflowBuilderEditor({
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:h-[calc(100vh-260px)] lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-4 lg:h-[calc(100vh-190px)] lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="h-full">
           <WorkflowGraphCanvas
             draft={draft}
@@ -141,14 +130,18 @@ export function WorkflowBuilderEditor({
         </section>
 
         <aside className="hidden h-full rounded-2xl border border-(--color-border) bg-(--color-surface-muted) p-4 lg:block">
-          <div className="mb-3">
-            <h2 className="text-sm font-semibold text-(--color-text-primary)">{inspectorTitle}</h2>
-            <p className="mt-1 text-xs text-(--color-text-secondary)">
-              Sidebar changes based on current canvas selection.
-            </p>
-          </div>
+          <div className="h-full space-y-4 overflow-y-auto pr-1">
+            {selection.kind === 'canvas' ? (
+              <WorkflowMetaInspectorPanel
+                draft={draft}
+                pending={isPending}
+                onUpdate={updateDraft}
+                onSave={() => {
+                  void saveWorkflow();
+                }}
+              />
+            ) : null}
 
-          <div className="h-[calc(100%-50px)] overflow-y-auto pr-1">
             {selection.kind === 'trigger' ? (
               <TriggerInspectorPanel draft={draft} fieldErrors={fieldErrors} onUpdate={updateDraft} />
             ) : null}
@@ -165,8 +158,6 @@ export function WorkflowBuilderEditor({
                 onDeleteStep={deleteStep}
               />
             ) : null}
-
-            {selection.kind === 'canvas' ? <WorkflowMetaInspectorPanel draft={draft} /> : null}
           </div>
         </aside>
       </div>
@@ -211,7 +202,18 @@ export function WorkflowBuilderEditor({
                 </button>
               </div>
 
-              <div className="max-h-[68vh] overflow-y-auto pr-1">
+              <div className="max-h-[68vh] space-y-4 overflow-y-auto pr-1">
+                {selection.kind === 'canvas' ? (
+                  <WorkflowMetaInspectorPanel
+                    draft={draft}
+                    pending={isPending}
+                    onUpdate={updateDraft}
+                    onSave={() => {
+                      void saveWorkflow();
+                    }}
+                  />
+                ) : null}
+
                 {selection.kind === 'trigger' ? (
                   <TriggerInspectorPanel
                     draft={draft}
@@ -232,8 +234,6 @@ export function WorkflowBuilderEditor({
                     onDeleteStep={deleteStep}
                   />
                 ) : null}
-
-                {selection.kind === 'canvas' ? <WorkflowMetaInspectorPanel draft={draft} /> : null}
               </div>
             </div>
           </div>

@@ -135,18 +135,20 @@ export function WorkflowGraphCanvas({
   }, [baseNodes]);
 
   const edges = useMemo<Edge[]>(() => {
-    return draft.edges.map((edge) => ({
-      id: edge.key,
-      source: stepNodeId(edge.fromStepKey),
-      target: stepNodeId(edge.toStepKey),
-      label: edge.condition || undefined,
-      animated: false,
-      style: { stroke: 'var(--color-border-hover)', strokeWidth: 2 },
-      labelStyle: {
-        fontSize: 11,
-        fill: 'var(--color-text-secondary)',
-      },
-    }));
+    return draft.edges.map((edge) => {
+      return {
+        id: edge.key,
+        source: stepNodeId(edge.fromStepKey),
+        target: stepNodeId(edge.toStepKey),
+        label: edge.condition || undefined,
+        animated: false,
+        style: { stroke: 'var(--color-border-hover)', strokeWidth: 2 },
+        labelStyle: {
+          fontSize: 11,
+          fill: 'var(--color-text-secondary)',
+        },
+      };
+    });
   }, [draft.edges]);
 
   const defaultViewport = useMemo(() => ({ x: -90, y: 0, zoom: 0.9 }), []);
