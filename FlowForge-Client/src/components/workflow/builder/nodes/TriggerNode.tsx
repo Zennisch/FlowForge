@@ -1,6 +1,6 @@
 'use client';
 
-import { Handle, Position, type NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import { Plus, Zap } from 'lucide-react';
 import { useState } from 'react';
 
@@ -73,7 +73,6 @@ export function TriggerNode({ data, selected }: NodeProps<TriggerNodeData>) {
         </div>
       ) : null}
 
-      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !bg-(--color-primary)" />
     </div>
   );
 }

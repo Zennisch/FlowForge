@@ -66,23 +66,6 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
-        <h3 className="text-sm font-semibold text-(--color-text-primary)">General Info</h3>
-        <div className="mt-3">
-          <ZTextInput
-            label="Description"
-            multiline
-            rows={3}
-            fullWidth
-            value={draft.description}
-            onChange={(event) => {
-              const value = event.target.value;
-              onUpdate((current) => ({ ...current, description: value }));
-            }}
-          />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
         <h3 className="text-sm font-semibold text-(--color-text-primary)">Trigger Configuration</h3>
         <div className="mt-3 space-y-3">
           <ZSelect
