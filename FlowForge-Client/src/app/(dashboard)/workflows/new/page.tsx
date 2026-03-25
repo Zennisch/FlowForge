@@ -3,27 +3,25 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { WorkflowForm } from '@/components/workflow/WorkflowForm';
+import { WorkflowBuilderEditor } from '@/components/workflow/builder/WorkflowBuilderEditor';
 import { useCreateWorkflow } from '@/hooks/useWorkflows';
 import type { CreateWorkflowRequest } from '@/types/workflow.types';
 
 export default function NewWorkflowPage() {
   const createWorkflowMutation = useCreateWorkflow();
-  const [formInstanceKey, setFormInstanceKey] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleCreateWorkflow = async (payload: CreateWorkflowRequest) => {
     await createWorkflowMutation.mutateAsync(payload);
-    setSuccessMessage('Workflow created successfully. Form has been reset for a new workflow.');
-    setFormInstanceKey((prev) => prev + 1);
+    setSuccessMessage('Workflow created successfully.');
   };
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+    <main className="w-full px-4 py-6 sm:px-6 sm:py-8">
       <section className="rounded-2xl border border-(--color-border) bg-white p-6">
         <h1 className="text-xl font-semibold text-(--color-text-primary)">Create workflow</h1>
         <p className="mt-2 text-sm text-(--color-text-secondary)">
-          Define metadata, ordered steps, and DAG edges for your new workflow.
+          Build your workflow directly on canvas and configure nodes in the contextual inspector.
         </p>
 
         {successMessage ? (
@@ -39,8 +37,7 @@ export default function NewWorkflowPage() {
         ) : null}
 
         <div className="mt-6">
-          <WorkflowForm
-            key={formInstanceKey}
+          <WorkflowBuilderEditor
             mode="create"
             isPending={createWorkflowMutation.isPending}
             submitError={
