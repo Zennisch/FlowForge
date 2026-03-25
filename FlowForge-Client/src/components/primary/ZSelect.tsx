@@ -205,7 +205,7 @@ const ZSelectComponent = <T extends string | number>(
 
   const handleSelect = (optionValue: T) => {
     if (multiple) {
-      let newValue: T[] = [];
+      let newValue: T[];
       const currentArray = (Array.isArray(currentValue) ? currentValue : []) as T[];
 
       if (currentArray.includes(optionValue)) {
