@@ -192,7 +192,7 @@ export function WorkflowGraphCanvas({
   );
 
   return (
-    <div className="h-[64vh] w-full overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-surface-muted) lg:h-full">
+    <div className="h-full min-h-0 w-full overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-surface-muted)">
       <ReactFlow
         nodes={decoratedNodes}
         edges={edges}

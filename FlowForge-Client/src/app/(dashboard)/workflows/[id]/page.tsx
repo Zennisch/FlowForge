@@ -30,12 +30,12 @@ export default function WorkflowDetailPage() {
   };
 
   return (
-    <main className="w-full px-4 py-6 sm:px-6 sm:py-8">
-      <section className="rounded-2xl border border-(--color-border) bg-white p-6">
+    <main className="h-full w-full p-3 sm:p-4">
+      <section className="flex h-full min-h-0 flex-col rounded-2xl border border-(--color-border) bg-white p-4">
         <div>
-          <div className='flex flex-row gap-2'>
-            <h1 className="text-xl font-semibold text-(--color-text-primary)">Workflow details</h1>
-            <p className="mt-2 text-sm text-(--color-text-secondary)">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-semibold text-(--color-text-primary)">Workflow details</h1>
+            <p className="text-sm text-(--color-text-secondary)">
               Edit workflow metadata, steps, and DAG edge configuration.
             </p>
           </div>
@@ -75,7 +75,7 @@ export default function WorkflowDetailPage() {
         ) : null}
 
         {workflowQuery.data ? (
-          <div className="mt-6 space-y-4">
+          <div className="mt-3 min-h-0 flex-1 space-y-3">
             {saveMessage ? (
               <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
                 {saveMessage}

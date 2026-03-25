@@ -95,7 +95,7 @@ export function WorkflowBuilderEditor({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-x-hidden">
       {fieldErrors.name ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {fieldErrors.name}
@@ -114,8 +114,8 @@ export function WorkflowBuilderEditor({
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:h-[calc(100vh-190px)] lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="h-full">
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="h-full min-h-0 min-w-0">
           <WorkflowGraphCanvas
             draft={draft}
             selection={selection}
@@ -129,8 +129,8 @@ export function WorkflowBuilderEditor({
           />
         </section>
 
-        <aside className="hidden h-full rounded-2xl border border-(--color-border) bg-(--color-surface-muted) p-4 lg:block">
-          <div className="h-full space-y-4 overflow-y-auto pr-1">
+        <aside className="hidden h-full min-h-0 min-w-0 rounded-2xl border border-(--color-border) bg-(--color-surface-muted) p-3 lg:block">
+          <div className="h-full space-y-3 overflow-y-auto pr-1">
             {selection.kind === 'canvas' ? (
               <WorkflowMetaInspectorPanel
                 draft={draft}
