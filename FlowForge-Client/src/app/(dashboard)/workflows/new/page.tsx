@@ -19,10 +19,12 @@ export default function NewWorkflowPage() {
   return (
     <main className="w-full px-4 py-6 sm:px-6 sm:py-8">
       <section className="rounded-2xl border border-(--color-border) bg-white p-6">
-        <h1 className="text-xl font-semibold text-(--color-text-primary)">Create workflow</h1>
-        <p className="mt-2 text-sm text-(--color-text-secondary)">
-          Build your workflow directly on canvas and configure nodes in the contextual inspector.
-        </p>
+        <div className='flex flex-row gap-2'>
+          <h1 className="text-xl font-semibold text-(--color-text-primary)">Create workflow</h1>
+          <p className="mt-2 text-sm text-(--color-text-secondary)">
+            Build your workflow directly on canvas and configure nodes in the contextual inspector.
+          </p>
+        </div>
 
         {successMessage ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">

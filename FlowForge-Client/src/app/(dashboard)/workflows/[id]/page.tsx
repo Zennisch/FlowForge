@@ -33,7 +33,7 @@ export default function WorkflowDetailPage() {
     <main className="w-full px-4 py-6 sm:px-6 sm:py-8">
       <section className="rounded-2xl border border-(--color-border) bg-white p-6">
         <div>
-          <div>
+          <div className='flex flex-row gap-2'>
             <h1 className="text-xl font-semibold text-(--color-text-primary)">Workflow details</h1>
             <p className="mt-2 text-sm text-(--color-text-secondary)">
               Edit workflow metadata, steps, and DAG edge configuration.
