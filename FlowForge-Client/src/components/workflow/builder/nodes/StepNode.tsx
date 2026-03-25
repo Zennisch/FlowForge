@@ -5,18 +5,12 @@ import { Database, GitBranch, Globe, Plus, Shuffle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import ZButton from '@/components/primary/ZButton';
-import ZSelect from '@/components/primary/ZSelect';
-import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
 import type { StepType } from '@/types/workflow.types';
 
 interface StepNodeData {
   stepId: string;
   stepType: StepType;
-  activePanel: StepInspectorPanelKind;
   onCreateStep: (fromStepKey: string, type: StepType) => void;
-  onStepIdChange: (stepKey: string, nextId: string) => void;
-  onStepTypeChange: (stepKey: string, nextType: StepType) => void;
-  onStepPanelChange: (stepKey: string, panel: StepInspectorPanelKind) => void;
   stepKey: string;
 }
 
@@ -45,6 +39,7 @@ function getTypeIcon(type: StepType) {
 export function StepNode({ data, selected }: NodeProps<StepNodeData>) {
   const [open, setOpen] = useState(false);
   const Icon = useMemo(() => getTypeIcon(data.stepType), [data.stepType]);
+  const displayStepId = data.stepId.trim() ? data.stepId : 'Untitled Step';
 
   return (
     <div
@@ -52,68 +47,23 @@ export function StepNode({ data, selected }: NodeProps<StepNodeData>) {
         selected ? 'border-(--color-primary)' : 'border-(--color-border)'
       }`}
     >
-      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !bg-(--color-border-hover)" />
+      <Handle type="target" position={Position.Top} className="h-3! w-3! bg-(--color-border-hover)!" />
 
-      <div className="flex items-start justify-between gap-2.5">
-        <div className="nodrag nowheel flex min-w-0 flex-1 flex-col gap-2" data-node-control="true">
-          <ZSelect
-            size="sm"
-            fullWidth
-            value={data.stepType}
-            options={[
-              { label: 'HTTP', value: 'http' },
-              { label: 'TRANSFORM', value: 'transform' },
-              { label: 'STORE', value: 'store' },
-              { label: 'BRANCH', value: 'branch' },
-            ]}
-            onChange={(value) => {
-              data.onStepTypeChange(data.stepKey, value as StepType);
-            }}
-          />
-
-          <input
-            type="text"
-            value={data.stepId}
-            onChange={(event) => {
-              data.onStepIdChange(data.stepKey, event.target.value);
-            }}
-            className="w-full rounded-lg border border-(--color-border) bg-(--color-surface-base) px-2.5 py-1.5 text-sm font-semibold text-(--color-text-primary) outline-none transition-colors focus:border-(--color-primary)"
-          />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-(--color-text-secondary)">
+            {data.stepType} step
+          </p>
+          <h3 className="mt-1 truncate text-sm font-semibold text-(--color-text-primary)">
+            {displayStepId}
+          </h3>
         </div>
         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-(--color-surface-muted) text-(--color-primary)">
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
       </div>
 
-      <div
-        className="nodrag nowheel mt-3 space-y-2.5 rounded-xl border border-(--color-border) bg-(--color-surface-muted) p-2.5"
-        data-node-control="true"
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <ZButton
-            size="xs"
-            variant={data.activePanel === 'retry' ? 'primary' : 'secondary'}
-            onClick={(event) => {
-              event.stopPropagation();
-              data.onStepPanelChange(data.stepKey, 'retry');
-            }}
-          >
-            Retry & Error
-          </ZButton>
-          <ZButton
-            size="xs"
-            variant={data.activePanel === 'config' ? 'primary' : 'secondary'}
-            onClick={(event) => {
-              event.stopPropagation();
-              data.onStepPanelChange(data.stepKey, 'config');
-            }}
-          >
-            Step Config
-          </ZButton>
-        </div>
-      </div>
-
-      <div className="mt-4 flex justify-end">
+      <div className="nodrag nowheel mt-4 flex justify-end" data-node-control="true">
         <ZButton
           size="xs"
           variant="secondary"
@@ -144,7 +94,7 @@ export function StepNode({ data, selected }: NodeProps<StepNodeData>) {
         </div>
       ) : null}
 
-      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !bg-(--color-primary)" />
+      <Handle type="source" position={Position.Bottom} className="h-3! w-3! bg-(--color-primary)!" />
     </div>
   );
 }

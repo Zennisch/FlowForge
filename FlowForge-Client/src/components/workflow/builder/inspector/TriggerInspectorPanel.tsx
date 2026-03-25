@@ -7,9 +7,11 @@ import ZButton from '@/components/primary/ZButton';
 import ZSelect from '@/components/primary/ZSelect';
 import ZSwitch from '@/components/primary/ZSwitch';
 import ZTextInput from '@/components/primary/ZTextInput';
+import { extractUserFromAccessToken } from '@/lib/utils/auth-token';
 import { cronToHumanText } from '@/lib/workflow-builder/cron';
 import { normalizeWebhookPath } from '@/lib/workflow-builder/helpers';
 import { getTimezoneOptions } from '@/lib/workflow-builder/timezone';
+import { useAuthStore } from '@/store/auth.store';
 import type { WorkflowBuilderDraft } from '@/lib/workflow-builder/types';
 
 import { JsonCodeEditor } from '../JsonCodeEditor';
@@ -37,6 +39,20 @@ const webhookMethodOptions = [
 export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerInspectorPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+
+  const currentUserId = useMemo(() => {
+    if (user?.id) {
+      return user.id;
+    }
+
+    if (!token) {
+      return '';
+    }
+
+    return extractUserFromAccessToken(token)?.id ?? '';
+  }, [token, user?.id]);
 
   const timezoneOptions = useMemo(
     () => getTimezoneOptions().map((zone) => ({ label: zone, value: zone })),
@@ -45,9 +61,10 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
   const normalizedPath = normalizeWebhookPath(draft.trigger.webhookPath);
+  const webhookUserId = currentUserId || '(user-id)';
   const fullWebhookUrl = normalizedPath
-    ? `${apiBase || ''}/webhook/${draft.id || '(user-id)'}/${normalizedPath}`
-    : `${apiBase || ''}/webhook/${draft.id || '(user-id)'}/<path>`;
+    ? `${apiBase || ''}/webhook/${webhookUserId}/${normalizedPath}`
+    : `${apiBase || ''}/webhook/${webhookUserId}/<path>`;
 
   const cronDescription = cronToHumanText(draft.trigger.scheduleCron);
 
@@ -88,27 +105,33 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
             <>
               <div className="space-y-2 rounded-xl border border-(--color-border) bg-(--color-surface-muted) p-3">
                 <p className="text-xs font-medium text-(--color-text-secondary)">Webhook URL</p>
-                <div className="flex items-center gap-2">
-                  <span className="truncate rounded-lg border border-(--color-border) bg-(--color-surface-base) px-2 py-2 text-xs text-(--color-text-secondary)">
-                    /webhook/{draft.id || '(user-id)'}/
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <ZTextInput
-                      fullWidth
-                      value={draft.trigger.webhookPath}
-                      placeholder="workflow-order-sync"
-                      error={fieldErrors['trigger.webhookPath']}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        onUpdate((current) => ({
-                          ...current,
-                          trigger: { ...current.trigger, webhookPath: value },
-                        }));
-                      }}
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-(--color-text-secondary)">
+                    Prefix
+                  </p>
+                  <p className="break-all text-xs text-(--color-text-secondary)">
+                    /webhook/{webhookUserId}/
+                  </p>
+                </div>
+
+                <input
+                  type="text"
+                  value={draft.trigger.webhookPath}
+                  placeholder="workflow-order-sync"
+                  className="w-full min-w-0 rounded-lg border border-(--color-border) bg-(--color-surface-base) px-2 py-2 text-sm text-(--color-text-primary) outline-none transition-colors focus:border-(--color-primary) placeholder:text-(--color-text-placeholder)"
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    onUpdate((current) => ({
+                      ...current,
+                      trigger: { ...current.trigger, webhookPath: value },
+                    }));
+                  }}
+                />
+
+                <div>
                   <ZButton
                     size="sm"
+                    fullWidth
                     variant="secondary"
                     iconStart={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     onClick={() => {
@@ -118,6 +141,9 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
                     {copied ? 'Copied' : 'Copy URL'}
                   </ZButton>
                 </div>
+                {fieldErrors['trigger.webhookPath'] ? (
+                  <p className="text-xs text-(--color-error)">{fieldErrors['trigger.webhookPath']}</p>
+                ) : null}
                 <p className="truncate text-xs text-(--color-text-secondary)">{fullWebhookUrl}</p>
               </div>
 

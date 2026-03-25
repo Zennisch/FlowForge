@@ -15,7 +15,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { BuilderSelection, WorkflowBuilderDraft } from '@/lib/workflow-builder/types';
-import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
 import type { StepType } from '@/types/workflow.types';
 
 import { StepNode } from './nodes/StepNode';
@@ -30,9 +29,6 @@ interface WorkflowGraphCanvasProps {
   onAddStep: (type: StepType, fromStepKey?: string) => void;
   onAddEdge: (fromStepKey: string, toStepKey: string) => void;
   onStepPositionChange: (stepKey: string, position: { x: number; y: number }) => void;
-  onStepIdChange: (stepKey: string, nextId: string) => void;
-  onStepTypeChange: (stepKey: string, nextType: StepType) => void;
-  onStepPanelChange: (stepKey: string, panel: StepInspectorPanelKind) => void;
 }
 
 const TRIGGER_NODE_ID = 'trigger';
@@ -61,9 +57,6 @@ export function WorkflowGraphCanvas({
   onAddStep,
   onAddEdge,
   onStepPositionChange,
-  onStepIdChange,
-  onStepTypeChange,
-  onStepPanelChange,
 }: WorkflowGraphCanvasProps) {
   const baseNodes = useMemo<Node[]>(() => {
     const graphNodes: Node[] = [
@@ -89,11 +82,6 @@ export function WorkflowGraphCanvas({
           stepKey: step.key,
           stepId: step.id,
           stepType: step.type,
-          activePanel:
-            selection.kind === 'step' && selection.stepKey === step.key ? selection.panel : 'retry',
-          onStepIdChange,
-          onStepTypeChange,
-          onStepPanelChange,
           onCreateStep: (fromStepKey: string, type: StepType) => onAddStep(type, fromStepKey),
         },
       });
@@ -104,10 +92,6 @@ export function WorkflowGraphCanvas({
     draft.steps,
     draft.trigger.type,
     onAddStep,
-    onStepIdChange,
-    onStepPanelChange,
-    onStepTypeChange,
-    selection,
   ]);
 
   const [graphNodes, setGraphNodes] = useState<Node[]>(baseNodes);
@@ -241,6 +225,7 @@ export function WorkflowGraphCanvas({
       >
         <Background gap={20} size={1} color="var(--color-border-subtle)" />
         <MiniMap
+          className="ff-workflow-minimap"
           zoomable
           pannable
           nodeColor="var(--color-primary)"

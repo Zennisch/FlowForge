@@ -6,7 +6,6 @@ import { PanelBottomClose, PanelBottomOpen, X } from 'lucide-react';
 import { buildCreateWorkflowPayload } from '@/lib/workflow-builder/payload';
 import type { WorkflowBuilderEditorProps } from '@/lib/workflow-builder/types';
 import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
-import type { StepType } from '@/types/workflow.types';
 import ZButton from '@/components/primary/ZButton';
 
 import { StepInspectorPanel } from './inspector/StepInspectorPanel';
@@ -73,20 +72,6 @@ export function WorkflowBuilderEditor({
     setMobileInspectorOpen(true);
   }, [selection]);
 
-  const handleStepIdChange = useCallback(
-    (stepKey: string, nextId: string) => {
-      updateStep(stepKey, (current) => ({ ...current, id: nextId }));
-    },
-    [updateStep]
-  );
-
-  const handleStepTypeChange = useCallback(
-    (stepKey: string, nextType: StepType) => {
-      updateStep(stepKey, (current) => ({ ...current, type: nextType }));
-    },
-    [updateStep]
-  );
-
   const handleStepPanelChange = useCallback(
     (stepKey: string, panel: StepInspectorPanelKind) => {
       setSelection({ kind: 'step', stepKey, panel });
@@ -123,9 +108,6 @@ export function WorkflowBuilderEditor({
             onAddStep={addStep}
             onAddEdge={addEdge}
             onStepPositionChange={updateStepPosition}
-            onStepIdChange={handleStepIdChange}
-            onStepTypeChange={handleStepTypeChange}
-            onStepPanelChange={handleStepPanelChange}
           />
         </section>
 
@@ -152,6 +134,9 @@ export function WorkflowBuilderEditor({
                 step={selectedStep}
                 activePanel={selection.kind === 'step' ? selection.panel : 'retry'}
                 fieldErrors={fieldErrors}
+                onChangePanel={(panel) => {
+                  handleStepPanelChange(selectedStep.key, panel);
+                }}
                 onUpdateStep={updateStep}
                 onUpdateEdgeCondition={updateEdgeCondition}
                 onRemoveEdge={removeEdge}
@@ -228,6 +213,9 @@ export function WorkflowBuilderEditor({
                     step={selectedStep}
                     activePanel={selection.kind === 'step' ? selection.panel : 'retry'}
                     fieldErrors={fieldErrors}
+                    onChangePanel={(panel) => {
+                      handleStepPanelChange(selectedStep.key, panel);
+                    }}
                     onUpdateStep={updateStep}
                     onUpdateEdgeCondition={updateEdgeCondition}
                     onRemoveEdge={removeEdge}

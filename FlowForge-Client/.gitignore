@@ -5,3 +5,4 @@ pnpm-lock.yaml
 .env.local
 .next/
 tsconfig.tsbuildinfo
+.idea/

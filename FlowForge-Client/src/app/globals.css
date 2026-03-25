@@ -205,3 +205,12 @@ body {
   background-color: rgba(59, 130, 246, 0.85);
   animation-delay: 900ms;
 }
+
+.dark .ff-workflow-minimap {
+  background-color: #18181b;
+  border: 1px solid #27272a;
+}
+
+.dark .ff-workflow-minimap svg .react-flow__minimap-node {
+  fill: #3f3f46 !important;
+}

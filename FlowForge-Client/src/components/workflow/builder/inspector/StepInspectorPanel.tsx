@@ -8,6 +8,7 @@ import ZTextInput from '@/components/primary/ZTextInput';
 import type { BuilderEdgeDraft } from '@/lib/workflow-builder/types';
 import type { BuilderStepDraft, WorkflowBuilderDraft } from '@/lib/workflow-builder/types';
 import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
+import type { StepType } from '@/types/workflow.types';
 
 import { JsonCodeEditor } from '../JsonCodeEditor';
 
@@ -16,6 +17,7 @@ interface StepInspectorPanelProps {
   activePanel: StepInspectorPanelKind;
   draft: WorkflowBuilderDraft;
   fieldErrors: Record<string, string>;
+  onChangePanel: (panel: StepInspectorPanelKind) => void;
   onUpdateStep: (stepKey: string, updater: (step: BuilderStepDraft) => BuilderStepDraft) => void;
   onUpdateEdgeCondition: (edgeKey: string, condition: string) => void;
   onRemoveEdge: (edgeKey: string) => void;
@@ -27,11 +29,19 @@ const backoffOptions = [
   { label: 'Fixed', value: 'fixed' },
 ] as const;
 
+const stepTypeOptions: { label: string; value: StepType }[] = [
+  { label: 'HTTP', value: 'http' },
+  { label: 'TRANSFORM', value: 'transform' },
+  { label: 'STORE', value: 'store' },
+  { label: 'BRANCH', value: 'branch' },
+];
+
 export function StepInspectorPanel({
   step,
   activePanel,
   draft,
   fieldErrors,
+  onChangePanel,
   onUpdateStep,
   onUpdateEdgeCondition,
   onRemoveEdge,
@@ -42,6 +52,51 @@ export function StepInspectorPanel({
 
   return (
     <div className="space-y-5">
+      <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
+        <h3 className="text-sm font-semibold text-(--color-text-primary)">Step Basics</h3>
+        <div className="mt-3 space-y-3">
+          <ZTextInput
+            label="Step ID"
+            fullWidth
+            value={step.id}
+            error={fieldErrors[`step:${step.key}:id`]}
+            onChange={(event) => {
+              onUpdateStep(step.key, (current) => ({ ...current, id: event.target.value }));
+            }}
+          />
+          <ZSelect
+            label="Step Type"
+            fullWidth
+            options={stepTypeOptions}
+            value={step.type}
+            onChange={(value) => {
+              onUpdateStep(step.key, (current) => ({ ...current, type: value as StepType }));
+            }}
+          />
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <ZButton
+            size="xs"
+            variant={activePanel === 'retry' ? 'primary' : 'secondary'}
+            onClick={() => {
+              onChangePanel('retry');
+            }}
+          >
+            Retry & Error
+          </ZButton>
+          <ZButton
+            size="xs"
+            variant={activePanel === 'config' ? 'primary' : 'secondary'}
+            onClick={() => {
+              onChangePanel('config');
+            }}
+          >
+            Step Config
+          </ZButton>
+        </div>
+      </section>
+
       {activePanel === 'retry' ? (
         <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
           <h3 className="text-sm font-semibold text-(--color-text-primary)">Retry & Error Handling</h3>
