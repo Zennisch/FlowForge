@@ -2,7 +2,7 @@ node_modules/
 dist/
 package-lock.json
 pnpm-lock.yaml
-.env.local
+.env
 .next/
 tsconfig.tsbuildinfo
 .idea/

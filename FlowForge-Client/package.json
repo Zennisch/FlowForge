@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "dotenv -e .env.local -- next dev",
+    "dev": "dotenv -e .env -- next dev",
     "build": "next build",
-    "start": "dotenv -e .env.local -- next start",
+    "start": "dotenv -e .env -- next start",
     "type-check": "tsc --noEmit",
     "lint": "next lint",
     "test": "vitest run",
