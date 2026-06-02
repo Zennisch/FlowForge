@@ -1,8 +1,10 @@
-node_modules/
+.next/
+.idea/
 dist/
+docs/qna/
+node_modules/
+
+.env
 package-lock.json
 pnpm-lock.yaml
-.env
-.next/
 tsconfig.tsbuildinfo
-.idea/
