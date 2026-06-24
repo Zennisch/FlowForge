@@ -1,10 +1,1 @@
-.idea/
-node_modules/
-dev/
-dist/
-
 .env
-AGENTS.md
-gcp-credentials.json
-package-lock.json
-pnpm-lock.yaml

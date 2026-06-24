@@ -1,11 +1,2 @@
-.idea/
-node_modules/
-dev/
-dist/
-.next/
-
 .env
-AGENTS.md
-package-lock.json
-pnpm-lock.yaml
 tsconfig.tsbuildinfo
