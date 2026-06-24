@@ -1,9 +1,10 @@
-.antigravitycli/
+.idea/
 node_modules/
+dev/
 dist/
-docs/qna/
 
 .env
+AGENTS.md
 gcp-credentials.json
 package-lock.json
 pnpm-lock.yaml
