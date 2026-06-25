@@ -9,12 +9,19 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { validateCronExpression } from 'cron';
 import { Model, Types } from 'mongoose';
+import {
+  Execution,
+  ExecutionDocument,
+  ExecutionStatus,
+} from '../execution/execution.schema';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
+import { WorkflowInsightsQueryDto } from './dto/workflow-insights-query.dto';
 import { validateWorkflowStepConfigs } from './step-config.validator';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
 import { ValidateDagService } from './validate-dag.service';
 import { Workflow, WorkflowDocument } from './workflow.schema';
 
+const MAX_FILTER_WINDOW_MS = 1000 * 60 * 60 * 24 * 31;
 const DEFAULT_MAX_WORKFLOWS_PER_TENANT = 200;
 const DEFAULT_MAX_STEPS_PER_WORKFLOW = 100;
 const DEFAULT_MAX_EDGES_PER_WORKFLOW = 300;
@@ -22,11 +29,41 @@ const DEFAULT_MAX_ACTIVE_SCHEDULE_WORKFLOWS_PER_TENANT = 50;
 const DEFAULT_MAX_ACTIVE_WEBHOOK_WORKFLOWS_PER_TENANT = 100;
 const DEFAULT_MAX_WORKFLOW_DEFINITION_BYTES = 256 * 1024;
 
+interface WorkflowInsightExecutionItem {
+  id: string;
+  status: ExecutionStatus;
+  started_at?: Date;
+  completed_at?: Date;
+  created_at?: Date;
+}
+
+interface WorkflowInsightItem {
+  workflow_id: string;
+  last_execution: WorkflowInsightExecutionItem | null;
+  recent_executions: WorkflowInsightExecutionItem[];
+  counts: Record<ExecutionStatus, number>;
+}
+
+export interface WorkflowInsightsResponse {
+  summary: {
+    total_workflows: number;
+    active_workflows: number;
+    inactive_workflows: number;
+    executions: number;
+    running: number;
+    success_rate: number | null;
+    failure_rate: number | null;
+  };
+  items: Record<string, WorkflowInsightItem>;
+}
+
 @Injectable()
 export class WorkflowService {
   constructor(
     @InjectModel(Workflow.name)
     private readonly workflowModel: Model<WorkflowDocument>,
+    @InjectModel(Execution.name)
+    private readonly executionModel: Model<ExecutionDocument>,
     private readonly validateDagService: ValidateDagService,
   ) {}
 
@@ -34,6 +71,151 @@ export class WorkflowService {
     return this.workflowModel
       .find({ owner_id: new Types.ObjectId(ownerId) })
       .exec();
+  }
+
+  async findInsights(
+    ownerId: string,
+    query: WorkflowInsightsQueryDto = new WorkflowInsightsQueryDto(),
+  ): Promise<WorkflowInsightsResponse> {
+    const ownerObjectId = new Types.ObjectId(ownerId);
+    const historyLimit = query.history_limit ?? 10;
+    const startedAtRange = this.buildDateRange(
+      query.started_from,
+      query.started_to,
+      'started_at',
+    );
+
+    const [workflowRows, windowRows, recentRows] = await Promise.all([
+      this.workflowModel
+        .aggregate<{ _id: 'active' | 'inactive'; count: number }>([
+          { $match: { owner_id: ownerObjectId } },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+        ])
+        .exec(),
+      this.executionModel
+        .aggregate<{
+          _id: Types.ObjectId;
+          counts: Array<{ status: ExecutionStatus; count: number }>;
+        }>([
+          {
+            $match: {
+              owner_id: ownerObjectId,
+              ...(startedAtRange ? { started_at: startedAtRange } : {}),
+            },
+          },
+          {
+            $group: {
+              _id: { workflow_id: '$workflow_id', status: '$status' },
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $group: {
+              _id: '$_id.workflow_id',
+              counts: {
+                $push: {
+                  status: '$_id.status',
+                  count: '$count',
+                },
+              },
+            },
+          },
+        ])
+        .exec(),
+      this.executionModel
+        .aggregate<{
+          _id: Types.ObjectId;
+          executions: WorkflowInsightExecutionItem[];
+        }>([
+          { $match: { owner_id: ownerObjectId } },
+          { $sort: { created_at: -1, _id: -1 } },
+          {
+            $group: {
+              _id: '$workflow_id',
+              executions: {
+                $push: {
+                  id: { $toString: '$_id' },
+                  status: '$status',
+                  started_at: '$started_at',
+                  completed_at: '$completed_at',
+                  created_at: '$created_at',
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              executions: { $slice: ['$executions', historyLimit] },
+            },
+          },
+        ])
+        .exec(),
+    ]);
+
+    const activeWorkflows =
+      workflowRows.find((row) => row._id === 'active')?.count ?? 0;
+    const inactiveWorkflows =
+      workflowRows.find((row) => row._id === 'inactive')?.count ?? 0;
+
+    const items: Record<string, WorkflowInsightItem> = {};
+    let executions = 0;
+    let running = 0;
+    let completed = 0;
+    let failed = 0;
+    let cancelled = 0;
+
+    for (const row of windowRows) {
+      const workflowId = row._id.toString();
+      const counts = this.emptyExecutionCounts();
+
+      for (const countRow of row.counts) {
+        counts[countRow.status] = countRow.count;
+      }
+
+      executions += Object.values(counts).reduce((sum, value) => sum + value, 0);
+      running += counts.running + counts.pending + counts.compensating;
+      completed += counts.completed;
+      failed += counts.failed;
+      cancelled += counts.cancelled;
+
+      items[workflowId] = {
+        workflow_id: workflowId,
+        last_execution: null,
+        recent_executions: [],
+        counts,
+      };
+    }
+
+    for (const row of recentRows) {
+      const workflowId = row._id.toString();
+      const item =
+        items[workflowId] ??
+        ({
+          workflow_id: workflowId,
+          last_execution: null,
+          recent_executions: [],
+          counts: this.emptyExecutionCounts(),
+        } satisfies WorkflowInsightItem);
+
+      item.recent_executions = row.executions;
+      item.last_execution = row.executions[0] ?? null;
+      items[workflowId] = item;
+    }
+
+    const terminal = completed + failed + cancelled;
+
+    return {
+      summary: {
+        total_workflows: activeWorkflows + inactiveWorkflows,
+        active_workflows: activeWorkflows,
+        inactive_workflows: inactiveWorkflows,
+        executions,
+        running,
+        success_rate: terminal > 0 ? completed / terminal : null,
+        failure_rate: terminal > 0 ? failed / terminal : null,
+      },
+      items,
+    };
   }
 
   async findOne(id: string, ownerId: string): Promise<WorkflowDocument> {
@@ -156,6 +338,63 @@ export class WorkflowService {
     }
 
     return workflow;
+  }
+
+  private emptyExecutionCounts(): Record<ExecutionStatus, number> {
+    return {
+      pending: 0,
+      running: 0,
+      completed: 0,
+      failed: 0,
+      cancelled: 0,
+      compensating: 0,
+    };
+  }
+
+  private buildDateRange(
+    from?: string,
+    to?: string,
+    fieldName?: string,
+  ): Record<string, Date> | undefined {
+    if (!from && !to) {
+      return undefined;
+    }
+
+    const range: Record<string, Date> = {};
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+
+    if (fromDate && Number.isNaN(fromDate.getTime())) {
+      throw new BadRequestException(`Invalid ${fieldName} from date`);
+    }
+
+    if (toDate && Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException(`Invalid ${fieldName} to date`);
+    }
+
+    if (fromDate && toDate && fromDate > toDate) {
+      throw new BadRequestException(
+        `${fieldName} from date must be before to date`,
+      );
+    }
+
+    if (
+      fromDate &&
+      toDate &&
+      toDate.getTime() - fromDate.getTime() > MAX_FILTER_WINDOW_MS
+    ) {
+      throw new BadRequestException(`${fieldName} date range exceeds 31 days`);
+    }
+
+    if (fromDate) {
+      range.$gte = fromDate;
+    }
+
+    if (toDate) {
+      range.$lte = toDate;
+    }
+
+    return range;
   }
 
   private validateTriggerConfig(trigger?: {

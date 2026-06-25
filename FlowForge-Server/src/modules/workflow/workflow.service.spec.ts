@@ -6,6 +6,7 @@ import {
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
+import { Execution } from '../execution/execution.schema';
 import { ValidateDagService } from './validate-dag.service';
 import { Workflow } from './workflow.schema';
 import { WorkflowService } from './workflow.service';
@@ -18,6 +19,8 @@ const mockFindByIdExec = jest.fn();
 const mockFindOneExec = jest.fn();
 const mockFindByIdAndDeleteExec = jest.fn();
 const mockCountDocumentsExec = jest.fn();
+const mockWorkflowAggregateExec = jest.fn();
+const mockExecutionAggregateExec = jest.fn();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockWorkflowModel: any = jest
@@ -40,6 +43,13 @@ mockWorkflowModel.countDocuments = jest
 mockWorkflowModel.findByIdAndDelete = jest
   .fn()
   .mockReturnValue({ exec: mockFindByIdAndDeleteExec });
+mockWorkflowModel.aggregate = jest
+  .fn()
+  .mockReturnValue({ exec: mockWorkflowAggregateExec });
+
+const mockExecutionModel = {
+  aggregate: jest.fn().mockReturnValue({ exec: mockExecutionAggregateExec }),
+};
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -78,6 +88,10 @@ describe('WorkflowService', () => {
           useValue: mockWorkflowModel,
         },
         {
+          provide: getModelToken(Execution.name),
+          useValue: mockExecutionModel,
+        },
+        {
           provide: ValidateDagService,
           useValue: { validate: jest.fn() },
         },
@@ -101,6 +115,139 @@ describe('WorkflowService', () => {
         owner_id: expect.any(Types.ObjectId),
       });
       expect(result).toEqual(docs);
+    });
+  });
+
+  describe('findInsights', () => {
+    it('returns workflow totals with empty execution metrics', async () => {
+      mockWorkflowAggregateExec.mockResolvedValue([
+        { _id: 'active', count: 2 },
+        { _id: 'inactive', count: 1 },
+      ]);
+      mockExecutionAggregateExec
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.findInsights(ownerId);
+
+      expect(mockWorkflowModel.aggregate).toHaveBeenCalledWith([
+        { $match: { owner_id: expect.any(Types.ObjectId) } },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]);
+      expect(result).toEqual({
+        summary: {
+          total_workflows: 3,
+          active_workflows: 2,
+          inactive_workflows: 1,
+          executions: 0,
+          running: 0,
+          success_rate: null,
+          failure_rate: null,
+        },
+        items: {},
+      });
+    });
+
+    it('returns per-workflow counts, last execution, history and rates', async () => {
+      const workflowObjectId = new Types.ObjectId();
+      const lastExecutionId = new Types.ObjectId().toHexString();
+      const lastCreatedAt = new Date('2026-03-22T10:00:00.000Z');
+      mockWorkflowAggregateExec.mockResolvedValue([
+        { _id: 'active', count: 1 },
+      ]);
+      mockExecutionAggregateExec
+        .mockResolvedValueOnce([
+          {
+            _id: workflowObjectId,
+            counts: [
+              { status: 'completed', count: 3 },
+              { status: 'failed', count: 1 },
+              { status: 'running', count: 2 },
+            ],
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            _id: workflowObjectId,
+            executions: [
+              {
+                id: lastExecutionId,
+                status: 'failed',
+                created_at: lastCreatedAt,
+              },
+              {
+                id: new Types.ObjectId().toHexString(),
+                status: 'completed',
+                created_at: new Date('2026-03-22T09:00:00.000Z'),
+              },
+            ],
+          },
+        ]);
+
+      const result = await service.findInsights(ownerId, {
+        started_from: '2026-03-22T00:00:00.000Z',
+        started_to: '2026-03-23T00:00:00.000Z',
+        history_limit: 5,
+      });
+
+      expect(mockExecutionModel.aggregate).toHaveBeenNthCalledWith(
+        1,
+        expect.arrayContaining([
+          {
+            $match: {
+              owner_id: expect.any(Types.ObjectId),
+              started_at: {
+                $gte: new Date('2026-03-22T00:00:00.000Z'),
+                $lte: new Date('2026-03-23T00:00:00.000Z'),
+              },
+            },
+          },
+        ]),
+      );
+      expect(mockExecutionModel.aggregate).toHaveBeenNthCalledWith(
+        2,
+        expect.arrayContaining([
+          { $sort: { created_at: -1, _id: -1 } },
+          { $project: { executions: { $slice: ['$executions', 5] } } },
+        ]),
+      );
+      expect(result.summary).toEqual({
+        total_workflows: 1,
+        active_workflows: 1,
+        inactive_workflows: 0,
+        executions: 6,
+        running: 2,
+        success_rate: 0.75,
+        failure_rate: 0.25,
+      });
+      expect(result.items[workflowObjectId.toString()]).toEqual(
+        expect.objectContaining({
+          workflow_id: workflowObjectId.toString(),
+          last_execution: expect.objectContaining({
+            id: lastExecutionId,
+            status: 'failed',
+            created_at: lastCreatedAt,
+          }),
+          recent_executions: expect.arrayContaining([
+            expect.objectContaining({ status: 'completed' }),
+          ]),
+          counts: expect.objectContaining({
+            completed: 3,
+            failed: 1,
+            running: 2,
+          }),
+        }),
+      );
+    });
+
+    it('rejects invalid insight date ranges', async () => {
+      await expect(
+        service.findInsights(ownerId, {
+          started_from: '2026-03-23T00:00:00.000Z',
+          started_to: '2026-03-22T00:00:00.000Z',
+          history_limit: 10,
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

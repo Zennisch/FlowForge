@@ -8,13 +8,16 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
+import { WorkflowInsightsQueryDto } from './dto/workflow-insights-query.dto';
 import { WorkflowService } from './workflow.service';
 
 interface AuthenticatedRequest extends Request {
@@ -29,6 +32,21 @@ export class WorkflowController {
   @Get()
   findAll(@Req() req: AuthenticatedRequest) {
     return this.workflowService.findAll(req.user.id);
+  }
+
+  @Get('insights')
+  findInsights(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: WorkflowInsightsQueryDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.workflowService.findInsights(req.user.id, query);
   }
 
   @Get(':id')

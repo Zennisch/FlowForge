@@ -3,12 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { workflowsApi } from '@/lib/api/workflows.api';
 import type {
   CreateWorkflowRequest,
+  WorkflowInsightsQuery,
   TriggerExecutionRequest,
   UpdateWorkflowRequest,
 } from '@/types/workflow.types';
 
 export const workflowQueryKeys = {
   all: ['workflows'] as const,
+  insights: (query: WorkflowInsightsQuery) => ['workflows', 'insights', query] as const,
   detail: (id: string) => ['workflows', id] as const,
 };
 
@@ -16,6 +18,13 @@ export function useWorkflows() {
   return useQuery({
     queryKey: workflowQueryKeys.all,
     queryFn: () => workflowsApi.list(),
+  });
+}
+
+export function useWorkflowInsights(query: WorkflowInsightsQuery = {}) {
+  return useQuery({
+    queryKey: workflowQueryKeys.insights(query),
+    queryFn: () => workflowsApi.getInsights(query),
   });
 }
 
