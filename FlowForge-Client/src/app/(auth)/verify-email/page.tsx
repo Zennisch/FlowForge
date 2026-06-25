@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AuthFormCard } from '@/components/auth/AuthFormCard';
 import { MailIcon } from '@/components/auth/MailIcon';
@@ -22,6 +22,11 @@ export default function VerifyEmailPage() {
   const token = searchParams.get('token') ?? '';
   const email = searchParams.get('email') ?? '';
   const verifiedTokenRef = useRef<string | null>(null);
+  const [verificationResult, setVerificationResult] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     if (authToken) {
@@ -35,8 +40,31 @@ export default function VerifyEmailPage() {
       return;
     }
 
-    verifiedTokenRef.current = token;
-    verifyEmailMutation.mutate({ token });
+    const verifyToken = async () => {
+      verifiedTokenRef.current = token;
+      setVerificationResult(null);
+      setIsVerifying(true);
+
+      try {
+        const response = await verifyEmailMutation.mutateAsync({ token });
+        if (verifiedTokenRef.current === token) {
+          setVerificationResult({ type: 'success', message: response.message });
+        }
+      } catch (error) {
+        if (verifiedTokenRef.current === token) {
+          setVerificationResult({
+            type: 'error',
+            message: error instanceof Error ? error.message : 'Verification failed.',
+          });
+        }
+      } finally {
+        if (verifiedTokenRef.current === token) {
+          setIsVerifying(false);
+        }
+      }
+    };
+
+    void verifyToken();
   }, [token, verifyEmailMutation]);
 
   const statusMessage = useMemo(() => {
@@ -44,27 +72,16 @@ export default function VerifyEmailPage() {
       return 'We sent a temporary link to your inbox. Open your email and tap the verification link to activate your account.';
     }
 
-    if (verifyEmailMutation.isPending) {
+    if (isVerifying) {
       return 'We are verifying your email now. This usually takes a few seconds.';
     }
 
-    if (verifyEmailMutation.isSuccess) {
-      return verifyEmailMutation.data.message;
-    }
-
-    if (verifyEmailMutation.isError) {
-      return verifyEmailMutation.error.message;
+    if (verificationResult) {
+      return verificationResult.message;
     }
 
     return 'Verification link detected. Continue to confirm your email.';
-  }, [
-    token,
-    verifyEmailMutation.data?.message,
-    verifyEmailMutation.error,
-    verifyEmailMutation.isError,
-    verifyEmailMutation.isPending,
-    verifyEmailMutation.isSuccess,
-  ]);
+  }, [isVerifying, token, verificationResult]);
 
   const handleResend = async () => {
     if (!email) {
@@ -93,7 +110,7 @@ export default function VerifyEmailPage() {
           {statusMessage}
         </ZText>
 
-        {verifyEmailMutation.isError ? (
+        {verificationResult?.type === 'error' ? (
           <p className="rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
             Verification failed. Please request a new link.
           </p>

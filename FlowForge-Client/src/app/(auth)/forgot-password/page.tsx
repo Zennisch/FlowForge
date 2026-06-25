@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
     <AuthFormCard
       title="Reset your password"
       subtitle="Enter your email address and we will send you a link to reset your password."
-      footerLinks={[{ text: 'Remember your password?', linkText: 'Sign in', href: '/login' }]}
+      footerLinks={[{ text: 'Remembered your password?', linkText: 'Sign in', href: '/login' }]}
     >
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <ZTextInput

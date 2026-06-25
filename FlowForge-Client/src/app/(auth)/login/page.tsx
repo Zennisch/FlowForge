@@ -44,7 +44,7 @@ export default function LoginPage() {
         { linkText: 'Forgot password?', href: '/forgot-password' },
         { text: 'No account yet?', linkText: 'Create one', href: '/register' },
         {
-          text: 'Need a new verification email?',
+          text: 'Need a new email verification?',
           linkText: 'Resend',
           href: '/resend-verification',
         },
