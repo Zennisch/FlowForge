@@ -6,7 +6,7 @@ import { ReactNode } from 'react';
 import ZText from '@/components/primary/ZText';
 
 type FooterLink = {
-  text: string;
+  text?: string;
   linkText: string;
   href: string;
 };
@@ -42,7 +42,7 @@ export function AuthFormCard({ title, subtitle, children, footerLinks = [] }: Au
         <footer className="mt-6 space-y-2 text-center">
           {footerLinks.map((item) => (
             <p key={`${item.href}-${item.linkText}`} className="text-sm text-slate-400">
-              {item.text}{' '}
+              {item.text ? `${item.text} ` : null}
               <Link className="font-medium text-(--color-primary) hover:underline" href={item.href}>
                 {item.linkText}
               </Link>

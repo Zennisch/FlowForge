@@ -48,8 +48,9 @@ export default function ResendVerificationPage() {
     <AuthFormCard
       title="Resend verification email"
       subtitle="Need a fresh verification link? Enter your email and we will send a new one."
+      footerLinks={[{ text: 'Already verified?', linkText: 'Sign in', href: '/login' }]}
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <ZTextInput
           id="email"
           type="email"
@@ -59,6 +60,7 @@ export default function ResendVerificationPage() {
           fullWidth
           label="Email"
           placeholder="you@company.com"
+          containerClassName="my-0"
           className="text-slate-100"
         />
 
@@ -81,10 +83,6 @@ export default function ResendVerificationPage() {
           loadingText="Sending email..."
         >
           Resend email
-        </ZButton>
-
-        <ZButton as={Link} href="/login" variant="ghost" fullWidth>
-          Back to sign in
         </ZButton>
       </form>
     </AuthFormCard>

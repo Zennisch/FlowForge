@@ -1,11 +1,11 @@
 'use client';
 
+import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 
 import { AuthFormCard } from '@/components/auth/AuthFormCard';
-import { AuthPasswordField } from '@/components/auth/AuthPasswordField';
 import { PasswordStrengthMeter } from '@/components/auth/PasswordStrengthMeter';
 import ZButton from '@/components/primary/ZButton';
 import ZTextInput from '@/components/primary/ZTextInput';
@@ -20,6 +20,7 @@ export default function ResetPasswordPage() {
 
   const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function ResetPasswordPage() {
       title="Set a new password"
       subtitle="Use the reset token from your email and choose a new secure password."
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
         <ZTextInput
           id="reset-token"
           type="text"
@@ -63,17 +64,33 @@ export default function ResetPasswordPage() {
           fullWidth
           label="Reset token"
           placeholder="Paste your reset token"
+          containerClassName="my-0"
           className="text-slate-100"
         />
 
         <div>
-          <AuthPasswordField
+          <ZTextInput
             id="new-password"
-            label="New password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
-            onChange={setPassword}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            fullWidth
+            label="New password"
             placeholder="Create your new password"
             minLength={8}
+            containerClassName="my-0"
+            className="text-slate-100"
+            iconEnd={
+              <button
+                type="button"
+                onClick={() => setShowPassword((previous) => !previous)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-primary)"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
           />
           <PasswordStrengthMeter password={password} />
         </div>

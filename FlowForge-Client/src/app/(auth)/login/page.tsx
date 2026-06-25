@@ -1,11 +1,10 @@
 'use client';
 
-import Link from 'next/link';
+import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 
 import { AuthFormCard } from '@/components/auth/AuthFormCard';
-import { AuthPasswordField } from '@/components/auth/AuthPasswordField';
 import ZButton from '@/components/primary/ZButton';
 import ZTextInput from '@/components/primary/ZTextInput';
 import { useLogin } from '@/hooks/useAuth';
@@ -18,6 +17,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -41,6 +41,7 @@ export default function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to manage your workflows and integrations."
       footerLinks={[
+        { linkText: 'Forgot password?', href: '/forgot-password' },
         { text: 'No account yet?', linkText: 'Create one', href: '/register' },
         {
           text: 'Need a new verification email?',
@@ -49,7 +50,7 @@ export default function LoginPage() {
         },
       ]}
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <ZTextInput
           id="email"
           type="email"
@@ -59,22 +60,31 @@ export default function LoginPage() {
           fullWidth
           label="Email"
           placeholder="you@company.com"
+          containerClassName="my-0"
           className="text-slate-100"
         />
 
-        <AuthPasswordField
+        <ZTextInput
           id="password"
-          label="Password"
+          type={showPassword ? 'text' : 'password'}
           value={password}
-          onChange={setPassword}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+          fullWidth
+          label="Password"
           placeholder="Enter your password"
-          labelAction={
-            <Link
-              className="text-xs font-medium text-(--color-primary) transition-colors hover:text-blue-400 hover:underline"
-              href="/forgot-password"
+          minLength={8}
+          containerClassName="my-0"
+          className="text-slate-100"
+          iconEnd={
+            <button
+              type="button"
+              onClick={() => setShowPassword((previous) => !previous)}
+              className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-primary)"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              Forgot password?
-            </Link>
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           }
         />
 

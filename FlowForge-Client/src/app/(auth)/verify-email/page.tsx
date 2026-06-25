@@ -84,7 +84,7 @@ export default function VerifyEmailPage() {
       }
       footerLinks={[{ text: 'Already verified?', linkText: 'Sign in', href: '/login' }]}
     >
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10">
           <MailIcon className="h-14 w-14" />
         </div>
@@ -111,7 +111,7 @@ export default function VerifyEmailPage() {
           </p>
         ) : null}
 
-        <div className="space-y-2 pt-1">
+        <div className="flex flex-col gap-4">
           <ZButton as="a" href={email ? `mailto:${email}` : 'mailto:'} fullWidth>
             Open email app
           </ZButton>
