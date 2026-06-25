@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, Suspense } from 'react';
 
 import { AuthSplitShell } from '@/components/auth/AuthSplitShell';
 
@@ -7,5 +7,9 @@ type AuthLayoutProps = {
 };
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
-  return <AuthSplitShell>{children}</AuthSplitShell>;
+  return (
+    <AuthSplitShell>
+      <Suspense fallback={null}>{children}</Suspense>
+    </AuthSplitShell>
+  );
 }
