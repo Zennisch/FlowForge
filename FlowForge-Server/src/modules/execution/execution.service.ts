@@ -19,6 +19,7 @@ import {
 } from '../event/event-governance.service';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
+import { Workflow, WorkflowDocument } from '../workflow/workflow.schema';
 import { ListExecutionEventsQueryDto } from './dto/list-execution-events-query.dto';
 import { ExecutionSummaryQueryDto } from './dto/execution-summary-query.dto';
 import { ListExecutionsQueryDto } from './dto/list-executions-query.dto';
@@ -78,8 +79,24 @@ interface ExecutionListPageInfo {
   has_next_page: boolean;
 }
 
+export interface ExecutionListWorkflowSummary {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export type ExecutionListItem = (ExecutionDocument | Record<string, unknown>) & {
+  workflow?: ExecutionListWorkflowSummary;
+};
+
+interface WorkflowSummaryRow {
+  _id: Types.ObjectId;
+  name: string;
+  description?: string;
+}
+
 export interface ExecutionListResponse {
-  items: ExecutionDocument[];
+  items: ExecutionListItem[];
   page_info: ExecutionListPageInfo;
 }
 
@@ -107,6 +124,8 @@ export class ExecutionService {
   constructor(
     @InjectModel(Execution.name)
     private readonly executionModel: Model<ExecutionDocument>,
+    @InjectModel(Workflow.name)
+    private readonly workflowModel: Model<WorkflowDocument>,
     @InjectModel(StepExecution.name)
     private readonly stepExecutionModel: Model<StepExecutionDocument>,
     @InjectModel(WebhookNonce.name)
@@ -1006,9 +1025,13 @@ export class ExecutionService {
     const nextCursor = hasNextPage
       ? this.encodeListCursor(items[items.length - 1])
       : null;
+    const enrichedItems = await this.attachWorkflowSummaries(
+      items,
+      ownerObjectId,
+    );
 
     return {
-      items,
+      items: enrichedItems,
       page_info: {
         limit,
         cursor: query.cursor ?? null,
@@ -1016,6 +1039,51 @@ export class ExecutionService {
         has_next_page: hasNextPage,
       },
     };
+  }
+
+  private async attachWorkflowSummaries(
+    items: ExecutionDocument[],
+    ownerId: Types.ObjectId,
+  ): Promise<ExecutionListItem[]> {
+    if (items.length === 0) {
+      return [];
+    }
+
+    const workflowIds = [
+      ...new Set(items.map((item) => item.workflow_id.toString())),
+    ].map((id) => new Types.ObjectId(id));
+
+    const workflows = (await this.workflowModel
+      .find({
+        _id: { $in: workflowIds },
+        owner_id: ownerId,
+      })
+      .select({ _id: 1, name: 1, description: 1 })
+      .lean()
+      .exec()) as WorkflowSummaryRow[];
+
+    const workflowById = new Map(
+      workflows.map((workflow) => [
+        workflow._id.toString(),
+        {
+          id: workflow._id.toString(),
+          name: workflow.name,
+          ...(workflow.description
+            ? { description: workflow.description }
+            : {}),
+        },
+      ]),
+    );
+
+    return items.map((item) => {
+      const workflow = workflowById.get(item.workflow_id.toString());
+      const base =
+        typeof item.toObject === 'function'
+          ? item.toObject()
+          : (item as ExecutionListItem);
+
+      return workflow ? { ...base, workflow } : base;
+    }) as ExecutionListItem[];
   }
 
   async findSummary(

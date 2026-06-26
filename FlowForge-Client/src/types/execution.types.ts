@@ -41,9 +41,16 @@ export interface StepExecution {
   updatedAt?: string;
 }
 
+export interface ExecutionWorkflowSummary {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export interface Execution {
   id: string;
   workflowId: string;
+  workflow?: ExecutionWorkflowSummary;
   ownerId: string;
   status: ExecutionStatus;
   triggerType: TriggerType;

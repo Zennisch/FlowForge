@@ -4,6 +4,7 @@ import { PubSubModule } from '../../infra/pubsub/pubsub.provider';
 import { EventRouterService } from '../event/event-router.service';
 import { EventModule } from '../event/event.module';
 import { WorkflowModule } from '../workflow/workflow.module';
+import { Workflow, WorkflowSchema } from '../workflow/workflow.schema';
 import { CompensationExecutorService } from './compensation-executor.service';
 import { CompensateService } from './compensate.service';
 import { ExecutionController } from './execution.controller';
@@ -27,6 +28,7 @@ import { WebhookController } from './webhook.controller';
   imports: [
     MongooseModule.forFeature([
       { name: Execution.name, schema: ExecutionSchema },
+      { name: Workflow.name, schema: WorkflowSchema },
       { name: StepExecution.name, schema: StepExecutionSchema },
       { name: WebhookNonce.name, schema: WebhookNonceSchema },
       { name: WebhookRateLimit.name, schema: WebhookRateLimitSchema },

@@ -22,6 +22,7 @@ interface RawExecution {
   _id?: string;
   workflow_id?: string;
   workflowId?: string;
+  workflow?: RawExecutionWorkflowSummary;
   owner_id?: string;
   ownerId?: string;
   status: Execution['status'];
@@ -42,6 +43,13 @@ interface RawExecution {
   updatedAt?: string;
   step_executions?: RawStepExecution[];
   stepExecutions?: RawStepExecution[];
+}
+
+interface RawExecutionWorkflowSummary {
+  id?: string;
+  _id?: string;
+  name?: string;
+  description?: string;
 }
 
 interface RawStepExecution {
@@ -230,10 +238,20 @@ function buildExecutionEventsQueryParams(
 
 function normalizeExecution(raw: RawExecution): Execution {
   const rawStepExecutions = raw.stepExecutions ?? raw.step_executions ?? [];
+  const workflowId = raw.workflowId ?? raw.workflow_id ?? '';
+  const workflow = raw.workflow;
 
   return {
     id: raw.id ?? raw._id ?? '',
-    workflowId: raw.workflowId ?? raw.workflow_id ?? '',
+    workflowId,
+    workflow:
+      workflow && workflow.name
+        ? {
+            id: workflow.id ?? workflow._id ?? workflowId,
+            name: workflow.name,
+            description: workflow.description,
+          }
+        : undefined,
     ownerId: raw.ownerId ?? raw.owner_id ?? '',
     status: raw.status,
     triggerType: raw.triggerType ?? raw.trigger_type ?? 'manual',

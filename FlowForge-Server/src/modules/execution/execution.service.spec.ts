@@ -14,6 +14,7 @@ import { PubSubService } from '../../infra/pubsub/pubsub.provider';
 import { EventGovernanceService } from '../event/event-governance.service';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
+import { Workflow } from '../workflow/workflow.schema';
 import { ListExecutionEventsQueryDto } from './dto/list-execution-events-query.dto';
 import { TriggerExecutionDto } from './dto/trigger-execution.dto';
 import { ExecutionService } from './execution.service';
@@ -32,6 +33,17 @@ const mockExecutionFindSort = jest.fn();
 const mockExecutionFindLimit = jest.fn();
 const mockExecutionAggregateExec = jest.fn();
 const mockExecutionCountDocumentsExec = jest.fn();
+
+const mockWorkflowFindExec = jest.fn();
+const mockWorkflowFindLean = jest.fn();
+const mockWorkflowFindSelect = jest.fn();
+const mockWorkflowModel = {
+  find: jest.fn().mockReturnValue({
+    select: mockWorkflowFindSelect,
+  }),
+};
+mockWorkflowFindSelect.mockReturnValue({ lean: mockWorkflowFindLean });
+mockWorkflowFindLean.mockReturnValue({ exec: mockWorkflowFindExec });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockExecutionModel: any = jest
@@ -112,6 +124,7 @@ const makeWorkflowDoc = (
 
 const makeExecutionDoc = (overrides: Record<string, unknown> = {}) => ({
   _id: executionId,
+  workflow_id: { toString: () => workflowId },
   owner_id: { toString: () => ownerId },
   status: 'running',
   save: mockExecutionSave,
@@ -132,6 +145,7 @@ describe('ExecutionService', () => {
     mockWebhookRateLimitFindOneAndUpdate.mockResolvedValue({ count: 1 });
     mockTriggerRateLimitFindOneAndUpdate.mockResolvedValue({ count: 1 });
     mockExecutionCountDocumentsExec.mockResolvedValue(0);
+    mockWorkflowFindExec.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -139,6 +153,10 @@ describe('ExecutionService', () => {
         {
           provide: getModelToken(Execution.name),
           useValue: mockExecutionModel,
+        },
+        {
+          provide: getModelToken(Workflow.name),
+          useValue: mockWorkflowModel,
         },
         {
           provide: getModelToken(StepExecution.name),
@@ -508,6 +526,59 @@ describe('ExecutionService', () => {
           has_next_page: false,
         },
       });
+    });
+
+    it('attaches workflow summaries to execution list items', async () => {
+      const workflowObjectId = new Types.ObjectId();
+      const doc = {
+        ...makeExecutionDoc({
+          workflow_id: workflowObjectId,
+        }),
+        toObject: jest.fn().mockReturnValue({
+          _id: executionId,
+          workflow_id: workflowObjectId,
+          owner_id: ownerId,
+          status: 'completed',
+        }),
+      };
+      mockExecutionFindExec.mockResolvedValue([doc]);
+      mockWorkflowFindExec.mockResolvedValue([
+        {
+          _id: workflowObjectId,
+          name: 'Invoice Sync',
+          description: 'Daily billing workflow',
+        },
+      ]);
+
+      const result = await service.findAll(ownerId);
+
+      expect(mockWorkflowModel.find).toHaveBeenCalledWith({
+        _id: { $in: [workflowObjectId] },
+        owner_id: expect.any(Types.ObjectId),
+      });
+      expect(result.items[0]).toEqual(
+        expect.objectContaining({
+          workflow: {
+            id: workflowObjectId.toString(),
+            name: 'Invoice Sync',
+            description: 'Daily billing workflow',
+          },
+        }),
+      );
+    });
+
+    it('leaves execution list items usable when workflow summary is missing', async () => {
+      const workflowObjectId = new Types.ObjectId();
+      const doc = makeExecutionDoc({
+        workflow_id: workflowObjectId,
+      });
+      mockExecutionFindExec.mockResolvedValue([doc]);
+      mockWorkflowFindExec.mockResolvedValue([]);
+
+      const result = await service.findAll(ownerId);
+
+      expect(result.items[0]).toBe(doc);
+      expect(result.items[0].workflow).toBeUndefined();
     });
 
     it('applies status, trigger, workflow and q filters', async () => {
