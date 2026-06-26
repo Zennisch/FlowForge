@@ -17,7 +17,6 @@ import {
   Command,
   Menu,
   Moon,
-  Plus,
   Search,
   Sun,
   Workflow as WorkflowIcon,
@@ -167,7 +166,6 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
   const summaryQuery = useExecutionSummary();
 
   const breadcrumbs = useMemo(() => createBreadcrumbs(pathname), [pathname]);
-  const isWorkflowListPage = pathname === '/workflows';
   const isSearchLoading = executionsSearchQuery.isFetching || workflowsQuery.isFetching;
   const hasQuery = searchTerm.length > 0;
 
@@ -318,19 +316,6 @@ export function Header({ isDarkMode, onToggleSidebar, onToggleTheme }: HeaderPro
               className="h-9 w-9 border border-(--shell-border) bg-(--shell-panel-bg) text-(--shell-muted) hover:bg-(--shell-hover) hover:text-(--shell-text)"
               iconStart={isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             />
-
-            {isWorkflowListPage ? (
-              <ZButton
-                as={Link}
-                href="/workflows/new"
-                variant="primary"
-                size="sm"
-                iconStart={<Plus className="h-4 w-4" />}
-                className="hidden rounded-lg px-3 sm:inline-flex"
-              >
-                New Workflow
-              </ZButton>
-            ) : null}
           </div>
         </div>
       </header>

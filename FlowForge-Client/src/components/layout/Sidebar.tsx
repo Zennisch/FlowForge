@@ -11,9 +11,28 @@ import appTileTransDark from '@/assets/app-tile-trans-dark.png';
 import appIcon from '@/assets/icon.png';
 import ZButton from '@/components/primary/ZButton';
 import { cn } from '@/components/primary/utils';
-import { useExecutionSummary } from '@/hooks/useExecutions';
+import { useExecutionSummary, useExecutions } from '@/hooks/useExecutions';
 import { useWorkflows } from '@/hooks/useWorkflows';
-import { ChevronLeft, ChevronRight, Clock3, GitBranch, Zap } from 'lucide-react';
+import type { ExecutionStatus } from '@/types/execution.types';
+import type { Workflow } from '@/types/workflow.types';
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Clock3,
+  Copy,
+  GitBranch,
+  KeyRound,
+  LogOut,
+  MoreVertical,
+  Plus,
+  Settings,
+  Timer,
+  Webhook,
+  Zap,
+} from 'lucide-react';
 
 import { useAuthStore } from '@/store/auth.store';
 
@@ -22,7 +41,6 @@ interface SidebarProps {
   collapsed: boolean;
   isDarkMode: boolean;
   onNavigate: () => void;
-  onToggleTheme: () => void;
   onToggleCollapse: () => void;
 }
 
@@ -39,11 +57,16 @@ const NAV_ITEMS = [
   },
 ] as const;
 
-const EXECUTION_FILTER_SHORTCUTS = [
-  { label: 'Running', href: '/executions?status=running' },
-  { label: 'Failed', href: '/executions?status=failed' },
-  { label: 'Pending', href: '/executions?status=pending' },
-] as const;
+const RECENT_EXECUTION_LIMIT = 5;
+
+const STATUS_DOT_CLASS: Record<ExecutionStatus, string> = {
+  pending: 'bg-sky-400',
+  running: 'bg-blue-500',
+  completed: 'bg-emerald-500',
+  failed: 'bg-rose-500',
+  cancelled: 'bg-slate-400',
+  compensating: 'bg-amber-500',
+};
 
 function getInitialFromEmail(email?: string | null): string {
   if (!email) {
@@ -54,25 +77,79 @@ function getInitialFromEmail(email?: string | null): string {
   return normalized.charAt(0).toUpperCase() || 'U';
 }
 
+function shortId(value: string): string {
+  return value.length > 8 ? value.slice(-8) : value;
+}
+
+function readConfigString(config: Record<string, unknown> | undefined, keys: string[]): string {
+  for (const key of keys) {
+    const value = config?.[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return '';
+}
+
+function normalizeWebhookPath(path: string): string {
+  return path.replace(/^\/+/, '');
+}
+
+function buildWebhookTarget(workflow: Workflow, userId?: string): string {
+  const path = normalizeWebhookPath(readConfigString(workflow.trigger.config, ['path', 'endpoint']));
+  if (!path) {
+    return '';
+  }
+
+  const relativePath = userId ? `/webhook/${userId}/${path}` : `/webhook/${path}`;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '');
+
+  return apiBase ? `${apiBase}${relativePath}` : relativePath;
+}
+
 export function Sidebar({
   mobileOpen,
   collapsed,
   isDarkMode,
   onNavigate,
-  onToggleTheme,
   onToggleCollapse,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState({
+    scheduled: true,
+    webhooks: true,
+    recent: true,
+  });
+  const [copiedWebhookId, setCopiedWebhookId] = useState<string | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const userId = useAuthStore((state) => state.user?.id);
   const userEmail = useAuthStore((state) => state.user?.email);
   const workflowsQuery = useWorkflows();
+  const recentExecutionsQuery = useExecutions({ limit: RECENT_EXECUTION_LIMIT });
   const summaryQuery = useExecutionSummary();
 
+  const workflows = workflowsQuery.data ?? [];
   const workflowCount = workflowsQuery.data?.length ?? 0;
   const failedAndCompensatingCount =
     (summaryQuery.data?.counts.failed ?? 0) + (summaryQuery.data?.counts.compensating ?? 0);
+  const scheduledWorkflows = useMemo(
+    () =>
+      workflows
+        .filter((workflow) => workflow.status === 'active' && workflow.trigger.type === 'schedule')
+        .slice(0, 5),
+    [workflows]
+  );
+  const webhookWorkflows = useMemo(
+    () =>
+      workflows
+        .filter((workflow) => workflow.status === 'active' && workflow.trigger.type === 'webhook')
+        .slice(0, 5),
+    [workflows]
+  );
+  const recentExecutions = recentExecutionsQuery.data?.items.slice(0, RECENT_EXECUTION_LIMIT) ?? [];
 
   const profileInitial = useMemo(() => getInitialFromEmail(userEmail), [userEmail]);
   const profileLabel = userEmail ?? 'Unknown user';
@@ -80,6 +157,21 @@ export function Sidebar({
   const handleLogout = () => {
     useAuthStore.getState().clearToken();
     router.replace('/login');
+  };
+
+  const toggleGroup = (group: keyof typeof openGroups) => {
+    setOpenGroups((previous) => ({ ...previous, [group]: !previous[group] }));
+  };
+
+  const copyWebhookTarget = async (workflow: Workflow) => {
+    const target = buildWebhookTarget(workflow, userId);
+    if (!target) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(target);
+    setCopiedWebhookId(workflow.id);
+    window.setTimeout(() => setCopiedWebhookId(null), 1200);
   };
 
   const getIsActive = (href: string) => {
@@ -179,7 +271,26 @@ export function Sidebar({
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2 px-2 py-4">
+        <nav className="flex-1 overflow-y-auto px-2 py-4">
+          <ZButton
+            as={Link}
+            href="/workflows/new"
+            variant="primary"
+            size="sm"
+            iconOnly={collapsed}
+            iconStart={<Plus className="h-4 w-4" />}
+            onClick={onNavigate}
+            title={collapsed ? 'New Workflow' : undefined}
+            aria-label="New Workflow"
+            className={cn(
+              'mb-4 w-full rounded-lg shadow-sm',
+              collapsed ? 'h-10 justify-center px-0' : 'justify-start px-3'
+            )}
+          >
+            {!collapsed ? 'New Workflow' : null}
+          </ZButton>
+
+          <div className="space-y-2">
           {NAV_ITEMS.map((item) => {
             const isActive = getIsActive(item.href);
             const Icon = item.icon;
@@ -215,46 +326,180 @@ export function Sidebar({
                     <span className="ml-auto inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
                   ) : null}
                 </Link>
-
-                {!collapsed && item.href === '/executions' && isActive ? (
-                  <div className="ml-7 mt-1 space-y-1 border-l border-(--shell-border) pl-3">
-                    {EXECUTION_FILTER_SHORTCUTS.map((shortcut) => (
-                      <Link
-                        key={shortcut.href}
-                        href={shortcut.href}
-                        className="block rounded px-2 py-1 text-xs text-(--shell-muted) transition-colors hover:bg-(--shell-hover) hover:text-(--shell-text)"
-                      >
-                        {shortcut.label}
-                      </Link>
-                    ))}
-                  </div>
-                ) : null}
               </div>
             );
           })}
-
-          <div className={collapsed ? 'pt-2' : 'pt-3'}>
-            <button
-              type="button"
-              disabled
-              className={cn(
-                'w-full rounded-lg border border-(--shell-border) text-(--shell-muted)',
-                collapsed ? 'px-3 py-2.5' : 'px-3 py-2 text-left text-sm'
-              )}
-              title="Schedules / Triggers (coming soon)"
-            >
-              <span
-                className={
-                  collapsed
-                    ? 'inline-flex items-center justify-center'
-                    : 'inline-flex items-center gap-2'
-                }
-              >
-                <Clock3 className="h-4 w-4" />
-                {!collapsed ? 'Schedules / Triggers' : null}
-              </span>
-            </button>
           </div>
+
+          {!collapsed ? (
+            <div className="mt-4 space-y-3">
+              <div className="rounded-lg border border-(--shell-border) bg-(--shell-panel-bg)">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup('scheduled')}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-(--shell-muted) transition-colors hover:bg-(--shell-hover)"
+                >
+                  <Clock3 className="h-3.5 w-3.5" />
+                  <span>Scheduled</span>
+                  <span className="ml-auto text-[10px]">{scheduledWorkflows.length}</span>
+                  {openGroups.scheduled ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+
+                {openGroups.scheduled ? (
+                  <div className="max-h-36 space-y-1 overflow-y-auto px-2 pb-2">
+                    {scheduledWorkflows.map((workflow) => {
+                      const cron = readConfigString(workflow.trigger.config, ['cron']);
+                      const timezone = readConfigString(workflow.trigger.config, ['timezone']);
+
+                      return (
+                        <Link
+                          key={workflow.id}
+                          href={`/workflows/${workflow.id}`}
+                          onClick={onNavigate}
+                          className="block rounded-md px-2 py-1.5 transition-colors hover:bg-(--shell-hover)"
+                        >
+                          <p className="truncate text-xs font-medium text-(--shell-text)">
+                            {workflow.name}
+                          </p>
+                          <p className="truncate text-[11px] text-(--shell-muted)">
+                            {cron || 'No cron'}{timezone ? ` · ${timezone}` : ''}
+                          </p>
+                        </Link>
+                      );
+                    })}
+
+                    {scheduledWorkflows.length === 0 ? (
+                      <p className="px-2 py-2 text-xs text-(--shell-muted)">
+                        No scheduled workflows
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-lg border border-(--shell-border) bg-(--shell-panel-bg)">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup('webhooks')}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-(--shell-muted) transition-colors hover:bg-(--shell-hover)"
+                >
+                  <Webhook className="h-3.5 w-3.5" />
+                  <span>Webhooks</span>
+                  <span className="ml-auto text-[10px]">{webhookWorkflows.length}</span>
+                  {openGroups.webhooks ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+
+                {openGroups.webhooks ? (
+                  <div className="max-h-36 space-y-1 overflow-y-auto px-2 pb-2">
+                    {webhookWorkflows.map((workflow) => {
+                      const path = normalizeWebhookPath(
+                        readConfigString(workflow.trigger.config, ['path', 'endpoint'])
+                      );
+                      const method =
+                        readConfigString(workflow.trigger.config, ['method']).toUpperCase() ||
+                        'POST';
+                      const hasTarget = Boolean(path);
+
+                      return (
+                        <div
+                          key={workflow.id}
+                          className="flex items-center gap-1 rounded-md px-2 py-1.5 transition-colors hover:bg-(--shell-hover)"
+                        >
+                          <Link
+                            href={`/workflows/${workflow.id}`}
+                            onClick={onNavigate}
+                            className="min-w-0 flex-1"
+                          >
+                            <p className="truncate text-xs font-medium text-(--shell-text)">
+                              {workflow.name}
+                            </p>
+                            <p className="truncate text-[11px] text-(--shell-muted)">
+                              {method} /{path || 'missing-path'}
+                            </p>
+                          </Link>
+
+                          <button
+                            type="button"
+                            disabled={!hasTarget}
+                            onClick={() => copyWebhookTarget(workflow)}
+                            aria-label={`Copy webhook for ${workflow.name}`}
+                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-(--shell-muted) transition-colors hover:bg-(--shell-hover) hover:text-(--shell-text) disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {copiedWebhookId === workflow.id ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {webhookWorkflows.length === 0 ? (
+                      <p className="px-2 py-2 text-xs text-(--shell-muted)">No webhooks</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-lg border border-(--shell-border) bg-(--shell-panel-bg)">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup('recent')}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-(--shell-muted) transition-colors hover:bg-(--shell-hover)"
+                >
+                  <Timer className="h-3.5 w-3.5" />
+                  <span>Recent</span>
+                  <span className="ml-auto text-[10px]">{recentExecutions.length}</span>
+                  {openGroups.recent ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+
+                {openGroups.recent ? (
+                  <div className="max-h-40 space-y-1 overflow-y-auto px-2 pb-2">
+                    {recentExecutions.map((execution) => (
+                      <Link
+                        key={execution.id}
+                        href={`/executions/${execution.id}`}
+                        onClick={onNavigate}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-(--shell-hover)"
+                      >
+                        <span
+                          className={cn(
+                            'mt-0.5 h-2 w-2 shrink-0 rounded-full',
+                            STATUS_DOT_CLASS[execution.status]
+                          )}
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-medium text-(--shell-text)">
+                            {execution.workflow?.name ?? `Execution ${shortId(execution.id)}`}
+                          </span>
+                          <span className="block truncate text-[11px] text-(--shell-muted)">
+                            {execution.status} · {shortId(execution.id)}
+                          </span>
+                        </span>
+                      </Link>
+                    ))}
+
+                    {recentExecutions.length === 0 ? (
+                      <p className="px-2 py-2 text-xs text-(--shell-muted)">No recent runs</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </nav>
 
         <div className="border-t border-(--shell-border) px-2 py-3">
@@ -289,6 +534,10 @@ export function Sidebar({
                   {profileLabel}
                 </span>
               ) : null}
+
+              {!collapsed ? (
+                <MoreVertical className="ml-auto h-4 w-4 shrink-0 text-(--shell-muted)" />
+              ) : null}
             </button>
 
             <AnimatePresence>
@@ -305,28 +554,27 @@ export function Sidebar({
                 >
                   <button
                     type="button"
-                    className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
                   >
+                    <Settings className="h-4 w-4 text-(--shell-muted)" />
                     Settings
                   </button>
                   <button
                     type="button"
-                    className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
                   >
+                    <KeyRound className="h-4 w-4 text-(--shell-muted)" />
                     API Keys
                   </button>
-                  <button
-                    type="button"
-                    onClick={onToggleTheme}
-                    className="w-full rounded-md px-2 py-2 text-left text-sm text-(--shell-text) transition-colors hover:bg-(--shell-hover)"
-                  >
-                    {isDarkMode ? 'Switch to Light' : 'Switch to Dark'}
-                  </button>
+
+                  <div className="my-1 h-px bg-(--shell-border)" />
+
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="w-full rounded-md px-2 py-2 text-left text-sm font-medium text-(--color-error) transition-colors hover:bg-(--shell-hover) hover:text-(--color-error)"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-medium text-(--color-error) transition-colors hover:bg-(--shell-hover) hover:text-(--color-error)"
                   >
+                    <LogOut className="h-4 w-4" />
                     Sign out
                   </button>
                 </motion.div>

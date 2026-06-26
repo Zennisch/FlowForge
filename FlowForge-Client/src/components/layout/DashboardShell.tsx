@@ -58,7 +58,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           collapsed={isSidebarCollapsed}
           isDarkMode={isDarkMode}
           onNavigate={closeSidebar}
-          onToggleTheme={toggleTheme}
           onToggleCollapse={() => setIsSidebarCollapsed((previous) => !previous)}
         />
 
