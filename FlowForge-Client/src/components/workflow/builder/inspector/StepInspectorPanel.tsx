@@ -84,7 +84,7 @@ export function StepInspectorPanel({
       </div>
 
       <InspectorSection title="Step Basics" defaultOpen hasError={hasBasicsError}>
-        <div className="mt-3 space-y-3">
+        <div className="space-y-3">
           <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
             <span>Step ID</span>
             <InfoTooltip text="Unique identifier used by edges and downstream step references." />
@@ -146,7 +146,7 @@ export function StepInspectorPanel({
             ) : null
           }
         >
-          <div className="mt-3 space-y-3">
+          <div className="space-y-3">
             <ZTextInput
               label="Max attempts"
               fullWidth
@@ -220,7 +220,7 @@ export function StepInspectorPanel({
               ) : null
             }
           >
-            <div className="mt-3 space-y-3">
+            <div className="space-y-3">
               {outgoingEdges.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-(--color-border) bg-(--color-surface-muted) px-3 py-2 text-xs text-(--color-text-secondary)">
                   No outgoing edges yet. Connect this node to another step from the canvas.
@@ -247,7 +247,7 @@ export function StepInspectorPanel({
         description="Deleting this step removes all connected edges in the workflow graph."
         tone="danger"
       >
-        <div className="mt-3">
+        <div>
           <ZButton
             variant="ghost"
             className="border border-red-300 text-red-700 hover:bg-red-100"
@@ -299,6 +299,7 @@ function OutgoingEdgeRow({
       <ZTextInput
         fullWidth
         value={edge.condition}
+        containerClassName='mb-0'
         placeholder="Optional condition"
         onChange={(event) => {
           onUpdateEdgeCondition(edge.key, event.target.value);

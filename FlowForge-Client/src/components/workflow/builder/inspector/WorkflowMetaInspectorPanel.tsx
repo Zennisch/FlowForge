@@ -41,7 +41,7 @@ export function WorkflowMetaInspectorPanel({
           Update workflow details and save from this panel.
         </p>
 
-        <div className="mt-3 space-y-3">
+        <div className="space-y-3">
           <ZTextInput
             fullWidth
             value={draft.name}

@@ -112,7 +112,7 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
       </div>
 
       <InspectorSection title="Trigger Configuration" defaultOpen hasError={hasTriggerError}>
-        <div className="mt-3 space-y-3">
+        <div className="space-y-3">
           <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
             <span>Trigger Type</span>
             <InfoTooltip text="Defines how this workflow starts: manual action, webhook call, or schedule." />
