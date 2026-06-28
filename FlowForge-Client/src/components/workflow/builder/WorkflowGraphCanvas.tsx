@@ -175,6 +175,19 @@ export function WorkflowGraphCanvas({
     [graphNodes, selectedNodeId]
   );
 
+  const selectedLabel = useMemo(() => {
+    if (selection.kind === 'trigger') {
+      return `Trigger: ${draft.trigger.type}`;
+    }
+
+    if (selection.kind === 'step') {
+      const step = draft.steps.find((item) => item.key === selection.stepKey);
+      return step ? `Step: ${step.id || step.type}` : 'Step';
+    }
+
+    return `${draft.steps.length + 1} nodes · ${draft.edges.length} edges`;
+  }, [draft.edges.length, draft.steps, draft.trigger.type, selection]);
+
   return (
     <div className="h-full min-h-0 w-full overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-surface-muted)">
       <ReactFlow
@@ -223,6 +236,9 @@ export function WorkflowGraphCanvas({
         }}
         proOptions={{ hideAttribution: true }}
       >
+        <div className="absolute left-3 top-3 z-10 rounded-full border border-(--color-border) bg-(--color-surface-base)/95 px-3 py-1.5 text-xs font-medium text-(--color-text-secondary) shadow-sm">
+          {selectedLabel}
+        </div>
         <Background gap={20} size={1} color="var(--color-border-subtle)" />
         <MiniMap
           className="ff-workflow-minimap"

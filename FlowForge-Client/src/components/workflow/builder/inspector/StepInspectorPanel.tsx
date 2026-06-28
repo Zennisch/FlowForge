@@ -1,6 +1,7 @@
 'use client';
 
 import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 import ZButton from '@/components/primary/ZButton';
 import ZSelect from '@/components/primary/ZSelect';
@@ -11,6 +12,12 @@ import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
 import type { StepType } from '@/types/workflow.types';
 
 import { JsonCodeEditor } from '../JsonCodeEditor';
+import {
+  InfoTooltip,
+  InspectorDocsSlideOver,
+  InspectorSection,
+  SchemaLink,
+} from './InspectorPrimitives';
 
 interface StepInspectorPanelProps {
   step: BuilderStepDraft;
@@ -47,16 +54,42 @@ export function StepInspectorPanel({
   onRemoveEdge,
   onDeleteStep,
 }: StepInspectorPanelProps) {
+  const [docsOpen, setDocsOpen] = useState(false);
   const outgoingEdges = draft.edges.filter((edge) => edge.fromStepKey === step.key);
   const stepNameByKey = new Map(draft.steps.map((item) => [item.key, item.id]));
+  const hasBasicsError =
+    Boolean(fieldErrors[`step:${step.key}:id`]) || Boolean(fieldErrors[`step:${step.key}:maxAttempts`]);
+  const hasConfigError = Boolean(fieldErrors[`step:${step.key}:configText`]);
+  const hasEdgeError = outgoingEdges.some((edge) => fieldErrors[`edge:${edge.key}:to`]);
+  const hasRetryData = step.maxAttempts !== 3 || step.backoff !== 'exponential';
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
-        <h3 className="text-sm font-semibold text-(--color-text-primary)">Step Basics</h3>
+    <div className="relative space-y-3">
+      <InspectorDocsSlideOver
+        open={docsOpen}
+        kind="step"
+        stepType={step.type}
+        onClose={() => {
+          setDocsOpen(false);
+        }}
+      />
+
+      <div className="flex items-center justify-between gap-3 px-1">
+        <p className="truncate text-xs text-(--color-text-secondary)">Step: {step.id || step.type}</p>
+        <SchemaLink
+          onClick={() => {
+            setDocsOpen(true);
+          }}
+        />
+      </div>
+
+      <InspectorSection title="Step Basics" defaultOpen hasError={hasBasicsError}>
         <div className="mt-3 space-y-3">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
+            <span>Step ID</span>
+            <InfoTooltip text="Unique identifier used by edges and downstream step references." />
+          </div>
           <ZTextInput
-            label="Step ID"
             fullWidth
             value={step.id}
             error={fieldErrors[`step:${step.key}:id`]}
@@ -64,8 +97,11 @@ export function StepInspectorPanel({
               onUpdateStep(step.key, (current) => ({ ...current, id: event.target.value }));
             }}
           />
+          <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
+            <span>Step Type</span>
+            <InfoTooltip text="Controls which config shape this step expects at runtime." />
+          </div>
           <ZSelect
-            label="Step Type"
             fullWidth
             options={stepTypeOptions}
             value={step.type}
@@ -95,11 +131,21 @@ export function StepInspectorPanel({
             Retry & Error
           </ZButton>
         </div>
-      </section>
+      </InspectorSection>
 
       {activePanel === 'retry' ? (
-        <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
-          <h3 className="text-sm font-semibold text-(--color-text-primary)">Retry & Error Handling</h3>
+        <InspectorSection
+          title="Retry & Error Handling"
+          defaultOpen={hasRetryData}
+          hasError={Boolean(fieldErrors[`step:${step.key}:maxAttempts`])}
+          badge={
+            hasRetryData ? (
+              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                Custom
+              </span>
+            ) : null
+          }
+        >
           <div className="mt-3 space-y-3">
             <ZTextInput
               label="Max attempts"
@@ -128,16 +174,27 @@ export function StepInspectorPanel({
               }}
             />
           </div>
-        </section>
+        </InspectorSection>
       ) : null}
 
       {activePanel === 'config' ? (
         <>
-          <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
-            <h3 className="text-sm font-semibold text-(--color-text-primary)">Step Config (JSON)</h3>
+          <InspectorSection title="Step Config (JSON)" hasError={hasConfigError}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-(--color-text-secondary)">
+                <span>Config payload</span>
+                <InfoTooltip text="JSON passed to the selected step type. Use View Schema for examples." />
+              </div>
+              <SchemaLink
+                onClick={() => {
+                  setDocsOpen(true);
+                }}
+              />
+            </div>
             <div className="mt-3">
               <JsonCodeEditor
                 value={step.configText}
+                modalTitle={`Step Config: ${step.id || step.type}`}
                 onChange={(value) => {
                   onUpdateStep(step.key, (current) => ({ ...current, configText: value }));
                 }}
@@ -148,14 +205,21 @@ export function StepInspectorPanel({
                 </p>
               ) : null}
             </div>
-          </section>
+          </InspectorSection>
 
-          <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
-            <h3 className="text-sm font-semibold text-(--color-text-primary)">Outgoing Edges</h3>
-            <p className="mt-1 text-xs text-(--color-text-secondary)">
-              Manage conditions for edges starting from this step.
-            </p>
-
+          <InspectorSection
+            title="Outgoing Edges"
+            description="Manage conditions for edges starting from this step."
+            defaultOpen={outgoingEdges.length > 0}
+            hasError={hasEdgeError}
+            badge={
+              outgoingEdges.length > 0 ? (
+                <span className="rounded-full bg-(--color-surface-muted) px-2 py-0.5 text-[11px] font-medium text-(--color-text-secondary)">
+                  {outgoingEdges.length}
+                </span>
+              ) : null
+            }
+          >
             <div className="mt-3 space-y-3">
               {outgoingEdges.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-(--color-border) bg-(--color-surface-muted) px-3 py-2 text-xs text-(--color-text-secondary)">
@@ -174,15 +238,15 @@ export function StepInspectorPanel({
                 />
               ))}
             </div>
-          </section>
+          </InspectorSection>
         </>
       ) : null}
 
-      <section className="rounded-2xl border border-red-200 bg-red-50 p-4">
-        <h3 className="text-sm font-semibold text-red-700">Danger Zone</h3>
-        <p className="mt-1 text-xs text-red-600">
-          Deleting this step removes all connected edges in the workflow graph.
-        </p>
+      <InspectorSection
+        title="Danger Zone"
+        description="Deleting this step removes all connected edges in the workflow graph."
+        tone="danger"
+      >
         <div className="mt-3">
           <ZButton
             variant="ghost"
@@ -195,7 +259,7 @@ export function StepInspectorPanel({
             Delete Step
           </ZButton>
         </div>
-      </section>
+      </InspectorSection>
     </div>
   );
 }
@@ -228,8 +292,11 @@ function OutgoingEdgeRow({
         </button>
       </div>
 
+      <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
+        <span>Condition</span>
+        <InfoTooltip text="Optional expression used to decide whether this edge can run." />
+      </div>
       <ZTextInput
-        label="Condition"
         fullWidth
         value={edge.condition}
         placeholder="Optional condition"

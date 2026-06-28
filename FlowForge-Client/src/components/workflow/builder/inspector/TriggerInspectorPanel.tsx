@@ -15,6 +15,12 @@ import { useAuthStore } from '@/store/auth.store';
 import type { WorkflowBuilderDraft } from '@/lib/workflow-builder/types';
 
 import { JsonCodeEditor } from '../JsonCodeEditor';
+import {
+  InfoTooltip,
+  InspectorDocsSlideOver,
+  InspectorSection,
+  SchemaLink,
+} from './InspectorPrimitives';
 
 interface TriggerInspectorPanelProps {
   draft: WorkflowBuilderDraft;
@@ -39,6 +45,7 @@ const webhookMethodOptions = [
 export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerInspectorPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [docsOpen, setDocsOpen] = useState(false);
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
 
@@ -67,6 +74,10 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
     : `${apiBase || ''}/webhook/${webhookUserId}/<path>`;
 
   const cronDescription = cronToHumanText(draft.trigger.scheduleCron);
+  const hasTriggerError =
+    Boolean(fieldErrors['trigger.webhookPath']) || Boolean(fieldErrors['trigger.scheduleCron']) || Boolean(fieldErrors['trigger.scheduleTimezone']);
+  const hasAdditionalConfigError = Boolean(fieldErrors['trigger.additionalConfigText']);
+  const hasAdditionalConfig = draft.trigger.additionalConfigText.trim() !== '{}';
 
   const copyWebhookUrl = async () => {
     if (typeof navigator === 'undefined' || !navigator.clipboard) {
@@ -81,12 +92,32 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
   };
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
-        <h3 className="text-sm font-semibold text-(--color-text-primary)">Trigger Configuration</h3>
+    <div className="relative space-y-3">
+      <InspectorDocsSlideOver
+        open={docsOpen}
+        kind="trigger"
+        triggerType={draft.trigger.type}
+        onClose={() => {
+          setDocsOpen(false);
+        }}
+      />
+
+      <div className="flex items-center justify-between gap-3 px-1">
+        <p className="truncate text-xs text-(--color-text-secondary)">Trigger: {draft.trigger.type}</p>
+        <SchemaLink
+          onClick={() => {
+            setDocsOpen(true);
+          }}
+        />
+      </div>
+
+      <InspectorSection title="Trigger Configuration" defaultOpen hasError={hasTriggerError}>
         <div className="mt-3 space-y-3">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
+            <span>Trigger Type</span>
+            <InfoTooltip text="Defines how this workflow starts: manual action, webhook call, or schedule." />
+          </div>
           <ZSelect
-            label="Trigger Type"
             fullWidth
             options={triggerTypeOptions.map((option) => ({ ...option }))}
             value={draft.trigger.type}
@@ -187,6 +218,10 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
                   }));
                 }}
               />
+              <div className="-mt-2 flex items-center gap-1.5 text-xs text-(--color-text-secondary)">
+                <InfoTooltip text="Secret used to verify signed webhook requests when signature validation is enabled." />
+                <span>Used only when signature validation is required.</span>
+              </div>
 
               <ZSwitch
                 label="Require signature validation"
@@ -204,8 +239,11 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
 
           {draft.trigger.type === 'schedule' ? (
             <>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
+                <span>Cron Expression</span>
+                <InfoTooltip text="Standard cron expression evaluated in the selected timezone." />
+              </div>
               <ZTextInput
-                label="Cron Expression"
                 fullWidth
                 value={draft.trigger.scheduleCron}
                 error={fieldErrors['trigger.scheduleCron']}
@@ -242,16 +280,29 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
             </>
           ) : null}
         </div>
-      </section>
+      </InspectorSection>
 
-      <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-4">
-        <h3 className="text-sm font-semibold text-(--color-text-primary)">Additional Config (JSON)</h3>
-        <p className="mt-1 text-xs text-(--color-text-secondary)">
-          Extra keys merged into trigger.config while preserving reserved fields.
-        </p>
+      <InspectorSection
+        title="Additional Config (JSON)"
+        description="Extra keys merged into trigger.config while preserving reserved fields."
+        defaultOpen={hasAdditionalConfig}
+        hasError={hasAdditionalConfigError}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-(--color-text-secondary)">
+            <span>Additional config</span>
+            <InfoTooltip text="Use for optional trigger metadata. Reserved fields from the form are preserved." />
+          </div>
+          <SchemaLink
+            onClick={() => {
+              setDocsOpen(true);
+            }}
+          />
+        </div>
         <div className="mt-3">
           <JsonCodeEditor
             value={draft.trigger.additionalConfigText}
+            modalTitle="Trigger Additional Config"
             onChange={(value) => {
               onUpdate((current) => ({
                 ...current,
@@ -263,7 +314,7 @@ export function TriggerInspectorPanel({ draft, fieldErrors, onUpdate }: TriggerI
             <p className="mt-2 text-xs text-(--color-error)">{fieldErrors['trigger.additionalConfigText']}</p>
           ) : null}
         </div>
-      </section>
+      </InspectorSection>
     </div>
   );
 }

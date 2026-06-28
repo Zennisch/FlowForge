@@ -6,13 +6,18 @@ import { lintGutter, linter } from '@codemirror/lint';
 import { EditorView } from '@codemirror/view';
 import CodeMirror from '@uiw/react-codemirror';
 import { tags } from '@lezer/highlight';
-import { useMemo } from 'react';
+import { Maximize2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+import ZButton from '@/components/primary/ZButton';
+import ZModal from '@/components/primary/ZModal';
 
 interface JsonCodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   height?: string;
+  modalTitle?: string;
 }
 
 export function JsonCodeEditor({
@@ -20,7 +25,9 @@ export function JsonCodeEditor({
   onChange,
   placeholder = '{\n  "key": "value"\n}',
   height = '220px',
+  modalTitle = 'Edit JSON',
 }: JsonCodeEditorProps) {
+  const [expanded, setExpanded] = useState(false);
   const jsonHighlightStyle = useMemo(
     () =>
       HighlightStyle.define([
@@ -40,6 +47,7 @@ export function JsonCodeEditor({
       linter(jsonParseLinter()),
       lintGutter(),
       syntaxHighlighting(jsonHighlightStyle),
+      EditorView.lineWrapping,
     ],
     [jsonHighlightStyle]
   );
@@ -80,22 +88,69 @@ export function JsonCodeEditor({
     []
   );
 
+  const editor = (editorHeight: string) => (
+    <CodeMirror
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      height={editorHeight}
+      basicSetup={{
+        lineNumbers: true,
+        foldGutter: false,
+        autocompletion: false,
+        highlightActiveLineGutter: true,
+      }}
+      extensions={editorExtensions}
+      theme={editorTheme}
+    />
+  );
+
   return (
-    <div className="overflow-hidden rounded-xl border border-(--color-border)">
-      <CodeMirror
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        height={height}
-        basicSetup={{
-          lineNumbers: true,
-          foldGutter: false,
-          autocompletion: false,
-          highlightActiveLineGutter: true,
+    <>
+      <div className="overflow-hidden rounded-xl border border-(--color-border)">
+        <div className="flex items-center justify-between border-b border-(--color-border) bg-(--color-surface-muted) px-2 py-1">
+          <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-(--color-text-secondary)">
+            JSON
+          </span>
+          <button
+            type="button"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-secondary) transition-colors hover:bg-(--color-surface-base) hover:text-(--color-primary)"
+            aria-label="Expand JSON editor"
+            title="Expand editor"
+            onClick={() => {
+              setExpanded(true);
+            }}
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {editor(height)}
+      </div>
+
+      <ZModal
+        isOpen={expanded}
+        onClose={() => {
+          setExpanded(false);
         }}
-        extensions={editorExtensions}
-        theme={editorTheme}
-      />
-    </div>
+        header={modalTitle}
+        size="full"
+        bodyClassName="p-3"
+        containerClassName="max-h-[calc(100vh-2rem)]"
+        footer={
+          <ZButton
+            size="sm"
+            onClick={() => {
+              setExpanded(false);
+            }}
+          >
+            Done
+          </ZButton>
+        }
+      >
+        <div className="overflow-hidden rounded-xl border border-(--color-border)">
+          {editor('min(72vh, 760px)')}
+        </div>
+      </ZModal>
+    </>
   );
 }

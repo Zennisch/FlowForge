@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { PanelBottomClose, PanelBottomOpen, X } from 'lucide-react';
 
 import { buildCreateWorkflowPayload } from '@/lib/workflow-builder/payload';
@@ -13,6 +13,10 @@ import { TriggerInspectorPanel } from './inspector/TriggerInspectorPanel';
 import { WorkflowMetaInspectorPanel } from './inspector/WorkflowMetaInspectorPanel';
 import { WorkflowGraphCanvas } from './WorkflowGraphCanvas';
 import { useWorkflowBuilderState } from './useWorkflowBuilderState';
+
+const INSPECTOR_DEFAULT_WIDTH = 420;
+const INSPECTOR_MIN_WIDTH = 360;
+const INSPECTOR_MAX_WIDTH = 640;
 
 export function WorkflowBuilderEditor({
   mode,
@@ -39,6 +43,8 @@ export function WorkflowBuilderEditor({
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
+  const [inspectorWidth, setInspectorWidth] = useState(INSPECTOR_DEFAULT_WIDTH);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     resetFromWorkflow(initialWorkflow);
@@ -68,6 +74,18 @@ export function WorkflowBuilderEditor({
     return 'Workflow Summary';
   }, [selection.kind, selectedStep]);
 
+  const inspectorSubtitle = useMemo(() => {
+    if (selection.kind === 'trigger') {
+      return draft.trigger.type;
+    }
+
+    if (selection.kind === 'step' && selectedStep) {
+      return selectedStep.type;
+    }
+
+    return `${draft.steps.length + 1} nodes, ${draft.edges.length} edges`;
+  }, [draft.edges.length, draft.steps.length, draft.trigger.type, selectedStep, selection.kind]);
+
   useEffect(() => {
     setMobileInspectorOpen(true);
   }, [selection]);
@@ -78,6 +96,30 @@ export function WorkflowBuilderEditor({
     },
     [setSelection]
   );
+
+  const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    const container = splitContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const maxWidth = Math.min(INSPECTOR_MAX_WIDTH, window.innerWidth * 0.5);
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const nextWidth = containerRect.right - moveEvent.clientX;
+      setInspectorWidth(Math.min(Math.max(nextWidth, INSPECTOR_MIN_WIDTH), maxWidth));
+    };
+
+    const stopResize = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResize);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResize);
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-x-hidden">
@@ -99,8 +141,8 @@ export function WorkflowBuilderEditor({
         </p>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="h-full min-h-0 min-w-0">
+      <div ref={splitContainerRef} className="flex min-h-0 flex-1 gap-2">
+        <section className="h-full min-h-0 min-w-0 flex-1">
           <WorkflowGraphCanvas
             draft={draft}
             selection={selection}
@@ -111,38 +153,65 @@ export function WorkflowBuilderEditor({
           />
         </section>
 
-        <aside className="hidden h-full min-h-0 min-w-0 rounded-2xl border border-(--color-border) bg-(--color-surface-muted) p-3 lg:block">
-          <div className="h-full space-y-3 overflow-y-auto pr-1">
-            {selection.kind === 'canvas' ? (
-              <WorkflowMetaInspectorPanel
-                draft={draft}
-                pending={isPending}
-                onUpdate={updateDraft}
-                onSave={() => {
-                  void saveWorkflow();
-                }}
-              />
-            ) : null}
+        <button
+          type="button"
+          aria-label="Resize inspector"
+          title="Drag to resize inspector. Double click to reset."
+          className="hidden w-2 cursor-col-resize rounded-full transition-colors hover:bg-(--color-border) lg:block"
+          onPointerDown={startResize}
+          onDoubleClick={() => {
+            setInspectorWidth(INSPECTOR_DEFAULT_WIDTH);
+          }}
+        />
 
-            {selection.kind === 'trigger' ? (
-              <TriggerInspectorPanel draft={draft} fieldErrors={fieldErrors} onUpdate={updateDraft} />
-            ) : null}
+        <aside
+          className="relative hidden h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-surface-muted) lg:block"
+          style={{
+            flex: `0 0 ${inspectorWidth}px`,
+            maxWidth: 'min(640px, 50vw)',
+            minWidth: `${INSPECTOR_MIN_WIDTH}px`,
+          }}
+        >
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="border-b border-(--color-border) bg-(--color-surface-base) px-4 py-3">
+              <p className="text-sm font-semibold text-(--color-text-primary)">{inspectorTitle}</p>
+              <p className="mt-0.5 text-xs capitalize text-(--color-text-secondary)">
+                {inspectorSubtitle}
+              </p>
+            </div>
 
-            {selection.kind === 'step' && selectedStep ? (
-              <StepInspectorPanel
-                draft={draft}
-                step={selectedStep}
-                activePanel={selection.kind === 'step' ? selection.panel : 'config'}
-                fieldErrors={fieldErrors}
-                onChangePanel={(panel) => {
-                  handleStepPanelChange(selectedStep.key, panel);
-                }}
-                onUpdateStep={updateStep}
-                onUpdateEdgeCondition={updateEdgeCondition}
-                onRemoveEdge={removeEdge}
-                onDeleteStep={deleteStep}
-              />
-            ) : null}
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+              {selection.kind === 'canvas' ? (
+                <WorkflowMetaInspectorPanel
+                  draft={draft}
+                  pending={isPending}
+                  onUpdate={updateDraft}
+                  onSave={() => {
+                    void saveWorkflow();
+                  }}
+                />
+              ) : null}
+
+              {selection.kind === 'trigger' ? (
+                <TriggerInspectorPanel draft={draft} fieldErrors={fieldErrors} onUpdate={updateDraft} />
+              ) : null}
+
+              {selection.kind === 'step' && selectedStep ? (
+                <StepInspectorPanel
+                  draft={draft}
+                  step={selectedStep}
+                  activePanel={selection.kind === 'step' ? selection.panel : 'config'}
+                  fieldErrors={fieldErrors}
+                  onChangePanel={(panel) => {
+                    handleStepPanelChange(selectedStep.key, panel);
+                  }}
+                  onUpdateStep={updateStep}
+                  onUpdateEdgeCondition={updateEdgeCondition}
+                  onRemoveEdge={removeEdge}
+                  onDeleteStep={deleteStep}
+                />
+              ) : null}
+            </div>
           </div>
         </aside>
       </div>
@@ -172,9 +241,7 @@ export function WorkflowBuilderEditor({
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-(--color-text-primary)">{inspectorTitle}</h2>
-                  <p className="text-xs text-(--color-text-secondary)">
-                    Contextual inspector for current canvas selection.
-                  </p>
+                  <p className="text-xs capitalize text-(--color-text-secondary)">{inspectorSubtitle}</p>
                 </div>
                 <button
                   type="button"
