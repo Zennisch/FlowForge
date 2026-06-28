@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
+import { ExecutionVisualTrace } from '@/components/execution/ExecutionVisualTrace';
 import {
   ExecutionLevelEvents,
   StepExecutionTimeline,
@@ -29,6 +30,7 @@ import {
   useReleaseExecutionLegalHold,
   useSetExecutionLegalHold,
 } from '@/hooks/useExecutions';
+import { useWorkflow } from '@/hooks/useWorkflows';
 import {
   ACTIVE_STATUSES,
   type Execution,
@@ -237,9 +239,11 @@ function ExecutionDateTime({ value }: { value?: string }) {
   const formatted = formatDateTimeParts(value);
 
   return (
-    <div className="leading-tight" title={formatted.title}>
-      <div className="font-semibold text-(--color-text-primary)">{formatted.date}</div>
-      <div className="mt-1 text-xs text-(--color-text-secondary)">{formatted.time}</div>
+    <div
+      className="truncate text-sm font-semibold text-(--color-text-primary)"
+      title={formatted.title}
+    >
+      {formatted.date} · {formatted.time}
     </div>
   );
 }
@@ -358,10 +362,13 @@ export default function ExecutionDetailPage() {
   const [isLegalHoldModalOpen, setIsLegalHoldModalOpen] = useState(false);
   const [eventsCursor, setEventsCursor] = useState<string | undefined>(undefined);
   const [eventsCursorStack, setEventsCursorStack] = useState<string[]>([]);
+  const [selectedTraceStepId, setSelectedTraceStepId] = useState<string | null>(null);
 
   const executionQuery = useExecution(executionId);
+  const execution = executionQuery.data;
+  const workflowQuery = useWorkflow(execution?.workflowId ?? '');
   const legalHoldQuery = useExecutionLegalHold(executionId);
-  const executionStatus = executionQuery.data?.status;
+  const executionStatus = execution?.status;
   const isExecutionActive = Boolean(executionStatus && ACTIVE_STATUSES.includes(executionStatus));
   const eventsQueryInput = useMemo(
     () => ({
@@ -376,7 +383,6 @@ export default function ExecutionDetailPage() {
   const setLegalHoldMutation = useSetExecutionLegalHold();
   const releaseLegalHoldMutation = useReleaseExecutionLegalHold();
 
-  const execution = executionQuery.data;
   const legalHold = legalHoldQuery.data?.legalHold;
   const stepsFromExecution = execution?.stepExecutions ?? [];
   const events = eventsQuery.data?.items ?? [];
@@ -390,6 +396,7 @@ export default function ExecutionDetailPage() {
   useEffect(() => {
     setEventsCursor(undefined);
     setEventsCursorStack([]);
+    setSelectedTraceStepId(null);
   }, [executionId]);
 
   useEffect(() => {
@@ -605,6 +612,35 @@ export default function ExecutionDetailPage() {
 
         {execution ? (
           <section className="rounded-xl border border-(--color-border) bg-white p-4 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-(--color-text-primary)">
+                  Visual trace
+                </h2>
+                <p className="mt-1 text-xs text-(--color-text-secondary)">
+                  Read-only workflow path with visited, failed, running, and skipped branches.
+                </p>
+              </div>
+              {workflowQuery.isFetching ? (
+                <span className="text-xs text-(--color-text-secondary)">Loading graph...</span>
+              ) : null}
+            </div>
+
+            {workflowQuery.isError ? (
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
+                <p className="text-sm text-red-700">{workflowQuery.error.message}</p>
+              </div>
+            ) : (
+              <div className="mb-5">
+                <ExecutionVisualTrace
+                  workflow={workflowQuery.data}
+                  steps={stepExecutions}
+                  selectedStepId={selectedTraceStepId}
+                  onStepSelect={setSelectedTraceStepId}
+                />
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold text-(--color-text-primary)">
@@ -661,6 +697,8 @@ export default function ExecutionDetailPage() {
                   executionId={execution.id}
                   steps={stepExecutions}
                   events={stepEvents}
+                  selectedStepId={selectedTraceStepId}
+                  onSelectedStepChange={setSelectedTraceStepId}
                 />
                 <ExecutionLevelEvents events={executionLevelEvents} />
               </div>

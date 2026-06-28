@@ -21,6 +21,8 @@ interface StepExecutionTimelineProps {
   executionId: string;
   steps: StepExecution[];
   events: ExecutionEvent[];
+  selectedStepId?: string | null;
+  onSelectedStepChange?: (stepId: string) => void;
 }
 
 type StepTab = 'input' | 'output' | 'error' | 'events';
@@ -544,6 +546,8 @@ export function StepExecutionTimeline({
   executionId,
   steps,
   events,
+  selectedStepId,
+  onSelectedStepChange,
 }: StepExecutionTimelineProps) {
   const groups = useMemo(
     () => buildStepGroups(executionId, steps, events),
@@ -561,6 +565,14 @@ export function StepExecutionTimeline({
     });
   }, [groups]);
 
+  useEffect(() => {
+    if (!selectedStepId || !groups.some((group) => group.stepId === selectedStepId)) {
+      return;
+    }
+
+    setOpenStepId(selectedStepId);
+  }, [groups, selectedStepId]);
+
   if (groups.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-5 text-sm text-(--color-text-secondary)">
@@ -577,7 +589,13 @@ export function StepExecutionTimeline({
           group={group}
           isOpen={openStepId === group.stepId}
           onToggle={() => {
-            setOpenStepId((current) => (current === group.stepId ? null : group.stepId));
+            setOpenStepId((current) => {
+              const next = current === group.stepId ? null : group.stepId;
+              if (next) {
+                onSelectedStepChange?.(next);
+              }
+              return next;
+            });
           }}
         />
       ))}
