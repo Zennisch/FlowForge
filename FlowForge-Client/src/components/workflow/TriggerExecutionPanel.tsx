@@ -1,13 +1,10 @@
 'use client';
 
-import { json, jsonParseLinter } from '@codemirror/lang-json';
-import { lintGutter, linter } from '@codemirror/lint';
-import { EditorView } from '@codemirror/view';
+import MonacoEditor from '@monaco-editor/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Info, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import CodeMirror from '@uiw/react-codemirror';
 
 import ZButton from '@/components/primary/ZButton';
 import { useTriggerWorkflow } from '@/hooks/useWorkflows';
@@ -77,35 +74,6 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
 
     return `Trigger ${workflow.name}`;
   }, [workflow]);
-
-  const editorExtensions = useMemo(() => [json(), linter(jsonParseLinter()), lintGutter()], []);
-
-  const editorTheme = useMemo(
-    () =>
-      EditorView.theme({
-        '&': {
-          fontSize: '13px',
-        },
-        '.cm-scroller': {
-          fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace',
-        },
-        '.cm-gutters': {
-          borderRight: '1px solid #e4e4e7',
-          backgroundColor: '#fafafa',
-          color: '#71717a',
-        },
-        '.cm-content': {
-          padding: '12px 0',
-        },
-        '.cm-line': {
-          padding: '0 12px',
-        },
-        '.cm-activeLine': {
-          backgroundColor: '#f8fafc',
-        },
-      }),
-    []
-  );
 
   const payloadHasSyntaxError = useMemo(() => {
     if (!payloadInput.trim()) {
@@ -236,25 +204,36 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
                     payloadHasSyntaxError ? 'border-red-400' : 'border-zinc-300'
                   }`}
                 >
-                  <CodeMirror
-                    id="trigger-workflow-payload"
+                  <div className="relative">
+                    {!payloadInput.trim() ? (
+                      <pre className="pointer-events-none absolute left-[62px] top-3 z-10 whitespace-pre-wrap text-xs leading-5 text-zinc-400">
+{`{
+  "orderId": "A-1001",
+  "source": "manual"
+}`}
+                      </pre>
+                    ) : null}
+                    <MonacoEditor
                     value={payloadInput}
-                    onChange={(value) => {
-                      setPayloadInput(value);
-                    }}
-                    placeholder={['{', '  "orderId": "A-1001",', '  "source": "manual"', '}'].join(
-                      '\n'
-                    )}
+                    language="json"
                     height="320px"
-                    basicSetup={{
-                      lineNumbers: true,
-                      highlightActiveLineGutter: true,
-                      foldGutter: false,
-                      autocompletion: false,
+                    theme="light"
+                    onChange={(value) => {
+                      setPayloadInput(value ?? '');
                     }}
-                    extensions={editorExtensions}
-                    theme={editorTheme}
-                  />
+                    options={{
+                      automaticLayout: true,
+                      folding: false,
+                      formatOnPaste: true,
+                      formatOnType: true,
+                      lineNumbers: 'on',
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      tabSize: 2,
+                      wordWrap: 'on',
+                    }}
+                    />
+                  </div>
                 </div>
               </div>
 

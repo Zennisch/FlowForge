@@ -297,8 +297,8 @@ export function InspectorDocsSlideOver({
   }
 
   return (
-    <div className="absolute inset-0 z-20 flex justify-end bg-(--color-overlay-modal)">
-      <aside className="h-full w-full overflow-y-auto border-l border-(--color-border) bg-(--color-surface-base) shadow-xl">
+    <div className="absolute inset-0 z-50 flex justify-end bg-(--color-overlay-modal)">
+      <aside className="relative z-10 h-full w-full overflow-y-auto border-l border-(--color-border) bg-(--color-surface-base) shadow-xl">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-(--color-border) bg-(--color-surface-base) px-4 py-3">
           <div>
             <h3 className="text-sm font-semibold text-(--color-text-primary)">{entry.title}</h3>
