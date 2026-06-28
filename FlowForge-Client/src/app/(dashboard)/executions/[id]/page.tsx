@@ -3,10 +3,24 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  Ban,
+  Clock,
+  LockKeyhole,
+  RefreshCw,
+  Shield,
+  TimerReset,
+} from 'lucide-react';
 
-import { EventTimeline } from '@/components/execution/EventTimeline';
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
-import { StepStatusTable } from '@/components/execution/StepStatusTable';
+import {
+  ExecutionLevelEvents,
+  StepExecutionTimeline,
+} from '@/components/execution/StepExecutionTimeline';
+import ZModal from '@/components/primary/ZModal';
+import { cn } from '@/components/primary/utils';
+import { WorkflowTriggerType } from '@/components/workflow/WorkflowTriggerType';
 import {
   useCancelExecution,
   useExecution,
@@ -17,6 +31,7 @@ import {
 } from '@/hooks/useExecutions';
 import {
   ACTIVE_STATUSES,
+  type Execution,
   type ExecutionEvent,
   type ExecutionStatus,
   type StepExecution,
@@ -30,7 +45,15 @@ function getExecutionId(value: string | string[] | undefined): string {
   return value ?? '';
 }
 
-function formatDateTime(value?: string): string {
+function compactId(value: string): string {
+  if (value.length <= 14) {
+    return value;
+  }
+
+  return `${value.slice(0, 6)}..${value.slice(-4)}`;
+}
+
+function formatDateTime(value?: string | null): string {
   if (!value) {
     return 'N/A';
   }
@@ -40,34 +63,74 @@ function formatDateTime(value?: string): string {
     return 'N/A';
   }
 
-  return new Intl.DateTimeFormat('vi-VN', {
+  return new Intl.DateTimeFormat('en-US', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
 }
 
-function getLegalHoldBadge(
-  legalHoldState: { active: boolean } | undefined,
-  isLoading: boolean
-): { label: string; className: string } {
-  if (isLoading) {
-    return {
-      label: 'Legal hold: loading',
-      className: 'border-(--color-border) bg-slate-100 text-(--color-text-secondary)',
-    };
+function formatDateTimeParts(value?: string): { date: string; time: string; title?: string } {
+  if (!value) {
+    return { date: 'N/A', time: '-' };
   }
 
-  if (legalHoldState?.active) {
-    return {
-      label: 'Legal hold: enabled',
-      className: 'border-amber-300 bg-amber-50 text-amber-800',
-    };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return { date: 'N/A', time: '-' };
   }
+
+  const today = new Date();
+  const isToday =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
 
   return {
-    label: 'Legal hold: disabled',
-    className: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+    date: isToday
+      ? 'Today'
+      : new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }).format(date),
+    time: new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date),
+    title: formatDateTime(value),
   };
+}
+
+function formatDuration(startedAt?: string, completedAt?: string, status?: ExecutionStatus): string {
+  if (!startedAt) {
+    return 'N/A';
+  }
+
+  const startTime = new Date(startedAt).getTime();
+  if (Number.isNaN(startTime)) {
+    return 'N/A';
+  }
+
+  if (!completedAt) {
+    return status === 'running' || status === 'pending' || status === 'compensating'
+      ? 'Running'
+      : 'N/A';
+  }
+
+  const endTime = new Date(completedAt).getTime();
+  if (Number.isNaN(endTime) || endTime < startTime) {
+    return 'N/A';
+  }
+
+  const elapsedSeconds = Math.floor((endTime - startTime) / 1000);
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const seconds = elapsedSeconds % 60;
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
 }
 
 function isCancellable(status: ExecutionStatus): boolean {
@@ -111,6 +174,10 @@ function deriveStepExecutionsFromEvents(
       if (typeof attempt === 'number') {
         current.attempt = attempt;
       }
+      const input = event.payload.input;
+      if (input && typeof input === 'object' && !Array.isArray(input)) {
+        current.input = input as Record<string, unknown>;
+      }
     }
 
     if (event.type === 'step.completed') {
@@ -146,11 +213,149 @@ function deriveStepExecutionsFromEvents(
   return Array.from(steps.values());
 }
 
+function SummaryMetric({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: typeof Clock;
+}) {
+  return (
+    <div className="rounded-xl border border-(--color-border) bg-white px-3 py-2">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--color-text-secondary)">
+        <Icon className="h-3.5 w-3.5 text-(--color-primary)" />
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-(--color-text-primary)">{value}</div>
+    </div>
+  );
+}
+
+function ExecutionDateTime({ value }: { value?: string }) {
+  const formatted = formatDateTimeParts(value);
+
+  return (
+    <div className="leading-tight" title={formatted.title}>
+      <div className="font-semibold text-(--color-text-primary)">{formatted.date}</div>
+      <div className="mt-1 text-xs text-(--color-text-secondary)">{formatted.time}</div>
+    </div>
+  );
+}
+
+function LegalHoldModal({
+  isOpen,
+  onClose,
+  legalHold,
+  isLoading,
+  reason,
+  message,
+  isMutating,
+  onReasonChange,
+  onPlace,
+  onRelease,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  legalHold:
+    | {
+        active: boolean;
+        reason: string | null;
+        setByOwnerId: string | null;
+        createdAt: string | null;
+        releasedAt: string | null;
+      }
+    | undefined;
+  isLoading: boolean;
+  reason: string;
+  message: string | null;
+  isMutating: boolean;
+  onReasonChange: (value: string) => void;
+  onPlace: () => void;
+  onRelease: () => void;
+}) {
+  return (
+    <ZModal
+      isOpen={isOpen}
+      onClose={onClose}
+      header="Legal hold"
+      size="lg"
+      bodyClassName="p-5"
+      footer={
+        <div className="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={onRelease}
+            disabled={isMutating}
+            className="inline-flex items-center gap-2 rounded-lg border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Release hold
+          </button>
+          <button
+            type="button"
+            onClick={onPlace}
+            disabled={isMutating}
+            className="inline-flex items-center gap-2 rounded-lg border border-(--color-primary) bg-(--color-primary) px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Place hold
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-(--color-text-secondary)">
+          Protect execution events from retention cleanup when an audit or investigation needs them.
+        </p>
+        <input
+          type="text"
+          value={reason}
+          onChange={(event) => {
+            onReasonChange(event.target.value);
+          }}
+          placeholder="Optional reason for legal hold"
+          className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm text-(--color-text-primary) focus:border-(--color-primary) focus:outline-none"
+        />
+        {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
+        <div className="rounded-xl border border-(--color-border) bg-(--color-surface-muted) p-3 text-sm">
+          {isLoading ? (
+            <p className="text-(--color-text-secondary)">Loading legal hold state...</p>
+          ) : (
+            <div className="grid gap-2 text-xs text-(--color-text-secondary) sm:grid-cols-2">
+              <p>
+                <span className="font-semibold text-(--color-text-primary)">State:</span>{' '}
+                {legalHold?.active ? 'Enabled' : 'Disabled'}
+              </p>
+              <p>
+                <span className="font-semibold text-(--color-text-primary)">Reason:</span>{' '}
+                {legalHold?.reason?.trim() ? legalHold.reason : 'N/A'}
+              </p>
+              <p>
+                <span className="font-semibold text-(--color-text-primary)">Set by:</span>{' '}
+                {legalHold?.setByOwnerId ?? 'N/A'}
+              </p>
+              <p>
+                <span className="font-semibold text-(--color-text-primary)">Created:</span>{' '}
+                {formatDateTime(legalHold?.createdAt)}
+              </p>
+              <p>
+                <span className="font-semibold text-(--color-text-primary)">Released:</span>{' '}
+                {formatDateTime(legalHold?.releasedAt)}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </ZModal>
+  );
+}
+
 export default function ExecutionDetailPage() {
   const params = useParams<{ id: string | string[] }>();
   const executionId = getExecutionId(params.id);
   const [legalHoldReason, setLegalHoldReason] = useState('');
   const [legalHoldMessage, setLegalHoldMessage] = useState<string | null>(null);
+  const [isLegalHoldModalOpen, setIsLegalHoldModalOpen] = useState(false);
   const [eventsCursor, setEventsCursor] = useState<string | undefined>(undefined);
   const [eventsCursorStack, setEventsCursorStack] = useState<string[]>([]);
 
@@ -173,11 +378,12 @@ export default function ExecutionDetailPage() {
 
   const execution = executionQuery.data;
   const legalHold = legalHoldQuery.data?.legalHold;
-  const legalHoldBadge = getLegalHoldBadge(legalHold, legalHoldQuery.isPending);
   const stepsFromExecution = execution?.stepExecutions ?? [];
   const events = eventsQuery.data?.items ?? [];
+  const stepEvents = events.filter((event) => Boolean(event.stepId));
+  const executionLevelEvents = events.filter((event) => !event.stepId);
   const eventsPageInfo = eventsQuery.data?.pageInfo;
-  const stepsFromEvents = deriveStepExecutionsFromEvents(executionId, events);
+  const stepsFromEvents = deriveStepExecutionsFromEvents(executionId, stepEvents);
   const stepExecutions = stepsFromExecution.length > 0 ? stepsFromExecution : stepsFromEvents;
   const isLegalHoldMutating = setLegalHoldMutation.isPending || releaseLegalHoldMutation.isPending;
 
@@ -185,6 +391,10 @@ export default function ExecutionDetailPage() {
     setEventsCursor(undefined);
     setEventsCursorStack([]);
   }, [executionId]);
+
+  useEffect(() => {
+    setLegalHoldReason(legalHold?.reason ?? '');
+  }, [legalHold?.reason]);
 
   async function handlePlaceLegalHold(): Promise<void> {
     if (!executionId) {
@@ -234,71 +444,128 @@ export default function ExecutionDetailPage() {
     setEventsCursorStack([]);
   }
 
+  const workflowLabel = execution?.workflow?.name ?? compactId(execution?.workflowId ?? '');
+  const duration = execution
+    ? formatDuration(execution.startedAt, execution.completedAt, execution.status)
+    : 'N/A';
+
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <section className="rounded-2xl border border-(--color-border) bg-white p-6 shadow-[0_16px_44px_-28px_rgba(37,99,235,0.55)]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold text-(--color-text-primary)">
-                Execution details
-              </h1>
-              <span
-                className={[
-                  'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
-                  legalHoldBadge.className,
-                ].join(' ')}
-              >
-                {legalHoldBadge.label}
-              </span>
+    <main className="w-full px-4 py-4 sm:px-6 lg:px-8">
+      <div className="space-y-4">
+        <div className="rounded-xl border border-(--color-border) bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href="/executions"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-(--color-border) text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary)"
+                  aria-label="Back to executions"
+                  title="Back to executions"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+                <h1 className="truncate text-xl font-semibold text-(--color-text-primary)">
+                  {workflowLabel || 'Execution'}
+                </h1>
+                {execution ? <ExecutionStatusBadge status={execution.status} /> : null}
+                {execution ? <WorkflowTriggerType triggerType={execution.triggerType} /> : null}
+              </div>
+              <p className="mt-1 text-sm text-(--color-text-secondary)">
+                Execution {compactId(executionId)}
+                {execution?.workflow?.description ? ` · ${execution.workflow.description}` : ''}
+              </p>
             </div>
-            <p className="mt-1 text-sm text-(--color-text-secondary)">
-              Detailed execution monitor with live polling and step-level state.
-            </p>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/executions"
-              className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary)"
-            >
-              Back to executions
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => {
-                void executionQuery.refetch();
-                void eventsQuery.refetch();
-              }}
-              className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50"
-            >
-              Refresh
-            </button>
-
-            {execution && isCancellable(execution.status) ? (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                disabled={cancelExecutionMutation.isPending}
                 onClick={() => {
-                  void cancelExecutionMutation.mutateAsync(execution.id);
+                  setLegalHoldMessage(null);
+                  setIsLegalHoldModalOpen(true);
                 }}
-                className="inline-flex rounded-lg border border-orange-200 px-3 py-1.5 text-sm font-medium text-orange-700 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                  legalHold?.active
+                    ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                    : 'border-(--color-border) text-(--color-text-secondary) hover:border-(--color-primary) hover:text-(--color-primary)'
+                )}
               >
-                {cancelExecutionMutation.isPending ? 'Cancelling...' : 'Cancel execution'}
+                {legalHold?.active ? (
+                  <LockKeyhole className="h-4 w-4" />
+                ) : (
+                  <Shield className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {legalHold?.active ? 'Hold enabled' : 'Legal hold'}
+                </span>
               </button>
-            ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  void executionQuery.refetch();
+                  void legalHoldQuery.refetch();
+                  void eventsQuery.refetch();
+                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-(--color-primary) px-3 py-2 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </button>
+              {execution && isCancellable(execution.status) ? (
+                <button
+                  type="button"
+                  disabled={cancelExecutionMutation.isPending}
+                  onClick={() => {
+                    void cancelExecutionMutation.mutateAsync(execution.id);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg border border-orange-200 px-3 py-2 text-sm font-medium text-orange-700 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Ban className="h-4 w-4" />
+                  {cancelExecutionMutation.isPending ? 'Cancelling...' : 'Cancel'}
+                </button>
+              ) : null}
+            </div>
           </div>
+
+          {execution ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <SummaryMetric label="Execution ID" value={compactId(execution.id)} icon={Shield} />
+              <div className="rounded-xl border border-(--color-border) bg-white px-3 py-2">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--color-text-secondary)">
+                  <Clock className="h-3.5 w-3.5 text-(--color-primary)" />
+                  Started
+                </div>
+                <div className="mt-1 text-sm">
+                  <ExecutionDateTime value={execution.startedAt} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-(--color-border) bg-white px-3 py-2">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--color-text-secondary)">
+                  <Clock className="h-3.5 w-3.5 text-(--color-primary)" />
+                  Completed
+                </div>
+                <div className="mt-1 text-sm">
+                  <ExecutionDateTime value={execution.completedAt} />
+                </div>
+              </div>
+              <SummaryMetric label="Duration" value={duration} icon={TimerReset} />
+              <SummaryMetric
+                label="Workflow"
+                value={execution.workflow?.name ?? compactId(execution.workflowId)}
+                icon={Shield}
+              />
+            </div>
+          ) : null}
         </div>
 
         {executionQuery.isPending ? (
-          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-sm text-(--color-text-secondary)">
+          <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-sm text-(--color-text-secondary)">
             Loading execution details...
           </div>
         ) : null}
 
         {executionQuery.isError ? (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <p className="text-sm text-red-700">{executionQuery.error.message}</p>
             <button
               type="button"
@@ -313,232 +580,113 @@ export default function ExecutionDetailPage() {
         ) : null}
 
         {cancelExecutionMutation.isError ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <p className="text-sm text-red-700">{cancelExecutionMutation.error.message}</p>
           </div>
         ) : null}
 
         {setLegalHoldMutation.isError ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <p className="text-sm text-red-700">{setLegalHoldMutation.error.message}</p>
           </div>
         ) : null}
 
         {releaseLegalHoldMutation.isError ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <p className="text-sm text-red-700">{releaseLegalHoldMutation.error.message}</p>
           </div>
         ) : null}
 
         {legalHoldQuery.isError ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <p className="text-sm text-red-700">{legalHoldQuery.error.message}</p>
           </div>
         ) : null}
 
         {execution ? (
-          <div className="mt-6 space-y-6">
-            <div className="grid gap-3 rounded-xl border border-(--color-border) bg-blue-50/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="rounded-xl border border-(--color-border) bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-wide text-(--color-text-secondary)">
-                  Execution ID
-                </p>
-                <p className="mt-1 text-sm font-semibold text-(--color-text-primary)">
-                  {execution.id}
+                <h2 className="text-base font-semibold text-(--color-text-primary)">
+                  Step timeline
+                </h2>
+                <p className="mt-1 text-xs text-(--color-text-secondary)">
+                  {eventsQuery.isFetching ? 'Updating...' : 'Loaded'} {events.length} events
+                  {eventsPageInfo?.hasNextPage ? ' · more available' : ''}
+                  {shouldPollEvents ? ' · live polling' : ' · polling paused'}
                 </p>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-(--color-text-secondary)">
-                  Workflow ID
-                </p>
-                <p className="mt-1 text-sm font-semibold text-(--color-text-primary)">
-                  {execution.workflowId}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-(--color-text-secondary)">
-                  Status
-                </p>
-                <p className="mt-1">
-                  <ExecutionStatusBadge status={execution.status} />
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-(--color-text-secondary)">
-                  Trigger
-                </p>
-                <p className="mt-1 text-sm font-semibold capitalize text-(--color-text-primary)">
-                  {execution.triggerType}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-(--color-text-secondary)">
-                  Started
-                </p>
-                <p className="mt-1 text-sm text-(--color-text-primary)">
-                  {formatDateTime(execution.startedAt)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-(--color-text-secondary)">
-                  Completed
-                </p>
-                <p className="mt-1 text-sm text-(--color-text-primary)">
-                  {formatDateTime(execution.completedAt)}
-                </p>
-              </div>
-              <div className="sm:col-span-2">
-                <p className="text-xs uppercase tracking-wide text-(--color-text-secondary)">
-                  Polling
-                </p>
-                <p className="mt-1 text-sm text-(--color-text-primary)">
-                  {isExecutionActive ? 'Active (every 3s)' : 'Stopped (terminal state)'}
-                </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-(--color-text-secondary)">
+                  Page size {eventsPageInfo?.limit ?? 200}
+                </span>
+                <button
+                  type="button"
+                  onClick={goToPreviousEventsPage}
+                  disabled={eventsCursorStack.length === 0 || eventsQuery.isFetching}
+                  className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={goToNextEventsPage}
+                  disabled={
+                    !eventsPageInfo?.hasNextPage ||
+                    !eventsPageInfo?.nextCursor ||
+                    eventsQuery.isFetching
+                  }
+                  className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Next
+                </button>
+                <button
+                  type="button"
+                  onClick={jumpToLatestEventsPage}
+                  disabled={!eventsCursor && eventsCursorStack.length === 0}
+                  className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Latest
+                </button>
               </div>
             </div>
 
-            <div>
-              <h2 className="text-lg font-semibold text-(--color-text-primary)">
-                Compliance controls
-              </h2>
-              <p className="mt-1 text-sm text-(--color-text-secondary)">
-                Apply or release legal hold to protect execution events from retention cleanup.
-              </p>
-              <div className="mt-3 rounded-xl border border-(--color-border) bg-slate-50/50 p-4">
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-                  <input
-                    type="text"
-                    value={legalHoldReason}
-                    onChange={(event) => {
-                      setLegalHoldReason(event.target.value);
-                    }}
-                    placeholder="Optional reason for legal hold"
-                    className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm text-(--color-text-primary) focus:border-(--color-primary) focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handlePlaceLegalHold();
-                    }}
-                    disabled={isLegalHoldMutating}
-                    className="inline-flex rounded-lg border border-(--color-primary) px-3 py-2 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Place legal hold
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleReleaseLegalHold();
-                    }}
-                    disabled={isLegalHoldMutating}
-                    className="inline-flex rounded-lg border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Release legal hold
-                  </button>
-                </div>
-                {legalHoldMessage ? (
-                  <p className="mt-2 text-sm text-emerald-700">{legalHoldMessage}</p>
-                ) : null}
-                {legalHoldQuery.isPending ? (
-                  <p className="mt-1 text-xs text-(--color-text-secondary)">
-                    Loading legal hold state...
-                  </p>
-                ) : null}
-                {legalHold ? (
-                  <div className="mt-2 space-y-1 text-xs text-(--color-text-secondary)">
-                    <p>Current legal hold state: {legalHold.active ? 'enabled' : 'disabled'}</p>
-                    <p>Reason: {legalHold.reason?.trim() ? legalHold.reason : 'N/A'}</p>
-                    <p>Set by owner: {legalHold.setByOwnerId ?? 'N/A'}</p>
-                    <p>Created at: {formatDateTime(legalHold.createdAt ?? undefined)}</p>
-                    <p>Released at: {formatDateTime(legalHold.releasedAt ?? undefined)}</p>
-                  </div>
-                ) : null}
+            {eventsQuery.isError ? (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+                <p className="text-sm text-red-700">{eventsQuery.error.message}</p>
               </div>
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold text-(--color-text-primary)">Step status</h2>
-              <p className="mt-1 text-sm text-(--color-text-secondary)">
-                Current per-step state with attempt, input/output and error snapshots.
-              </p>
-              <div className="mt-3">
-                <StepStatusTable steps={stepExecutions} />
+            ) : (
+              <div className="mt-4 space-y-4">
+                <StepExecutionTimeline
+                  executionId={execution.id}
+                  steps={stepExecutions}
+                  events={stepEvents}
+                />
+                <ExecutionLevelEvents events={executionLevelEvents} />
               </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-lg font-semibold text-(--color-text-primary)">
-                    Event timeline
-                  </h2>
-                  <p className="mt-1 text-sm text-(--color-text-secondary)">
-                    Immutable event stream for this execution.
-                  </p>
-                </div>
-                <div className="text-right">
-                  {eventsQuery.isFetching ? (
-                    <span className="text-xs text-(--color-text-secondary)">Updating...</span>
-                  ) : null}
-                  <p className="text-xs text-(--color-text-secondary)">
-                    Loaded {events.length} events
-                    {eventsPageInfo?.hasNextPage ? ' (more available)' : ''}
-                  </p>
-                </div>
-              </div>
-
-              {!eventsQuery.isError ? (
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="text-xs text-(--color-text-secondary)">
-                    Page size: {eventsPageInfo?.limit ?? 200}
-                    {shouldPollEvents ? ' • Live polling enabled' : ' • Live polling paused'}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={goToPreviousEventsPage}
-                      disabled={eventsCursorStack.length === 0 || eventsQuery.isFetching}
-                      className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      type="button"
-                      onClick={goToNextEventsPage}
-                      disabled={
-                        !eventsPageInfo?.hasNextPage ||
-                        !eventsPageInfo?.nextCursor ||
-                        eventsQuery.isFetching
-                      }
-                      className="inline-flex rounded-lg border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Next
-                    </button>
-                    <button
-                      type="button"
-                      onClick={jumpToLatestEventsPage}
-                      disabled={!eventsCursor && eventsCursorStack.length === 0}
-                      className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Latest page
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              {eventsQuery.isError ? (
-                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4">
-                  <p className="text-sm text-red-700">{eventsQuery.error.message}</p>
-                </div>
-              ) : (
-                <div className="mt-3">
-                  <EventTimeline events={events} />
-                </div>
-              )}
-            </div>
-          </div>
+            )}
+          </section>
         ) : null}
-      </section>
+      </div>
+
+      <LegalHoldModal
+        isOpen={isLegalHoldModalOpen}
+        onClose={() => {
+          setIsLegalHoldModalOpen(false);
+        }}
+        legalHold={legalHold}
+        isLoading={legalHoldQuery.isPending}
+        reason={legalHoldReason}
+        message={legalHoldMessage}
+        isMutating={isLegalHoldMutating}
+        onReasonChange={setLegalHoldReason}
+        onPlace={() => {
+          void handlePlaceLegalHold();
+        }}
+        onRelease={() => {
+          void handleReleaseLegalHold();
+        }}
+      />
     </main>
   );
 }
