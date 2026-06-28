@@ -6,6 +6,7 @@ import { lintGutter, linter } from '@codemirror/lint';
 import { EditorView } from '@codemirror/view';
 import CodeMirror from '@uiw/react-codemirror';
 import { tags } from '@lezer/highlight';
+import MonacoEditor from '@monaco-editor/react';
 import { Maximize2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -148,7 +149,24 @@ export function JsonCodeEditor({
         }
       >
         <div className="overflow-hidden rounded-xl border border-(--color-border)">
-          {editor('min(72vh, 760px)')}
+          <MonacoEditor
+            value={value}
+            language="json"
+            height="min(72vh, 760px)"
+            theme="light"
+            onChange={(nextValue) => {
+              onChange(nextValue ?? '');
+            }}
+            options={{
+              automaticLayout: true,
+              formatOnPaste: true,
+              formatOnType: true,
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              tabSize: 2,
+              wordWrap: 'on',
+            }}
+          />
         </div>
       </ZModal>
     </>

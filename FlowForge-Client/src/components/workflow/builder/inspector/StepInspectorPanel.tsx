@@ -8,7 +8,6 @@ import ZSelect from '@/components/primary/ZSelect';
 import ZTextInput from '@/components/primary/ZTextInput';
 import type { BuilderEdgeDraft } from '@/lib/workflow-builder/types';
 import type { BuilderStepDraft, WorkflowBuilderDraft } from '@/lib/workflow-builder/types';
-import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
 import type { StepType } from '@/types/workflow.types';
 
 import { JsonCodeEditor } from '../JsonCodeEditor';
@@ -21,10 +20,8 @@ import {
 
 interface StepInspectorPanelProps {
   step: BuilderStepDraft;
-  activePanel: StepInspectorPanelKind;
   draft: WorkflowBuilderDraft;
   fieldErrors: Record<string, string>;
-  onChangePanel: (panel: StepInspectorPanelKind) => void;
   onUpdateStep: (stepKey: string, updater: (step: BuilderStepDraft) => BuilderStepDraft) => void;
   onUpdateEdgeCondition: (edgeKey: string, condition: string) => void;
   onRemoveEdge: (edgeKey: string) => void;
@@ -45,10 +42,8 @@ const stepTypeOptions: { label: string; value: StepType }[] = [
 
 export function StepInspectorPanel({
   step,
-  activePanel,
   draft,
   fieldErrors,
-  onChangePanel,
   onUpdateStep,
   onUpdateEdgeCondition,
   onRemoveEdge,
@@ -58,10 +53,10 @@ export function StepInspectorPanel({
   const outgoingEdges = draft.edges.filter((edge) => edge.fromStepKey === step.key);
   const stepNameByKey = new Map(draft.steps.map((item) => [item.key, item.id]));
   const hasBasicsError =
-    Boolean(fieldErrors[`step:${step.key}:id`]) || Boolean(fieldErrors[`step:${step.key}:maxAttempts`]);
-  const hasConfigError = Boolean(fieldErrors[`step:${step.key}:configText`]);
+    Boolean(fieldErrors[`step:${step.key}:id`]) || Boolean(fieldErrors[`step:${step.key}:configText`]);
   const hasEdgeError = outgoingEdges.some((edge) => fieldErrors[`edge:${edge.key}:to`]);
   const hasRetryData = step.maxAttempts !== 3 || step.backoff !== 'exponential';
+  const hasRetryError = Boolean(fieldErrors[`step:${step.key}:maxAttempts`]);
 
   return (
     <div className="relative space-y-3">
@@ -109,89 +104,16 @@ export function StepInspectorPanel({
               onUpdateStep(step.key, (current) => ({ ...current, type: value as StepType }));
             }}
           />
-        </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <ZButton
-            size="xs"
-            variant={activePanel === 'config' ? 'primary' : 'secondary'}
-            onClick={() => {
-              onChangePanel('config');
-            }}
-          >
-            Step Config
-          </ZButton>
-          <ZButton
-            size="xs"
-            variant={activePanel === 'retry' ? 'primary' : 'secondary'}
-            onClick={() => {
-              onChangePanel('retry');
-            }}
-          >
-            Retry & Error
-          </ZButton>
-        </div>
-      </InspectorSection>
-
-      {activePanel === 'retry' ? (
-        <InspectorSection
-          title="Retry & Error Handling"
-          defaultOpen={hasRetryData}
-          hasError={Boolean(fieldErrors[`step:${step.key}:maxAttempts`])}
-          badge={
-            hasRetryData ? (
-              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                Custom
-              </span>
-            ) : null
-          }
-        >
-          <div className="space-y-3">
-            <ZTextInput
-              label="Max attempts"
-              fullWidth
-              type="number"
-              value={String(step.maxAttempts)}
-              error={fieldErrors[`step:${step.key}:maxAttempts`]}
-              onChange={(event) => {
-                const nextValue = Number(event.target.value || 0);
-                onUpdateStep(step.key, (current) => ({
-                  ...current,
-                  maxAttempts: Number.isNaN(nextValue) ? 0 : nextValue,
-                }));
-              }}
-            />
-            <ZSelect
-              label="Backoff"
-              fullWidth
-              options={backoffOptions.map((option) => ({ ...option }))}
-              value={step.backoff}
-              onChange={(value) => {
-                onUpdateStep(step.key, (current) => ({
-                  ...current,
-                  backoff: value as BuilderStepDraft['backoff'],
-                }));
-              }}
-            />
-          </div>
-        </InspectorSection>
-      ) : null}
-
-      {activePanel === 'config' ? (
-        <>
-          <InspectorSection title="Step Config (JSON)" hasError={hasConfigError}>
+          <div className="rounded-xl border border-(--color-border) bg-(--color-surface-muted) p-3">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-(--color-text-secondary)">
-                <span>Config payload</span>
-                <InfoTooltip text="JSON passed to the selected step type. Use View Schema for examples." />
+              <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
+                <span>Step Config (JSON)</span>
+                <InfoTooltip text="JSON passed to the selected step type. Use View Schema for backend-backed examples." />
               </div>
-              <SchemaLink
-                onClick={() => {
-                  setDocsOpen(true);
-                }}
-              />
+              <SchemaLink onClick={() => setDocsOpen(true)} />
             </div>
-            <div className="mt-3">
+            <div className="mt-2">
               <JsonCodeEditor
                 value={step.configText}
                 modalTitle={`Step Config: ${step.id || step.type}`}
@@ -205,42 +127,84 @@ export function StepInspectorPanel({
                 </p>
               ) : null}
             </div>
-          </InspectorSection>
+          </div>
+        </div>
+      </InspectorSection>
 
-          <InspectorSection
-            title="Outgoing Edges"
-            description="Manage conditions for edges starting from this step."
-            defaultOpen={outgoingEdges.length > 0}
-            hasError={hasEdgeError}
-            badge={
-              outgoingEdges.length > 0 ? (
-                <span className="rounded-full bg-(--color-surface-muted) px-2 py-0.5 text-[11px] font-medium text-(--color-text-secondary)">
-                  {outgoingEdges.length}
-                </span>
-              ) : null
-            }
-          >
-            <div className="space-y-3">
-              {outgoingEdges.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-(--color-border) bg-(--color-surface-muted) px-3 py-2 text-xs text-(--color-text-secondary)">
-                  No outgoing edges yet. Connect this node to another step from the canvas.
-                </p>
-              ) : null}
+      <InspectorSection
+        title="Retry & Error Handling"
+        defaultOpen={hasRetryData}
+        hasError={hasRetryError}
+        badge={
+          hasRetryData ? (
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+              Custom
+            </span>
+          ) : null
+        }
+      >
+        <div className="space-y-3">
+          <ZTextInput
+            label="Max attempts"
+            fullWidth
+            type="number"
+            value={String(step.maxAttempts)}
+            error={fieldErrors[`step:${step.key}:maxAttempts`]}
+            onChange={(event) => {
+              const nextValue = Number(event.target.value || 0);
+              onUpdateStep(step.key, (current) => ({
+                ...current,
+                maxAttempts: Number.isNaN(nextValue) ? 0 : nextValue,
+              }));
+            }}
+          />
+          <ZSelect
+            label="Backoff"
+            fullWidth
+            options={backoffOptions.map((option) => ({ ...option }))}
+            value={step.backoff}
+            onChange={(value) => {
+              onUpdateStep(step.key, (current) => ({
+                ...current,
+                backoff: value as BuilderStepDraft['backoff'],
+              }));
+            }}
+          />
+        </div>
+      </InspectorSection>
 
-              {outgoingEdges.map((edge) => (
-                <OutgoingEdgeRow
-                  key={edge.key}
-                  edge={edge}
-                  targetLabel={stepNameByKey.get(edge.toStepKey) ?? edge.toStepKey}
-                  fieldError={fieldErrors[`edge:${edge.key}:to`]}
-                  onUpdateEdgeCondition={onUpdateEdgeCondition}
-                  onRemoveEdge={onRemoveEdge}
-                />
-              ))}
-            </div>
-          </InspectorSection>
-        </>
-      ) : null}
+      <InspectorSection
+        title="Outgoing Edges"
+        description="Manage conditions for edges starting from this step."
+        defaultOpen={outgoingEdges.length > 0}
+        hasError={hasEdgeError}
+        badge={
+          outgoingEdges.length > 0 ? (
+            <span className="rounded-full bg-(--color-surface-muted) px-2 py-0.5 text-[11px] font-medium text-(--color-text-secondary)">
+              {outgoingEdges.length}
+            </span>
+          ) : null
+        }
+      >
+        <div className="space-y-3">
+          {outgoingEdges.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-(--color-border) bg-(--color-surface-muted) px-3 py-2 text-xs text-(--color-text-secondary)">
+              No outgoing edges yet. Connect this node to another step from the canvas.
+            </p>
+          ) : null}
+
+          {outgoingEdges.map((edge) => (
+            <OutgoingEdgeRow
+              key={edge.key}
+              edge={edge}
+              targetLabel={stepNameByKey.get(edge.toStepKey) ?? edge.toStepKey}
+              fieldError={fieldErrors[`edge:${edge.key}:to`]}
+              onUpdateEdgeCondition={onUpdateEdgeCondition}
+              onRemoveEdge={onRemoveEdge}
+            />
+          ))}
+        </div>
+      </InspectorSection>
 
       <InspectorSection
         title="Danger Zone"
@@ -294,13 +258,13 @@ function OutgoingEdgeRow({
 
       <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
         <span>Condition</span>
-        <InfoTooltip text="Optional expression used to decide whether this edge can run." />
+        <InfoTooltip text="Backend currently follows unconditioned edges. Branch routing should be configured with branch config.cases[].next/default." />
       </div>
       <ZTextInput
         fullWidth
         value={edge.condition}
         containerClassName='mb-0'
-        placeholder="Optional condition"
+        placeholder="Example: status == 'approved' (metadata/future expression)"
         onChange={(event) => {
           onUpdateEdgeCondition(edge.key, event.target.value);
         }}

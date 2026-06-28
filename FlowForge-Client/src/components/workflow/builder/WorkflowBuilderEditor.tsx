@@ -5,7 +5,6 @@ import { PanelBottomClose, PanelBottomOpen, X } from 'lucide-react';
 
 import { buildCreateWorkflowPayload } from '@/lib/workflow-builder/payload';
 import type { WorkflowBuilderEditorProps } from '@/lib/workflow-builder/types';
-import type { StepInspectorPanelKind } from '@/lib/workflow-builder/types';
 import ZButton from '@/components/primary/ZButton';
 
 import { StepInspectorPanel } from './inspector/StepInspectorPanel';
@@ -89,13 +88,6 @@ export function WorkflowBuilderEditor({
   useEffect(() => {
     setMobileInspectorOpen(true);
   }, [selection]);
-
-  const handleStepPanelChange = useCallback(
-    (stepKey: string, panel: StepInspectorPanelKind) => {
-      setSelection({ kind: 'step', stepKey, panel });
-    },
-    [setSelection]
-  );
 
   const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -200,11 +192,7 @@ export function WorkflowBuilderEditor({
                 <StepInspectorPanel
                   draft={draft}
                   step={selectedStep}
-                  activePanel={selection.kind === 'step' ? selection.panel : 'config'}
                   fieldErrors={fieldErrors}
-                  onChangePanel={(panel) => {
-                    handleStepPanelChange(selectedStep.key, panel);
-                  }}
                   onUpdateStep={updateStep}
                   onUpdateEdgeCondition={updateEdgeCondition}
                   onRemoveEdge={removeEdge}
@@ -278,11 +266,7 @@ export function WorkflowBuilderEditor({
                   <StepInspectorPanel
                     draft={draft}
                     step={selectedStep}
-                    activePanel={selection.kind === 'step' ? selection.panel : 'config'}
                     fieldErrors={fieldErrors}
-                    onChangePanel={(panel) => {
-                      handleStepPanelChange(selectedStep.key, panel);
-                    }}
                     onUpdateStep={updateStep}
                     onUpdateEdgeCondition={updateEdgeCondition}
                     onRemoveEdge={removeEdge}
