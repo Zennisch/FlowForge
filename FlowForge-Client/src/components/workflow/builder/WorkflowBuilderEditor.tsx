@@ -157,7 +157,7 @@ export function WorkflowBuilderEditor({
         />
 
         <aside
-          className="relative hidden h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-surface-muted) lg:block"
+          className="relative hidden h-full min-h-0 min-w-0 overflow-hidden rounded-2xl lg:block"
           style={{
             flex: `0 0 ${inspectorWidth}px`,
             maxWidth: 'min(640px, 50vw)',
@@ -165,14 +165,7 @@ export function WorkflowBuilderEditor({
           }}
         >
           <div className="flex h-full min-h-0 flex-col">
-            <div className="border-b border-(--color-border) bg-(--color-surface-base) px-4 py-3">
-              <p className="text-sm font-semibold text-(--color-text-primary)">{inspectorTitle}</p>
-              <p className="mt-0.5 text-xs capitalize text-(--color-text-secondary)">
-                {inspectorSubtitle}
-              </p>
-            </div>
-
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
               {selection.kind === 'canvas' ? (
                 <WorkflowMetaInspectorPanel
                   draft={draft}

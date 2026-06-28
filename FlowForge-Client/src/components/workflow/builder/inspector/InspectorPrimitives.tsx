@@ -83,7 +83,13 @@ export function InspectorSection({
         </span>
       </button>
 
-      {open ? <div className="border-t border-(--color-border) p-3">{children}</div> : null}
+      {open ? 
+        tone === 'default' ? (
+          <div className="border-t border-(--color-border) p-3">{children}</div>
+        ) : (
+          <div className="border-t border-red-200 p-3">{children}</div>
+        )
+      : null}
     </section>
   );
 }

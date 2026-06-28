@@ -206,7 +206,7 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
                 >
                   <div className="relative">
                     {!payloadInput.trim() ? (
-                      <pre className="pointer-events-none absolute left-[62px] top-3 z-10 whitespace-pre-wrap text-xs leading-5 text-zinc-400">
+                      <pre className="pointer-events-none absolute left-15.5 top-3 z-10 whitespace-pre-wrap text-xs leading-5 text-zinc-400">
 {`{
   "orderId": "A-1001",
   "source": "manual"

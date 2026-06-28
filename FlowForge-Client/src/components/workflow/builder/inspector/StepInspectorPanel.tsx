@@ -69,15 +69,6 @@ export function StepInspectorPanel({
         }}
       />
 
-      <div className="flex items-center justify-between gap-3 px-1">
-        <p className="truncate text-xs text-(--color-text-secondary)">Step: {step.id || step.type}</p>
-        <SchemaLink
-          onClick={() => {
-            setDocsOpen(true);
-          }}
-        />
-      </div>
-
       <InspectorSection title="Step Basics" defaultOpen hasError={hasBasicsError}>
         <div className="space-y-3">
           <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-secondary)">
