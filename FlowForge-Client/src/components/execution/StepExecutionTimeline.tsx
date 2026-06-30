@@ -53,31 +53,31 @@ const STEP_STATUS_CONFIG: Record<
   queued: {
     label: 'Queued',
     icon: Clock3,
-    badgeClassName: 'bg-slate-100 text-slate-700',
+    badgeClassName: 'bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-200',
     iconClassName: 'text-slate-500',
   },
   running: {
     label: 'Running',
     icon: Loader2,
-    badgeClassName: 'bg-blue-100 text-blue-700',
+    badgeClassName: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200',
     iconClassName: 'text-blue-600',
   },
   completed: {
     label: 'Completed',
     icon: CheckCircle2,
-    badgeClassName: 'bg-emerald-100 text-emerald-700',
+    badgeClassName: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200',
     iconClassName: 'text-emerald-600',
   },
   failed: {
     label: 'Failed',
     icon: AlertCircle,
-    badgeClassName: 'bg-red-100 text-red-700',
+    badgeClassName: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-200',
     iconClassName: 'text-red-600',
   },
   skipped: {
     label: 'Skipped',
     icon: SkipForward,
-    badgeClassName: 'bg-zinc-100 text-zinc-700',
+    badgeClassName: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-200',
     iconClassName: 'text-zinc-500',
   },
 };
@@ -307,6 +307,27 @@ function defaultOpenStepId(groups: StepDebugGroup[]): string | null {
   );
 }
 
+function useEditorTheme(): 'light' | 'vs-dark' {
+  const [editorTheme, setEditorTheme] = useState<'light' | 'vs-dark'>('light');
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateTheme = () => {
+      setEditorTheme(root.classList.contains('dark') ? 'vs-dark' : 'light');
+    };
+    const observer = new MutationObserver(updateTheme);
+
+    updateTheme();
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return editorTheme;
+}
+
 function getTabValue(group: StepDebugGroup, tab: StepTab): { value: string; empty: string } {
   if (tab === 'input') {
     return {
@@ -347,6 +368,7 @@ function CodePanel({
 }) {
   const [copied, setCopied] = useState(false);
   const hasValue = value.trim().length > 0;
+  const editorTheme = useEditorTheme();
 
   async function handleCopy(): Promise<void> {
     if (!hasValue) {
@@ -372,7 +394,7 @@ function CodePanel({
           onClick={() => {
             void handleCopy();
           }}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-secondary) transition-colors hover:bg-white hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-secondary) transition-colors hover:bg-(--color-surface-base) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Copy content"
           title="Copy"
         >
@@ -388,7 +410,7 @@ function CodePanel({
           value={value}
           language={language}
           height="260px"
-          theme="light"
+          theme={editorTheme}
           options={{
             automaticLayout: true,
             domReadOnly: true,
@@ -418,7 +440,7 @@ function StepEvents({ events }: { events: ExecutionEvent[] }) {
   return (
     <div className="space-y-2">
       {events.map((event) => (
-        <div key={event.id} className="rounded-lg border border-(--color-border) bg-white p-3">
+        <div key={event.id} className="rounded-lg border border-(--color-border) bg-(--color-surface-base) p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-semibold text-(--color-text-primary)">
               {formatEventLabel(event.type)}
@@ -461,7 +483,7 @@ function StepAccordionItem({
   }, [group.status, group.stepId]);
 
   return (
-    <article className="overflow-hidden rounded-xl border border-(--color-border) bg-white shadow-sm">
+    <article className="overflow-hidden rounded-xl border border-(--color-border) bg-(--color-surface-base) shadow-sm">
       <button
         type="button"
         onClick={onToggle}
@@ -518,8 +540,8 @@ function StepAccordionItem({
                 className={cn(
                   'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition-colors',
                   activeTab === tab
-                    ? 'border-(--color-primary) bg-blue-50 text-(--color-primary)'
-                    : 'border-(--color-border) bg-white text-(--color-text-secondary) hover:border-(--color-primary) hover:text-(--color-primary)'
+                    ? 'border-(--color-primary) bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-100'
+                    : 'border-(--color-border) bg-(--color-surface-base) text-(--color-text-secondary) hover:border-(--color-primary) hover:text-(--color-primary)'
                 )}
               >
                 {tab === 'events' ? 'Raw Events' : tab}
@@ -575,7 +597,7 @@ export function StepExecutionTimeline({
 
   if (groups.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-5 text-sm text-(--color-text-secondary)">
+      <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-5 text-sm text-(--color-text-secondary) dark:bg-blue-500/10">
         No step execution data yet.
       </div>
     );
@@ -611,7 +633,7 @@ export function ExecutionLevelEvents({ events }: { events: ExecutionEvent[] }) {
   }
 
   return (
-    <section className="rounded-xl border border-(--color-border) bg-white">
+    <section className="rounded-xl border border-(--color-border) bg-(--color-surface-base)">
       <button
         type="button"
         onClick={() => {
@@ -633,7 +655,7 @@ export function ExecutionLevelEvents({ events }: { events: ExecutionEvent[] }) {
       {isOpen ? (
         <div className="space-y-2 border-t border-(--color-border) bg-(--color-surface-muted)/50 p-3">
           {events.map((event) => (
-            <div key={event.id} className="rounded-lg border border-(--color-border) bg-white p-3">
+            <div key={event.id} className="rounded-lg border border-(--color-border) bg-(--color-surface-base) p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-(--color-text-primary)">
                   {formatEventLabel(event.type)}

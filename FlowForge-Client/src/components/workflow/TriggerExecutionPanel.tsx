@@ -30,6 +30,27 @@ function parsePayload(value: string): Record<string, unknown> | undefined {
   return parsed as Record<string, unknown>;
 }
 
+function useEditorTheme(): 'light' | 'vs-dark' {
+  const [editorTheme, setEditorTheme] = useState<'light' | 'vs-dark'>('light');
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateTheme = () => {
+      setEditorTheme(root.classList.contains('dark') ? 'vs-dark' : 'light');
+    };
+    const observer = new MutationObserver(updateTheme);
+
+    updateTheme();
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return editorTheme;
+}
+
 export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecutionPanelProps) {
   const router = useRouter();
   const triggerWorkflowMutation = useTriggerWorkflow();
@@ -37,6 +58,7 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
   const [idempotencyKey, setIdempotencyKey] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const wasOpenRef = useRef(open);
+  const editorTheme = useEditorTheme();
 
   useEffect(() => {
     if (!open) {
@@ -156,13 +178,13 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
           />
 
           <motion.aside
-            className="absolute right-0 top-0 flex h-dvh max-h-dvh w-full flex-col border-l border-(--color-border) shadow-xl sm:w-176"
-            initial={{ x: '100%', backgroundColor: '#ffffff' }}
-            animate={{ x: 0, backgroundColor: '#ffffff' }}
-            exit={{ x: '100%', backgroundColor: '#ffffff' }}
+            className="absolute right-0 top-0 flex h-dvh max-h-dvh w-full flex-col border-l border-(--color-border) bg-(--color-surface-base) shadow-xl sm:w-176"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
           >
-            <div className="flex items-center justify-between border-b border-(--color-border) bg-white px-5 py-4">
+            <div className="flex items-center justify-between border-b border-(--color-border) bg-(--color-surface-base) px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-(--color-text-primary)">{title}</h2>
                 <p className="mt-1 text-xs text-(--color-text-secondary)">
@@ -185,7 +207,7 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="trigger-workflow-payload"
-                    className="text-sm font-medium text-zinc-700"
+                    className="text-sm font-medium text-(--color-text-primary)"
                   >
                     Payload (JSON object)
                   </label>
@@ -193,20 +215,20 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
                     type="button"
                     onClick={formatPayload}
                     disabled={triggerWorkflowMutation.isPending}
-                    className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-md border border-(--color-border) px-2.5 py-1 text-xs font-medium text-(--color-text-secondary) transition-colors hover:bg-(--color-surface-hover) hover:text-(--color-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {'{}'} Format JSON
                   </button>
                 </div>
 
                 <div
-                  className={`overflow-hidden rounded-md border bg-white transition-colors focus-within:border-(--color-primary) ${
-                    payloadHasSyntaxError ? 'border-red-400' : 'border-zinc-300'
+                  className={`overflow-hidden rounded-md border bg-(--color-surface-raised) transition-colors focus-within:border-(--color-primary) ${
+                    payloadHasSyntaxError ? 'border-red-400' : 'border-(--color-border)'
                   }`}
                 >
                   <div className="relative">
                     {!payloadInput.trim() ? (
-                      <pre className="pointer-events-none absolute left-15.5 top-3 z-10 whitespace-pre-wrap text-xs leading-5 text-zinc-400">
+                      <pre className="pointer-events-none absolute left-15.5 top-3 z-10 whitespace-pre-wrap text-xs leading-5 text-(--color-text-placeholder)">
 {`{
   "orderId": "A-1001",
   "source": "manual"
@@ -217,7 +239,7 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
                     value={payloadInput}
                     language="json"
                     height="320px"
-                    theme="light"
+                    theme={editorTheme}
                     onChange={(value) => {
                       setPayloadInput(value ?? '');
                     }}
@@ -241,12 +263,12 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
                 <div className="flex items-center gap-1.5">
                   <label
                     htmlFor="trigger-workflow-idempotency-key"
-                    className="text-sm font-medium text-zinc-700"
+                    className="text-sm font-medium text-(--color-text-primary)"
                   >
                     Idempotency key
                   </label>
                   <span
-                    className="inline-flex h-4 w-4 items-center justify-center text-zinc-400"
+                    className="inline-flex h-4 w-4 items-center justify-center text-(--color-text-secondary)"
                     title="Optional. Providing a unique key ensures that retrying this execution will not result in duplicate side effects."
                   >
                     <Info className="h-3.5 w-3.5" aria-hidden="true" />
@@ -261,29 +283,29 @@ export function TriggerExecutionPanel({ open, workflow, onClose }: TriggerExecut
                   onChange={(event) => {
                     setIdempotencyKey(event.target.value);
                   }}
-                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-(--color-primary)"
+                  className="w-full rounded-md border border-(--color-border) bg-(--color-surface-raised) px-3 py-2 text-sm text-(--color-text-primary) outline-none transition-colors placeholder:text-(--color-text-placeholder) focus:border-(--color-primary)"
                 />
 
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-(--color-text-secondary)">
                   Optional. Providing a unique key ensures that retrying this execution will not
                   result in duplicate side effects.
                 </p>
               </div>
 
               {formError ? (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">
                   {formError}
                 </p>
               ) : null}
 
               {triggerWorkflowMutation.isError ? (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">
                   {triggerWorkflowMutation.error.message}
                 </p>
               ) : null}
             </div>
 
-            <div className="mt-auto flex items-center justify-end gap-2 border-t border-(--color-border) bg-white px-5 py-3">
+            <div className="mt-auto flex items-center justify-end gap-2 border-t border-(--color-border) bg-(--color-surface-base) px-5 py-3">
               <ZButton
                 size="sm"
                 variant="secondary"

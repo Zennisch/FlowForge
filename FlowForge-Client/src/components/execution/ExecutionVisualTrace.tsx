@@ -53,43 +53,50 @@ const STATUS_CONFIG: Record<
 > = {
   trigger: {
     label: 'Trigger',
-    className: 'border-blue-200 bg-blue-50 text-blue-700',
+    className:
+      'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/35 dark:bg-blue-500/15 dark:text-blue-100',
     iconClassName: 'text-blue-600',
     icon: Zap,
   },
   queued: {
     label: 'Queued',
-    className: 'border-slate-200 bg-slate-50 text-slate-700',
+    className:
+      'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-500/35 dark:bg-slate-500/15 dark:text-slate-200',
     iconClassName: 'text-slate-500',
     icon: Clock3,
   },
   running: {
     label: 'Running',
-    className: 'border-blue-200 bg-blue-50 text-blue-700',
+    className:
+      'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/35 dark:bg-blue-500/15 dark:text-blue-100',
     iconClassName: 'text-blue-600',
     icon: Loader2,
   },
   completed: {
     label: 'Completed',
-    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    className:
+      'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/35 dark:bg-emerald-500/15 dark:text-emerald-100',
     iconClassName: 'text-emerald-600',
     icon: CheckCircle2,
   },
   failed: {
     label: 'Failed',
-    className: 'border-red-200 bg-red-50 text-red-700',
+    className:
+      'border-red-200 bg-red-50 text-red-700 dark:border-red-500/35 dark:bg-red-500/15 dark:text-red-100',
     iconClassName: 'text-red-600',
     icon: AlertCircle,
   },
   skipped: {
     label: 'Skipped',
-    className: 'border-zinc-200 bg-zinc-50 text-zinc-700',
+    className:
+      'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-500/35 dark:bg-zinc-500/15 dark:text-zinc-200',
     iconClassName: 'text-zinc-500',
     icon: SkipForward,
   },
   'not-run': {
     label: 'Not run',
-    className: 'border-zinc-200 bg-white text-zinc-500',
+    className:
+      'border-zinc-200 bg-white text-zinc-500 dark:border-zinc-500/35 dark:bg-zinc-500/10 dark:text-zinc-300',
     iconClassName: 'text-zinc-400',
     icon: Clock3,
   },
@@ -192,8 +199,10 @@ function TraceNode({ data, selected }: NodeProps<TraceNodeData>) {
   return (
     <div
       className={cn(
-        'min-w-56 rounded-xl border bg-white p-3 shadow-sm transition-all',
-        selected ? 'border-(--color-primary) ring-2 ring-blue-100' : 'border-(--color-border)',
+        'min-w-56 rounded-xl border bg-(--color-surface-raised) p-3 shadow-sm transition-all',
+        selected
+          ? 'border-(--color-primary) ring-2 ring-blue-100 dark:ring-blue-500/20'
+          : 'border-(--color-border)',
         isNotRun && 'opacity-50'
       )}
     >
@@ -201,7 +210,7 @@ function TraceNode({ data, selected }: NodeProps<TraceNodeData>) {
         <Handle
           type="target"
           position={Position.Left}
-          className="h-2.5! w-2.5! border-2! border-white! bg-(--color-border-hover)!"
+          className="h-2.5! w-2.5! border-2! border-(--color-surface-raised)! bg-(--color-border-hover)!"
           isConnectable={false}
         />
       ) : null}
@@ -236,7 +245,7 @@ function TraceNode({ data, selected }: NodeProps<TraceNodeData>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="h-2.5! w-2.5! border-2! border-white! bg-(--color-primary)!"
+        className="h-2.5! w-2.5! border-2! border-(--color-surface-raised)! bg-(--color-primary)!"
         isConnectable={false}
       />
     </div>
@@ -359,7 +368,7 @@ export function ExecutionVisualTrace({
 
   if (!workflow) {
     return (
-      <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-5 text-sm text-(--color-text-secondary)">
+      <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-5 text-sm text-(--color-text-secondary) dark:bg-blue-500/10">
         Loading workflow trace...
       </div>
     );
@@ -367,7 +376,7 @@ export function ExecutionVisualTrace({
 
   if (workflow.steps.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-5 text-sm text-(--color-text-secondary)">
+      <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-5 text-sm text-(--color-text-secondary) dark:bg-blue-500/10">
         This workflow has no graph steps.
       </div>
     );

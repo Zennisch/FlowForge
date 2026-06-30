@@ -173,48 +173,54 @@ export default function ExecutionsPage() {
         label: 'Failed',
         value: summary?.counts.failed ?? 0,
         icon: XCircle,
-        className: 'border-red-200 bg-red-50/70 text-red-600',
-        valueClassName: 'text-red-700',
+        className:
+          'border-red-200 bg-red-50/70 text-red-600 dark:border-red-500/35 dark:bg-red-500/10 dark:text-red-200',
+        valueClassName: 'text-red-700 dark:text-red-100',
       },
       {
         key: 'running',
         label: 'Running',
         value: summary?.counts.running ?? 0,
         icon: Loader2,
-        className: 'border-blue-200 bg-blue-50/70 text-blue-600',
-        valueClassName: 'text-blue-700',
+        className:
+          'border-blue-200 bg-blue-50/70 text-blue-600 dark:border-blue-500/35 dark:bg-blue-500/10 dark:text-blue-200',
+        valueClassName: 'text-blue-700 dark:text-blue-100',
       },
       {
         key: 'completed',
         label: 'Completed',
         value: summary?.counts.completed ?? 0,
         icon: CheckCircle2,
-        className: 'border-emerald-200 bg-emerald-50/70 text-emerald-600',
-        valueClassName: 'text-emerald-700',
+        className:
+          'border-emerald-200 bg-emerald-50/70 text-emerald-600 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-200',
+        valueClassName: 'text-emerald-700 dark:text-emerald-100',
       },
       {
         key: 'pending',
         label: 'Pending',
         value: summary?.counts.pending ?? 0,
         icon: TimerReset,
-        className: 'border-slate-200 bg-slate-50/80 text-slate-500',
-        valueClassName: 'text-slate-700',
+        className:
+          'border-slate-200 bg-slate-50/80 text-slate-500 dark:border-slate-500/35 dark:bg-slate-500/10 dark:text-slate-200',
+        valueClassName: 'text-slate-700 dark:text-slate-100',
       },
       {
         key: 'compensating',
         label: 'Compensating',
         value: summary?.counts.compensating ?? 0,
         icon: RotateCcw,
-        className: 'border-amber-200 bg-amber-50/70 text-amber-600',
-        valueClassName: 'text-amber-700',
+        className:
+          'border-amber-200 bg-amber-50/70 text-amber-600 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-200',
+        valueClassName: 'text-amber-700 dark:text-amber-100',
       },
       {
         key: 'cancelled',
         label: 'Cancelled',
         value: summary?.counts.cancelled ?? 0,
         icon: Ban,
-        className: 'border-orange-200 bg-orange-50/70 text-orange-600',
-        valueClassName: 'text-orange-700',
+        className:
+          'border-orange-200 bg-orange-50/70 text-orange-600 dark:border-orange-500/35 dark:bg-orange-500/10 dark:text-orange-200',
+        valueClassName: 'text-orange-700 dark:text-orange-100',
       },
     ],
     [summary]
@@ -313,8 +319,8 @@ export default function ExecutionsPage() {
                 className={[
                   'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
                   active
-                    ? 'border-(--color-primary) bg-blue-100 text-(--color-primary)'
-                    : 'border-(--color-border) text-(--color-text-secondary) hover:border-(--color-primary)',
+                    ? 'border-(--color-primary) bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-100'
+                    : 'border-(--color-border) bg-(--color-surface-base) text-(--color-text-secondary) hover:border-(--color-primary) hover:text-(--color-primary)',
                 ].join(' ')}
               >
                 {formatFilterLabel(status)}
@@ -325,20 +331,20 @@ export default function ExecutionsPage() {
         </div>
 
         {executionsQuery.isPending ? (
-          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-sm text-(--color-text-secondary)">
+          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-sm text-(--color-text-secondary) dark:bg-blue-500/10">
             Loading executions...
           </div>
         ) : null}
 
         {executionsQuery.isError ? (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{executionsQuery.error.message}</p>
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{executionsQuery.error.message}</p>
             <button
               type="button"
               onClick={() => {
                 void executionsQuery.refetch();
               }}
-              className="mt-3 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+              className="mt-3 rounded-lg border border-red-200 bg-(--color-surface-base) px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-500/40 dark:text-red-200 dark:hover:bg-red-500/15"
             >
               Retry
             </button>
@@ -346,13 +352,13 @@ export default function ExecutionsPage() {
         ) : null}
 
         {cancelExecutionMutation.isError ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{cancelExecutionMutation.error.message}</p>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{cancelExecutionMutation.error.message}</p>
           </div>
         ) : null}
 
         {!executionsQuery.isPending && !executionsQuery.isError && executions.length === 0 ? (
-          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-center">
+          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-center dark:bg-blue-500/10">
             <p className="text-base font-medium text-(--color-text-primary)">No executions found</p>
             <p className="mt-2 text-sm text-(--color-text-secondary)">
               Try another filter or trigger a workflow to start collecting executions.
@@ -505,7 +511,7 @@ export default function ExecutionsPage() {
                                   event.stopPropagation();
                                   void cancelExecutionMutation.mutateAsync(execution.id);
                                 }}
-                                className="inline-flex rounded-md border border-orange-200 px-2 py-1 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex rounded-md border border-orange-200 px-2 py-1 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-500/40 dark:text-orange-200 dark:hover:bg-orange-500/15"
                               >
                                 Cancel
                               </button>

@@ -225,7 +225,7 @@ function SummaryMetric({
   icon: typeof Clock;
 }) {
   return (
-    <div className="rounded-xl border border-(--color-border) bg-white px-3 py-2">
+    <div className="rounded-xl border border-(--color-border) bg-(--color-surface-base) px-3 py-2">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--color-text-secondary)">
         <Icon className="h-3.5 w-3.5 text-(--color-primary)" />
         {label}
@@ -318,7 +318,7 @@ function LegalHoldModal({
             onReasonChange(event.target.value);
           }}
           placeholder="Optional reason for legal hold"
-          className="w-full rounded-lg border border-(--color-border) bg-white px-3 py-2 text-sm text-(--color-text-primary) focus:border-(--color-primary) focus:outline-none"
+          className="w-full rounded-lg border border-(--color-border) bg-(--color-surface-base) px-3 py-2 text-sm text-(--color-text-primary) focus:border-(--color-primary) focus:outline-none"
         />
         {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
         <div className="rounded-xl border border-(--color-border) bg-(--color-surface-muted) p-3 text-sm">
@@ -459,7 +459,7 @@ export default function ExecutionDetailPage() {
   return (
     <main className="w-full px-4 py-4 sm:px-6 lg:px-8">
       <div className="space-y-4">
-        <div className="rounded-xl border border-(--color-border) bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-(--color-border) bg-(--color-surface-base) p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -493,7 +493,7 @@ export default function ExecutionDetailPage() {
                 className={cn(
                   'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
                   legalHold?.active
-                    ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                    ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-100 dark:hover:bg-amber-500/20'
                     : 'border-(--color-border) text-(--color-text-secondary) hover:border-(--color-primary) hover:text-(--color-primary)'
                 )}
               >
@@ -513,7 +513,7 @@ export default function ExecutionDetailPage() {
                   void legalHoldQuery.refetch();
                   void eventsQuery.refetch();
                 }}
-                className="inline-flex items-center gap-2 rounded-lg border border-(--color-primary) px-3 py-2 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-(--color-primary) px-3 py-2 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 dark:hover:bg-blue-500/15"
               >
                 <RefreshCw className="h-4 w-4" />
                 Refresh
@@ -525,7 +525,7 @@ export default function ExecutionDetailPage() {
                   onClick={() => {
                     void cancelExecutionMutation.mutateAsync(execution.id);
                   }}
-                  className="inline-flex items-center gap-2 rounded-lg border border-orange-200 px-3 py-2 text-sm font-medium text-orange-700 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-lg border border-orange-200 px-3 py-2 text-sm font-medium text-orange-700 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-500/40 dark:text-orange-200 dark:hover:bg-orange-500/15"
                 >
                   <Ban className="h-4 w-4" />
                   {cancelExecutionMutation.isPending ? 'Cancelling...' : 'Cancel'}
@@ -537,7 +537,7 @@ export default function ExecutionDetailPage() {
           {execution ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <SummaryMetric label="Execution ID" value={compactId(execution.id)} icon={Shield} />
-              <div className="rounded-xl border border-(--color-border) bg-white px-3 py-2">
+              <div className="rounded-xl border border-(--color-border) bg-(--color-surface-base) px-3 py-2">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--color-text-secondary)">
                   <Clock className="h-3.5 w-3.5 text-(--color-primary)" />
                   Started
@@ -546,7 +546,7 @@ export default function ExecutionDetailPage() {
                   <ExecutionDateTime value={execution.startedAt} />
                 </div>
               </div>
-              <div className="rounded-xl border border-(--color-border) bg-white px-3 py-2">
+              <div className="rounded-xl border border-(--color-border) bg-(--color-surface-base) px-3 py-2">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-(--color-text-secondary)">
                   <Clock className="h-3.5 w-3.5 text-(--color-primary)" />
                   Completed
@@ -566,20 +566,20 @@ export default function ExecutionDetailPage() {
         </div>
 
         {executionQuery.isPending ? (
-          <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-sm text-(--color-text-secondary)">
+          <div className="rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-sm text-(--color-text-secondary) dark:bg-blue-500/10">
             Loading execution details...
           </div>
         ) : null}
 
         {executionQuery.isError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{executionQuery.error.message}</p>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{executionQuery.error.message}</p>
             <button
               type="button"
               onClick={() => {
                 void executionQuery.refetch();
               }}
-              className="mt-3 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+              className="mt-3 rounded-lg border border-red-200 bg-(--color-surface-base) px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-500/40 dark:text-red-200 dark:hover:bg-red-500/15"
             >
               Retry
             </button>
@@ -587,31 +587,31 @@ export default function ExecutionDetailPage() {
         ) : null}
 
         {cancelExecutionMutation.isError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{cancelExecutionMutation.error.message}</p>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{cancelExecutionMutation.error.message}</p>
           </div>
         ) : null}
 
         {setLegalHoldMutation.isError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{setLegalHoldMutation.error.message}</p>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{setLegalHoldMutation.error.message}</p>
           </div>
         ) : null}
 
         {releaseLegalHoldMutation.isError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{releaseLegalHoldMutation.error.message}</p>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{releaseLegalHoldMutation.error.message}</p>
           </div>
         ) : null}
 
         {legalHoldQuery.isError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{legalHoldQuery.error.message}</p>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{legalHoldQuery.error.message}</p>
           </div>
         ) : null}
 
         {execution ? (
-          <section className="rounded-xl border border-(--color-border) bg-white p-4 shadow-sm">
+          <section className="rounded-xl border border-(--color-border) bg-(--color-surface-base) p-4 shadow-sm">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold text-(--color-text-primary)">
@@ -627,8 +627,8 @@ export default function ExecutionDetailPage() {
             </div>
 
             {workflowQuery.isError ? (
-              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
-                <p className="text-sm text-red-700">{workflowQuery.error.message}</p>
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+                <p className="text-sm text-red-700 dark:text-red-200">{workflowQuery.error.message}</p>
               </div>
             ) : (
               <div className="mb-5">
@@ -680,7 +680,7 @@ export default function ExecutionDetailPage() {
                   type="button"
                   onClick={jumpToLatestEventsPage}
                   disabled={!eventsCursor && eventsCursorStack.length === 0}
-                  className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-blue-500/15"
                 >
                   Latest
                 </button>
@@ -688,8 +688,8 @@ export default function ExecutionDetailPage() {
             </div>
 
             {eventsQuery.isError ? (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
-                <p className="text-sm text-red-700">{eventsQuery.error.message}</p>
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+                <p className="text-sm text-red-700 dark:text-red-200">{eventsQuery.error.message}</p>
               </div>
             ) : (
               <div className="mt-4 space-y-4">

@@ -99,7 +99,7 @@ export default function WorkflowExecutionsPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <section className="rounded-2xl border border-(--color-border) bg-white p-6 shadow-[0_16px_44px_-28px_rgba(37,99,235,0.55)]">
+      <section className="rounded-2xl border border-(--color-border) bg-(--color-surface-base) p-6 shadow-[0_16px_44px_-28px_rgba(37,99,235,0.55)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-(--color-text-primary)">
@@ -127,7 +127,7 @@ export default function WorkflowExecutionsPage() {
                 setCursorStack([]);
                 void executionsQuery.refetch();
               }}
-              className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50"
+              className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 dark:hover:bg-blue-500/15"
             >
               Refresh
             </button>
@@ -135,20 +135,20 @@ export default function WorkflowExecutionsPage() {
         </div>
 
         {executionsQuery.isPending ? (
-          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-sm text-(--color-text-secondary)">
+          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-sm text-(--color-text-secondary) dark:bg-blue-500/10">
             Loading executions...
           </div>
         ) : null}
 
         {executionsQuery.isError ? (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{executionsQuery.error.message}</p>
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{executionsQuery.error.message}</p>
             <button
               type="button"
               onClick={() => {
                 void executionsQuery.refetch();
               }}
-              className="mt-3 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+              className="mt-3 rounded-lg border border-red-200 bg-(--color-surface-base) px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-500/40 dark:text-red-200 dark:hover:bg-red-500/15"
             >
               Retry
             </button>
@@ -156,13 +156,13 @@ export default function WorkflowExecutionsPage() {
         ) : null}
 
         {cancelExecutionMutation.isError ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{cancelExecutionMutation.error.message}</p>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-200">{cancelExecutionMutation.error.message}</p>
           </div>
         ) : null}
 
         {!executionsQuery.isPending && !executionsQuery.isError && executions.length === 0 ? (
-          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-center">
+          <div className="mt-6 rounded-xl border border-dashed border-(--color-border) bg-blue-50/40 p-6 text-center dark:bg-blue-500/10">
             <p className="text-base font-medium text-(--color-text-primary)">No executions yet</p>
             <p className="mt-2 text-sm text-(--color-text-secondary)">
               Trigger this workflow to start collecting execution history.
@@ -173,7 +173,7 @@ export default function WorkflowExecutionsPage() {
         {!executionsQuery.isPending && !executionsQuery.isError && executions.length > 0 ? (
           <div className="mt-6 overflow-x-auto rounded-xl border border-(--color-border)">
             <table className="min-w-full divide-y divide-(--color-border)">
-              <thead className="bg-blue-50/70">
+              <thead className="bg-(--color-surface-muted)">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-(--color-text-secondary)">
                     Execution ID
@@ -199,7 +199,7 @@ export default function WorkflowExecutionsPage() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-(--color-border) bg-white">
+              <tbody className="divide-y divide-(--color-border) bg-(--color-surface-base)">
                 {executions.map((execution) => (
                   <tr key={execution.id}>
                     <td className="px-4 py-3 text-sm font-medium text-(--color-text-primary)">
@@ -236,7 +236,7 @@ export default function WorkflowExecutionsPage() {
                             onClick={() => {
                               void cancelExecutionMutation.mutateAsync(execution.id);
                             }}
-                            className="inline-flex rounded-lg border border-orange-200 px-3 py-1.5 text-sm font-medium text-orange-700 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex rounded-lg border border-orange-200 px-3 py-1.5 text-sm font-medium text-orange-700 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-500/40 dark:text-orange-200 dark:hover:bg-orange-500/15"
                           >
                             Cancel
                           </button>
