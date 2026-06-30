@@ -2,7 +2,7 @@
 
 import MonacoEditor from '@monaco-editor/react';
 import { Maximize2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import ZButton from '@/components/primary/ZButton';
 import ZModal from '@/components/primary/ZModal';
@@ -15,6 +15,27 @@ interface JsonCodeEditorProps {
   modalTitle?: string;
 }
 
+function useEditorTheme(): 'light' | 'vs-dark' {
+  const [editorTheme, setEditorTheme] = useState<'light' | 'vs-dark'>('light');
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateTheme = () => {
+      setEditorTheme(root.classList.contains('dark') ? 'vs-dark' : 'light');
+    };
+    const observer = new MutationObserver(updateTheme);
+
+    updateTheme();
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return editorTheme;
+}
+
 export function JsonCodeEditor({
   value,
   onChange,
@@ -23,6 +44,7 @@ export function JsonCodeEditor({
   modalTitle = 'Edit JSON',
 }: JsonCodeEditorProps) {
   const [expanded, setExpanded] = useState(false);
+  const editorTheme = useEditorTheme();
 
   const editor = (editorHeight: string) => (
     <div className="relative bg-(--json-bg)">
@@ -35,7 +57,7 @@ export function JsonCodeEditor({
       value={value}
       language="json"
       height={editorHeight}
-      theme="light"
+      theme={editorTheme}
       onChange={(nextValue) => {
         onChange(nextValue ?? '');
       }}
