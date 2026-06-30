@@ -135,7 +135,7 @@ export function WorkflowGraphCanvas({
     });
   }, [draft.edges]);
 
-  const defaultViewport = useMemo(() => ({ x: -90, y: 0, zoom: 0.9 }), []);
+  const defaultViewport = useMemo(() => ({ x: -48, y: 0, zoom: 0.9 }), []);
 
   const onNodesChange = useCallback<OnNodesChange>((changes) => {
     setGraphNodes((nodes) => applyNodeChanges(changes, nodes));

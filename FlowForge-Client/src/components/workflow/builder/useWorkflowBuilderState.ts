@@ -29,7 +29,7 @@ function createDefaultStepPosition(index: number): { x: number; y: number } {
 
 export function useWorkflowBuilderState({ workflow }: UseWorkflowBuilderStateParams) {
   const [draft, setDraft] = useState<WorkflowBuilderDraft>(() => workflowToBuilderDraft(workflow));
-  const [selection, setSelection] = useState<BuilderSelection>({ kind: 'trigger' });
+  const [selection, setSelection] = useState<BuilderSelection>({ kind: 'canvas' });
 
   const selectedStep = useMemo(() => {
     if (selection.kind !== 'step') {
@@ -180,7 +180,7 @@ export function useWorkflowBuilderState({ workflow }: UseWorkflowBuilderStatePar
 
   const resetFromWorkflow = useCallback((nextWorkflow?: Workflow) => {
     setDraft(workflowToBuilderDraft(nextWorkflow));
-    setSelection({ kind: 'trigger' });
+    setSelection({ kind: 'canvas' });
   }, []);
 
   return {
