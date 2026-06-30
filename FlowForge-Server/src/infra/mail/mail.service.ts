@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { resolve4 } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { connect as connectSocket, isIP } from 'node:net';
 import * as nodemailer from 'nodemailer';
 import SMTPTransport = require('nodemailer/lib/smtp-transport');
 
@@ -22,7 +22,10 @@ export class MailService {
     const port = Number(this.configService.get('SMTP_PORT', '587'));
     const user = this.configService.getOrThrow<string>('SMTP_USER');
     const pass = this.configService.getOrThrow<string>('SMTP_PASS');
-    const forceIPv4 = this.configService.get('SMTP_FORCE_IPV4') === 'true';
+    const forceIPv4 =
+      String(this.configService.get('SMTP_FORCE_IPV4') ?? '')
+        .trim()
+        .toLowerCase() === 'true';
 
     this.from = this.configService.get('MAIL_FROM', user);
 
@@ -45,6 +48,7 @@ export class MailService {
     if (forceIPv4) {
       transportOptions.getSocket = async (options, callback) => {
         const smtpHost = options.host || host;
+        const smtpPort = Number(options.port || port);
 
         if (isIP(smtpHost)) {
           callback(null, {});
@@ -59,10 +63,25 @@ export class MailService {
             return;
           }
 
-          callback(null, {
+          const connection = connectSocket({
             host: address,
-            servername: smtpHost,
+            port: smtpPort,
+            family: 4,
           });
+          const onError = (socketError: Error) => {
+            callback(socketError, null);
+          };
+
+          connection.once('connect', () => {
+            connection.removeListener('error', onError);
+            callback(null, {
+              connection,
+              host: smtpHost,
+              servername: smtpHost,
+            });
+          });
+
+          connection.once('error', onError);
         } catch (error) {
           callback(error as Error, null);
         }
