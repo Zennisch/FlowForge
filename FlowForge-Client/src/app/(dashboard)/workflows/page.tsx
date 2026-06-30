@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Activity, CheckCircle2, DatabaseZap, PlayCircle, RefreshCw, XCircle } from 'lucide-react';
 
 import { DeleteWorkflowModal } from '@/components/workflow/DeleteWorkflowModal';
@@ -10,6 +10,8 @@ import {
   type WorkflowFilter,
 } from '@/components/workflow/WorkflowListFilters';
 import { WorkflowListTable } from '@/components/workflow/WorkflowListTable';
+import { cn } from '@/components/primary/utils';
+import { useRefreshFeedback } from '@/hooks/useRefreshFeedback';
 import { useDeleteWorkflow, useWorkflowInsights, useWorkflows } from '@/hooks/useWorkflows';
 import type { Workflow } from '@/types/workflow.types';
 
@@ -46,6 +48,11 @@ export default function WorkflowsPage() {
   const [triggerWorkflow, setTriggerWorkflow] = useState<Workflow | null>(null);
   const [statusFilter, setStatusFilter] = useState<WorkflowFilter>('all');
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const handleRefresh = useCallback(
+    () => Promise.allSettled([workflowsQuery.refetch(), insightsQuery.refetch()]),
+    [insightsQuery, workflowsQuery]
+  );
+  const { isRefreshing, hasRefreshCompleted, runRefresh } = useRefreshFeedback(handleRefresh);
 
   const deleteErrorMessage = useMemo(
     () =>
@@ -180,13 +187,17 @@ export default function WorkflowsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  void workflowsQuery.refetch();
-                  void insightsQuery.refetch();
+                  void runRefresh();
                 }}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-(--color-border) bg-(--color-surface-base) px-2.5 text-xs font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary)"
+                disabled={isRefreshing}
+                aria-live="polite"
+                className="inline-flex h-8 min-w-[6.75rem] items-center gap-1.5 rounded-md border border-(--color-border) bg-(--color-surface-base) px-2.5 text-xs font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                Refresh
+                <RefreshCw
+                  className={cn('h-3.5 w-3.5', isRefreshing ? 'animate-spin' : '')}
+                  aria-hidden="true"
+                />
+                {isRefreshing ? 'Refreshing...' : hasRefreshCompleted ? 'Updated' : 'Refresh'}
               </button>
             <WorkflowListFilters
               value={statusFilter}

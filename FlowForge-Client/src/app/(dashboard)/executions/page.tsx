@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Activity,
@@ -20,6 +20,7 @@ import {
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
 import { cn } from '@/components/primary/utils';
 import { WorkflowTriggerType } from '@/components/workflow/WorkflowTriggerType';
+import { useRefreshFeedback } from '@/hooks/useRefreshFeedback';
 import { useCancelExecution, useExecutionSummary, useExecutions } from '@/hooks/useExecutions';
 import type { Execution, ExecutionStatus } from '@/types/execution.types';
 
@@ -152,6 +153,11 @@ export default function ExecutionsPage() {
   const executionsQuery = useExecutions(executionListQueryInput);
   const summaryQuery = useExecutionSummary();
   const cancelExecutionMutation = useCancelExecution();
+  const handleRefresh = useCallback(
+    () => Promise.allSettled([executionsQuery.refetch(), summaryQuery.refetch()]),
+    [executionsQuery, summaryQuery]
+  );
+  const { isRefreshing, hasRefreshCompleted, runRefresh } = useRefreshFeedback(handleRefresh);
 
   const executions = executionsQuery.data?.items ?? [];
   const pageInfo = executionsQuery.data?.pageInfo;
@@ -297,13 +303,17 @@ export default function ExecutionsPage() {
             <button
               type="button"
               onClick={() => {
-                void executionsQuery.refetch();
-                void summaryQuery.refetch();
+                void runRefresh();
               }}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-(--color-border) bg-(--color-surface-base) px-2.5 text-xs font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary)"
+              disabled={isRefreshing}
+              aria-live="polite"
+              className="inline-flex h-8 min-w-[6.75rem] items-center gap-1.5 rounded-md border border-(--color-border) bg-(--color-surface-base) px-2.5 text-xs font-medium text-(--color-text-secondary) transition-colors hover:border-(--color-primary) hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-70"
             >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-              Refresh
+              <RefreshCw
+                className={cn('h-3.5 w-3.5', isRefreshing ? 'animate-spin' : '')}
+                aria-hidden="true"
+              />
+              {isRefreshing ? 'Refreshing...' : hasRefreshCompleted ? 'Updated' : 'Refresh'}
             </button>
 
             {STATUS_FILTERS.map((status) => {

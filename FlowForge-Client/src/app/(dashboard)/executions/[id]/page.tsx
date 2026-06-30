@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Ban,
@@ -22,6 +22,7 @@ import {
 import ZModal from '@/components/primary/ZModal';
 import { cn } from '@/components/primary/utils';
 import { WorkflowTriggerType } from '@/components/workflow/WorkflowTriggerType';
+import { useRefreshFeedback } from '@/hooks/useRefreshFeedback';
 import {
   useCancelExecution,
   useExecution,
@@ -382,6 +383,16 @@ export default function ExecutionDetailPage() {
   const cancelExecutionMutation = useCancelExecution();
   const setLegalHoldMutation = useSetExecutionLegalHold();
   const releaseLegalHoldMutation = useReleaseExecutionLegalHold();
+  const handleRefresh = useCallback(
+    () =>
+      Promise.allSettled([
+        executionQuery.refetch(),
+        legalHoldQuery.refetch(),
+        eventsQuery.refetch(),
+      ]),
+    [eventsQuery, executionQuery, legalHoldQuery]
+  );
+  const { isRefreshing, hasRefreshCompleted, runRefresh } = useRefreshFeedback(handleRefresh);
 
   const legalHold = legalHoldQuery.data?.legalHold;
   const stepsFromExecution = execution?.stepExecutions ?? [];
@@ -509,14 +520,14 @@ export default function ExecutionDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  void executionQuery.refetch();
-                  void legalHoldQuery.refetch();
-                  void eventsQuery.refetch();
+                  void runRefresh();
                 }}
-                className="inline-flex items-center gap-2 rounded-lg border border-(--color-primary) px-3 py-2 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 dark:hover:bg-blue-500/15"
+                disabled={isRefreshing}
+                aria-live="polite"
+                className="inline-flex min-w-[7.5rem] items-center gap-2 rounded-lg border border-(--color-primary) px-3 py-2 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-70 dark:hover:bg-blue-500/15"
               >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
+                <RefreshCw className={cn('h-4 w-4', isRefreshing ? 'animate-spin' : '')} />
+                {isRefreshing ? 'Refreshing...' : hasRefreshCompleted ? 'Updated' : 'Refresh'}
               </button>
               {execution && isCancellable(execution.status) ? (
                 <button

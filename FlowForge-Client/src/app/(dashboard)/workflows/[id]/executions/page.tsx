@@ -2,9 +2,12 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 
 import { ExecutionStatusBadge } from '@/components/execution/ExecutionStatusBadge';
+import { cn } from '@/components/primary/utils';
+import { useRefreshFeedback } from '@/hooks/useRefreshFeedback';
 import { useCancelExecution, useWorkflowExecutions } from '@/hooks/useExecutions';
 import { useWorkflow } from '@/hooks/useWorkflows';
 import type { Execution, ExecutionStatus } from '@/types/execution.types';
@@ -74,6 +77,12 @@ export default function WorkflowExecutionsPage() {
     limit: PAGE_LIMIT,
   });
   const cancelExecutionMutation = useCancelExecution();
+  const handleRefresh = useCallback(() => {
+    setCursor(undefined);
+    setCursorStack([]);
+    return executionsQuery.refetch();
+  }, [executionsQuery]);
+  const { isRefreshing, hasRefreshCompleted, runRefresh } = useRefreshFeedback(handleRefresh);
 
   const executions = executionsQuery.data?.items ?? [];
   const pageInfo = executionsQuery.data?.pageInfo;
@@ -123,13 +132,14 @@ export default function WorkflowExecutionsPage() {
             <button
               type="button"
               onClick={() => {
-                setCursor(undefined);
-                setCursorStack([]);
-                void executionsQuery.refetch();
+                void runRefresh();
               }}
-              className="inline-flex rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 dark:hover:bg-blue-500/15"
+              disabled={isRefreshing}
+              aria-live="polite"
+              className="inline-flex min-w-[7.5rem] items-center gap-2 rounded-lg border border-(--color-primary) px-3 py-1.5 text-sm font-medium text-(--color-primary) transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-70 dark:hover:bg-blue-500/15"
             >
-              Refresh
+              <RefreshCw className={cn('h-4 w-4', isRefreshing ? 'animate-spin' : '')} />
+              {isRefreshing ? 'Refreshing...' : hasRefreshCompleted ? 'Updated' : 'Refresh'}
             </button>
           </div>
         </div>
