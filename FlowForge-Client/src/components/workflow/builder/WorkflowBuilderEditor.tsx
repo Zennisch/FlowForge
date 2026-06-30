@@ -6,6 +6,7 @@ import { PanelBottomClose, PanelBottomOpen, X } from 'lucide-react';
 import { buildCreateWorkflowPayload } from '@/lib/workflow-builder/payload';
 import type { WorkflowBuilderEditorProps } from '@/lib/workflow-builder/types';
 import ZButton from '@/components/primary/ZButton';
+import ZModal from '@/components/primary/ZModal';
 
 import { StepInspectorPanel } from './inspector/StepInspectorPanel';
 import { TriggerInspectorPanel } from './inspector/TriggerInspectorPanel';
@@ -41,6 +42,7 @@ export function WorkflowBuilderEditor({
   } = useWorkflowBuilderState({ workflow: initialWorkflow });
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const [inspectorWidth, setInspectorWidth] = useState(INSPECTOR_DEFAULT_WIDTH);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -55,11 +57,22 @@ export function WorkflowBuilderEditor({
     setFieldErrors(result.validation.fieldErrors);
 
     if (!result.payload || !result.validation.isValid) {
+      setNoticeMessage(
+        result.validation.fieldErrors.name ??
+          result.validation.fieldErrors.steps ??
+          'Please review the highlighted workflow fields.'
+      );
       return;
     }
 
     await onSubmit(result.payload);
   };
+
+  useEffect(() => {
+    if (submitError) {
+      setNoticeMessage(submitError);
+    }
+  }, [submitError]);
 
   const inspectorTitle = useMemo(() => {
     if (selection.kind === 'trigger') {
@@ -115,23 +128,26 @@ export function WorkflowBuilderEditor({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-x-hidden">
-      {fieldErrors.name ? (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {fieldErrors.name}
-        </p>
-      ) : null}
-
-      {fieldErrors.steps ? (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {fieldErrors.steps}
-        </p>
-      ) : null}
-
-      {submitError ? (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {submitError}
-        </p>
-      ) : null}
+      <ZModal
+        isOpen={Boolean(noticeMessage)}
+        onClose={() => {
+          setNoticeMessage(null);
+        }}
+        header="Workflow notice"
+        size="sm"
+        footer={
+          <ZButton
+            size="sm"
+            onClick={() => {
+              setNoticeMessage(null);
+            }}
+          >
+            OK
+          </ZButton>
+        }
+      >
+        <p className="text-sm text-(--color-text-secondary)">{noticeMessage}</p>
+      </ZModal>
 
       <div ref={splitContainerRef} className="flex min-h-0 flex-1 gap-2">
         <section className="h-full min-h-0 min-w-0 flex-1">

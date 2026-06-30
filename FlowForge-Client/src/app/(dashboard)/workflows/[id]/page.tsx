@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
+import ZButton from '@/components/primary/ZButton';
+import ZModal from '@/components/primary/ZModal';
 import { WorkflowBuilderEditor } from '@/components/workflow/builder/WorkflowBuilderEditor';
 import { useUpdateWorkflow, useWorkflow } from '@/hooks/useWorkflows';
 import type { CreateWorkflowRequest } from '@/types/workflow.types';
@@ -66,12 +68,27 @@ export default function WorkflowDetailPage() {
         ) : null}
 
         {workflowQuery.data ? (
-          <div className="min-h-0 flex-1 space-y-3">
-            {saveMessage ? (
-              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {saveMessage}
-              </p>
-            ) : null}
+          <div className="min-h-0 flex-1">
+            <ZModal
+              isOpen={Boolean(saveMessage)}
+              onClose={() => {
+                setSaveMessage(null);
+              }}
+              header="Workflow saved"
+              size="sm"
+              footer={
+                <ZButton
+                  size="sm"
+                  onClick={() => {
+                    setSaveMessage(null);
+                  }}
+                >
+                  OK
+                </ZButton>
+              }
+            >
+              <p className="text-sm text-(--color-text-secondary)">{saveMessage}</p>
+            </ZModal>
 
             <WorkflowBuilderEditor
               mode="edit"
